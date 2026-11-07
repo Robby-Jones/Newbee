@@ -49,12 +49,13 @@ final class AppDependencies {
             repository = UnavailableFeedingRepository(reason: error?.localizedDescription ?? "unknown error")
         }
 
+        // One policy for recovery and for the Live Activity's "Still feeding?" hint.
+        let policy = RecoveryPolicy()
         let activity = liveActivity ?? NoLiveActivities()
         let manager = FeedingSessionManager(repository: repository, clock: clock, liveActivity: activity)
+        recoveryPolicy = policy
         self.liveActivity = activity
         sessionManager = manager
-        let policy = RecoveryPolicy()
-        recoveryPolicy = policy
         recovery = RecoveryCoordinator(manager: manager, policy: policy)
     }
 }
