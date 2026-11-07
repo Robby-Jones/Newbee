@@ -10,6 +10,8 @@ public enum LiveActivityCommand: Hashable, Sendable {
     case pause
     case resume
     case end
+    /// "Undo" on the "Feed complete" summary: reopen the feed that just ended.
+    case undoEnd
 }
 
 /// Implemented by the app's `FeedingSessionManager`, the single owner of the active session.

@@ -219,3 +219,56 @@ struct SideSwitchButton: View {
         )
     }
 }
+
+/// Per-side times and the one-tap controls. Shared by the Lock Screen and the expanded
+/// Dynamic Island so both read the same way.
+///
+/// ```
+///  L  12:05                        R   6:37
+///  [     Switch to R     ]   [⏸]   [■]
+/// ```
+struct ActivitySidesAndControls: View {
+    let attributes: FeedingActivityAttributes
+    let state: FeedingState
+    var sideFontSize: CGFloat = 15
+
+    var body: some View {
+        VStack(spacing: NBSpacing.s) {
+            HStack {
+                SideRow(state: state, side: .left, fontSize: sideFontSize)
+                Spacer()
+                SideRow(state: state, side: .right, fontSize: sideFontSize)
+            }
+            if state.status != .ended {
+                HStack(spacing: NBSpacing.s) {
+                    // Only the other side is offered: one big, obvious action.
+                    let other = state.status == .active ? state.currentSide.opposite : state.currentSide
+                    SideSwitchButton(
+                        sessionID: attributes.sessionID, state: state, side: other,
+                        title: state.status == .active ? "Switch to \(other.shortLabel)" : "Resume \(other.shortLabel)"
+                    )
+                    .frame(maxWidth: .infinity)
+                    PauseResumeButton(sessionID: attributes.sessionID, state: state, compact: true)
+                    EndButton(sessionID: attributes.sessionID)
+                }
+            } else {
+                UndoEndButton(sessionID: attributes.sessionID)
+            }
+        }
+    }
+}
+
+/// "Undo" on the "Feed complete" summary, for an End tapped by mistake.
+struct UndoEndButton: View {
+    let sessionID: UUID
+
+    var body: some View {
+        Button(intent: UndoEndFeedingIntent(sessionID: sessionID)) {
+            ActivityControlLabel(title: "Undo end", systemImage: "arrow.uturn.backward", tint: NBColor.accent)
+                .frame(maxWidth: .infinity)
+        }
+        .buttonStyle(.plain)
+        .accessibilityLabel("Undo end feeding")
+        .accessibilityHint("Reopens the feed you just ended")
+    }
+}

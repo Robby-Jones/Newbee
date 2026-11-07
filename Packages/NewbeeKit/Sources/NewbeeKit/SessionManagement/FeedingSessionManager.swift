@@ -56,6 +56,20 @@ public final class FeedingSessionManager {
     @ObservationIgnored private var effectsTail: Task<Void, Never>?
     /// Session ID → when the parent answered "Keep going" (consumed by `RecoveryCoordinator`).
     @ObservationIgnored var recoveryAcknowledgements: [UUID: Date] = [:]
+    /// The last End, kept so "Undo" on the Live Activity summary can put the feed back exactly
+    /// as it was. In memory only: if the app was terminated in between, undo reopens the feed
+    /// paused instead (see `undoEnd(sessionID:)`).
+    @ObservationIgnored private var lastEnd: EndRecord?
+
+    private struct EndRecord {
+        var before: SessionSnapshot
+        var completedRevision: Int
+        var endedAt: Date
+    }
+
+    /// How long after End the Live Activity summary offers Undo. Matches the summary's time on
+    /// the Lock Screen.
+    public static let undoEndWindow: TimeInterval = 15 * 60
 
     public init(
         repository: any FeedingRepository,
@@ -213,6 +227,48 @@ public final class FeedingSessionManager {
         await waitForPendingEffects()
     }
 
+    /// "Undo" on the Live Activity's "Feed complete" summary: reopens the session that ended,
+    /// if it is still the latest feed, ended within `undoEndWindow`, and no other feed has
+    /// started since.
+    ///
+    /// If this process saw the End, the feed goes back exactly as it was (a running side keeps
+    /// running, so the time since End counts, as with the in-app undo). Otherwise, for example
+    /// after the app was terminated, it can't tell whether the feed was running or paused, so it
+    /// reopens it **paused** rather than inventing feeding time.
+    ///
+    /// Anything refused is a silent no-op. The Live Activity is synced before this returns.
+    public func undoEnd(sessionID: UUID) async {
+        if let snapshot = snapshotToReopen(sessionID: sessionID), (try? restore(snapshot)) != nil {
+            lastEnd = nil
+        } else {
+            try? refresh()
+            enqueueEffects(activity: .sync(activeSession), reminders: false)
+        }
+        await waitForPendingEffects()
+    }
+
+    private func snapshotToReopen(sessionID: UUID) -> SessionSnapshot? {
+        let now = clock.now
+        guard let stored = try? repository.session(id: sessionID),
+              stored.status == .completed,
+              let latest = try? repository.recentCompletedSessions(limit: 1).first, latest.id == sessionID,
+              (try? repository.openSessions())?.isEmpty == true
+        else { return nil }
+
+        if let record = lastEnd, record.before.id == sessionID, record.completedRevision == stored.revision {
+            guard now.timeIntervalSince(record.endedAt) <= Self.undoEndWindow else { return nil }
+            var before = record.before
+            before.revision = stored.revision
+            return before
+        }
+
+        guard let endedAt = stored.endedAt, now.timeIntervalSince(endedAt) <= Self.undoEndWindow else { return nil }
+        var reopened = stored
+        reopened.status = .paused
+        reopened.endedAt = nil
+        return reopened
+    }
+
     // MARK: - Loading
 
     /// Re-reads the active and last completed sessions from the store. No side effects.
@@ -249,6 +305,9 @@ public final class FeedingSessionManager {
         try write { try repository.save(transition.snapshot, modifiedAt: instant.wall) }
 
         if transition.snapshot.status == .completed {
+            if let state {
+                lastEnd = EndRecord(before: state, completedRevision: transition.snapshot.revision, endedAt: instant.wall)
+            }
             activeSession = nil
             lastCompletedSession = transition.snapshot
         } else {

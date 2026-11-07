@@ -302,6 +302,95 @@ struct FeedingSessionManagerTests {
         #expect(repository.sessions.count == 1)
         #expect(activity.synced.last == .some(nil))
     }
+
+    // MARK: Undo End from the Live Activity summary
+
+    @Test func undoEndPutsARunningFeedBackAsItWas() async throws {
+        let manager = makeManager()
+        try manager.start(side: .left)
+        let id = manager.activeSession!.id
+        clock.advance(by: 5 * 60)
+        await manager.applyRemote(.end, sessionID: id)
+        #expect(manager.activeSession == nil)
+        clock.advance(by: 30)
+        await manager.undoEnd(sessionID: id)
+        let reopened = try #require(manager.activeSession)
+        #expect(reopened.id == id)
+        #expect(reopened.status == .active)
+        #expect(reopened.openSegment?.side == .left)
+        #expect(reopened.endedAt == nil)
+        #expect(approx(reopened.duration(on: .left, at: clock.now), 5 * 60 + 30))
+        #expect(activity.synced.last == .some(reopened))
+    }
+
+    @Test func undoEndKeepsAPausedFeedPaused() async throws {
+        let manager = makeManager()
+        try manager.start(side: .right)
+        let id = manager.activeSession!.id
+        clock.advance(by: 4 * 60)
+        try manager.pause()
+        clock.advance(by: 10 * 60)
+        await manager.applyRemote(.end, sessionID: id)
+        await manager.undoEnd(sessionID: id)
+        let reopened = try #require(manager.activeSession)
+        #expect(reopened.status == .paused)
+        #expect(approx(reopened.duration(on: .right, at: clock.now), 4 * 60))
+    }
+
+    @Test func undoEndAfterTheAppWasTerminatedReopensPaused() async throws {
+        let first = makeManager()
+        try first.start(side: .left)
+        let id = first.activeSession!.id
+        clock.advance(by: 6 * 60)
+        await first.applyRemote(.end, sessionID: id)
+
+        let relaunched = makeManager()
+        clock.advance(by: 60)
+        await relaunched.undoEnd(sessionID: id)
+        let reopened = try #require(relaunched.activeSession)
+        #expect(reopened.status == .paused)
+        #expect(reopened.endedAt == nil)
+        #expect(approx(reopened.duration(on: .left, at: clock.now), 6 * 60))
+    }
+
+    @Test func undoEndIsRefusedAfterTheWindow() async throws {
+        let manager = makeManager()
+        try manager.start(side: .left)
+        let id = manager.activeSession!.id
+        clock.advance(by: 60)
+        await manager.applyRemote(.end, sessionID: id)
+        clock.advance(by: FeedingSessionManager.undoEndWindow + 1)
+        await manager.undoEnd(sessionID: id)
+        #expect(manager.activeSession == nil)
+        #expect(try repository.session(id: id)?.status == .completed)
+    }
+
+    @Test func undoEndIsRefusedOnceTheNextFeedHasStarted() async throws {
+        let manager = makeManager()
+        try manager.start(side: .left)
+        let id = manager.activeSession!.id
+        clock.advance(by: 60)
+        await manager.applyRemote(.end, sessionID: id)
+        clock.advance(by: 60)
+        try manager.start(side: .right)
+        let next = manager.activeSession
+        await manager.undoEnd(sessionID: id)
+        #expect(manager.activeSession == next)
+        #expect(try repository.session(id: id)?.status == .completed)
+    }
+
+    @Test func undoEndTwiceIsHarmless() async throws {
+        let manager = makeManager()
+        try manager.start(side: .left)
+        let id = manager.activeSession!.id
+        clock.advance(by: 60)
+        await manager.applyRemote(.end, sessionID: id)
+        await manager.undoEnd(sessionID: id)
+        let reopened = manager.activeSession
+        await manager.undoEnd(sessionID: id)
+        #expect(manager.activeSession == reopened)
+        #expect(repository.sessions.count == 1)
+    }
 }
 
 @MainActor
