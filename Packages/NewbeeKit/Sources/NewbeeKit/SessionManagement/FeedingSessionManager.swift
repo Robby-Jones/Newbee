@@ -201,12 +201,10 @@ public final class FeedingSessionManager {
     /// Live Activity) is ignored. In every case the Live Activity is synced with the stored
     /// state before this returns, so stale activities are corrected.
     public func applyRemote(_ command: SessionCommand, sessionID: UUID) async {
-        // One store read: the session it returns is also the state the command applies to, so a
-        // cold background launch (the usual case for a Lock Screen tap) does no extra fetches.
         let current = try? repository.activeSession()
         var applied = false
         if let current, current.id == sessionID {
-            applied = (try? perform(command, on: current))?.isNoOp == false
+            applied = (try? perform(command))?.isNoOp == false
         }
         if !applied {
             try? refresh()
@@ -243,13 +241,7 @@ public final class FeedingSessionManager {
 
     @discardableResult
     private func perform(_ command: SessionCommand) throws -> SessionTransition {
-        try perform(command, on: read { try repository.activeSession() })
-    }
-
-    /// Applies `command` to `state`, which must be the stored active session (or nil) read just
-    /// before, on the main actor, with nothing written in between.
-    @discardableResult
-    private func perform(_ command: SessionCommand, on state: SessionSnapshot?) throws -> SessionTransition {
+        let state = try read { try repository.activeSession() }
         let instant = clock.instant()
         let transition = try engine.apply(command, to: state, at: instant)
         guard !transition.isNoOp else { return transition }
