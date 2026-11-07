@@ -43,7 +43,7 @@ Priority tiers: **P0** means the app is pointless without it. **P1** is required
 | 3 | Breastfeeding timer screen (L/R, per-side and total time, suggested next side) | **P0** | |
 | 4 | Live Activity on the Lock Screen | **P0** | See `LIVE_ACTIVITIES.md` |
 | 5 | Dynamic Island in compact, minimal, and expanded layouts | **P0** | |
-| 6 | Interactive Live Activity controls (switch, pause/resume, end) via App Intents | **P0** | iOS 17+ |
+| 6 | Interactive Live Activity controls (switch, pause/resume, end) via App Intents | **P0** | |
 | 7 | Launch recovery and reconciliation (interrupted, stale, or duplicate sessions) | **P0** | |
 | 8 | Undo for end, switch, and delete actions; safe handling of double taps | **P0** | |
 | 9 | Bottle feeding log with contents, amount, unit, time, notes, and presets | **P1** | |
@@ -72,7 +72,7 @@ Roughly in order of value:
 1. **iCloud sync (CloudKit) and caregiver sharing.** Two parents tracking the same baby is the most common real-world need. The schema is CloudKit-compatible from day one (see `DATA_MODEL.md`). Sharing between different Apple IDs needs `CKShare`, which SwiftData does not support natively. That is a significant piece of work.
 2. **Pumping sessions**, with left and right volume and duration. The model already supports this.
 3. **Combination and supplementary feeds**, meaning breast followed by a top-up bottle in one feeding. The model already supports this.
-4. **Home Screen and Lock Screen widgets** (time since last feed, last side) plus a **Control Center control** to start a feed (iOS 18+ `ControlWidget`).
+4. **Home Screen and Lock Screen widgets** (time since last feed, last side) plus a **Control Center control** to start a feed (`ControlWidget`, available on our iOS 18 floor).
 5. **Siri and Shortcuts**: "Start feeding on the left", "Log 90 mL formula". The App Intents built for the Live Activity make this cheap.
 6. **Apple Watch**: Live Activities already appear in the watchOS Smart Stack. A full watch app comes later.
 7. **Multiple babies (twins)**. The model is ready; this needs a baby switcher in the UI.
@@ -111,17 +111,15 @@ Roughly in order of value:
 1. **"Pause" semantics.** The spec lists Not Started → Active → Paused → Completed, but the Live Activity also needs "which side was active when paused". Decision: pausing closes the current segment and keeps `lastSide`; resuming opens a new segment on the same side. Resuming on the *other* side is just "switch while paused".
 2. **`BreastfeedingDetails` entity vs "avoid redundant calculated values".** Per-side durations and the starting breast can all be derived from segments. Decision: **drop the separate entity** and derive these values. This removes a whole class of data-drift bugs. Cached totals can be added later only if profiling demands them.
 3. **"Device restarted, where recovery is possible."** With absolute timestamps, recovery is *always* possible for the data. Only the Live Activity UI is lost if iOS doesn't restore it, and it comes back on next foreground.
-4. **Live Activity interactivity "where supported".** Buttons in Live Activities need iOS 17+, which matches the deployment target, so every supported device gets them. Dynamic Island needs iPhone 14 Pro or newer; other iPhones get the Lock Screen presentation and banner only.
+4. **Live Activity interactivity "where supported".** With the iOS 18 deployment target, every supported device gets Live Activity buttons. Dynamic Island needs iPhone 14 Pro or newer; other iPhones get the Lock Screen presentation and banner only.
 5. **AppPreferences in SwiftData vs UserDefaults.** Decision: use **UserDefaults in the App Group**, because preferences are needed by the widget extension, are tiny, and shouldn't sync blindly with feeding data.
 6. **Five tabs plus a settings home.** Decision: 5 tabs as suggested. Settings is reached from a gear on Home and from Tools.
 
-### 4.3 Open decisions for Robby
+### 4.3 Decisions (answered by Robby, 2026-11-07)
 
-These need an answer before or at the start of Phase 4. Defaults are shown in bold.
-
-1. **Minimum iOS: 17 (spec)** or 18. iOS 18 gives better SwiftData (`#Index`, fewer bugs) and Control Center controls. Recommendation: keep **iOS 17** as specified, and revisit if SwiftData bugs bite.
-2. **iCloud sync in MVP: no (post-MVP)**, with the schema ready.
-3. **Single baby in the UI for MVP: yes.**
-4. **App name / bundle ID**: **Newbee** / `com.<team>.newbee`.
-5. **Apple Developer Program** (paid) membership: required for App Groups provisioning on a real device in practice, Live Activity device testing at scale, TestFlight, and the App Store. Do you have one?
-6. **Validation environment.** These planning threads run on Linux without Xcode. See `ROADMAP.md` §3 for which steps need your Mac or a Remote Control session, and the proposal to use GitHub Actions macOS runners for builds.
+1. **Minimum iOS: 18.0.** This gives us SwiftData `#Index`, fewer SwiftData bugs, and Control Center controls.
+2. **Apple Developer Program: yes**, Robby has a paid membership.
+3. **Name and bundle ID:** display name **Newbee**, bundle ID `com.<team>.newbee`. The exact team prefix is set during Phase 4 signing.
+4. **iCloud sync: after the first release.** The schema stays CloudKit-ready.
+5. **Single-baby UI for MVP**, with a model that's ready for more babies (default, not objected to).
+6. **Validation:** GitHub Actions macOS CI for builds. Robby's Mac and iPhone handle signing and device tests (`ROADMAP.md` §3).

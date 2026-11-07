@@ -13,7 +13,7 @@ Legend: `[x]` done · `[ ]` pending · `[!]` blocked (reason noted). Updated by 
 - [x] Roadmap + parallel split (`ROADMAP.md`)
 - [x] Risks (`RISKS.md`)
 - [ ] **Robby approval** of the plan
-- [ ] Open decisions answered (PRD §4.3): min iOS, bundle ID, developer account, CloudKit timing, single-baby UI
+- [x] Open decisions answered (PRD §4.3): iOS 18, Newbee / com.<team>.newbee, paid developer account, CloudKit post-MVP
 
 ## Phase 3: UI/UX design
 - [ ] Final color tokens + typography

@@ -12,11 +12,11 @@ Covers deliverable 4 (technical architecture) and 8 (folder structure), plus the
 | Language | Swift 6 language mode, strict concurrency | `@MainActor` default isolation for UI targets |
 | UI | SwiftUI | UIKit only where SwiftUI lacks an API (for example the PDF context) |
 | Pattern | MVVM with `@Observable` view models | No Combine except `NotificationCenter` bridging |
-| Min iOS | 17.0 | Availability checks for 17.2+, 18+, and later APIs |
+| Min iOS | **18.0** (decided 2026-11-07) | Availability checks only for APIs newer than 18 |
 | Persistence | SwiftData, `VersionedSchema` + `SchemaMigrationPlan` from v1 | CloudKit-compatible schema rules |
-| Charts | Swift Charts | `SectorMark` (donut) is iOS 17+, OK |
+| Charts | Swift Charts | `SectorMark` (donut) available |
 | Live Activities | ActivityKit + WidgetKit extension | |
-| Interactivity | App Intents (`LiveActivityIntent`) | Buttons in Live Activities need iOS 17+ |
+| Interactivity | App Intents (`LiveActivityIntent`) | Buttons in Live Activities available on all supported devices |
 | Notifications | UserNotifications (local only) | |
 | Tests | Swift Testing for logic, XCTest for UI tests | |
 | Project generation | **XcodeGen** (`project.yml`) | See ADR-006 |

@@ -7,7 +7,7 @@ Status: **Draft for approval** · Deliverable 5
 1. **Absolute UTC timestamps** (`Date`) for every instant. Each session also stores the IANA `timeZoneID` where it started, so history shows "2:15 AM" as the parent experienced it even after travel.
 2. **Store facts, derive totals.** Per-side durations, total feeding time, starting side, and intervals are computed, never stored (ADR-002).
 3. **CloudKit-ready** (ADR-005): every property optional or defaulted, relationships optional, no unique constraints.
-4. **Enums stored as raw `String`**, with typed computed accessors. *Why:* SwiftData `#Predicate` on iOS 17 can't reliably filter on enum-typed properties.
+4. **Enums stored as raw `String`**, with typed computed accessors. *Why:* SwiftData `#Predicate` still filters unreliably on enum-typed properties, and raw strings are CloudKit-safe.
 5. **Canonical units.** Volume is stored in mL (`Double`). The unit the parent typed is stored too, so editing shows their original entry.
 6. **`VersionedSchema` from day one**, so every later change is a planned migration.
 
@@ -95,7 +95,7 @@ The spec's example (2:15 L 12 min → R 9 min → end 2:36) is stored as 1 sessi
 
 ## 5. Indexing and performance
 
-- iOS 17 lacks `#Index`. Expected volume is about 12 feeds/day, roughly 4,400/year, roughly 9,000 segments. Fetching by `startedAt` range is fast enough without indexes. Add `#Index([\.startedAt])` behind `if #available(iOS 18)` in schema V2 if profiling shows a need.
+- iOS 18 floor gives us `#Index`: V1 declares `#Index<FeedingSession>([\.startedAt], [\.statusRaw])` and `#Index<FeedingSegment>([\.startedAt])`. Expected volume is about 12 feeds/day (~4,400/year).
 - Insights fetch the selected range once, map to value types, and compute off-main.
 
 ## 6. Deletion and integrity

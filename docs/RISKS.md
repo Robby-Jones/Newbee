@@ -11,7 +11,7 @@ Likelihood / impact: H, M, L.
 | R3 | **Force-quit / reboot behaviour of Live Activities is undocumented / may change** | M | M | Reconcile on every launch/foreground; device tests D8–D9 record actual behaviour |
 | R4 | **User disables Live Activities** (globally or per app) or dismisses one | M | L | App fully functional without them; gentle hint; respect dismissal until next state change |
 | R5 | **No Dynamic Island** on pre-14-Pro / non-Pro older models | H | L | Lock Screen presentation + banner; design tested on both |
-| R6 | **SwiftData maturity on iOS 17** (predicate limits on enums/optionals, occasional crashes, no `#Index`) | M | M | Raw-string enums, simple predicates, value-type mapping, repository protocol (swap possible), consider iOS 18 floor (PRD §4.3) |
+| R6 | **SwiftData maturity** (predicate limits on enums/optionals, occasional crashes) | L | M | iOS 18 floor; raw-string enums, simple predicates, value-type mapping, repository protocol (swap possible) |
 | R7 | **CloudKit later constrains schema** (optional everything, no unique) | L | M | Enforced from V1 (ADR-005) |
 | R8 | **Caregiver sharing across Apple IDs** isn't supported by SwiftData+CloudKit out of the box | H | M | Post-MVP; may require `NSPersistentCloudKitContainer` sharing or a CKShare layer. Scope separately |
 | R9 | **Wall-clock changes across reboot are undetectable** | L | L | Sanity checks + editable sessions + `needsReview` flag |
@@ -26,4 +26,4 @@ Likelihood / impact: H, M, L.
 | R18 | **Timer text in widgets** may render width-jumping or show hours unexpectedly | M | L | Monospaced digits, fixed frames, `showsHours` tuned, previews at all sizes |
 | R19 | **Battery / performance** of per-second UI | L | L | `TimelineView`/`Text(timerInterval:)` only while visible; no background work at all |
 | R20 | **API drift**: newer iOS versions add/rename Live Activity and tab APIs | M | L | Availability checks; verify against docs at implementation time (guide rule 16) |
-| R21 | **Apple Developer account / signing** not ready blocks device testing | M | H | Resolve before Phase 4 (PRD §4.3 #5) |
+| R21 | **Apple Developer account / signing** not ready blocks device testing | L | H | Robby has a paid membership; capabilities are set up in Phase 4 |
