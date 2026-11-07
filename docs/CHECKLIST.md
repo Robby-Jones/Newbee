@@ -37,10 +37,10 @@ Legend: `[x]` done · `[ ]` pending · `[!]` blocked (reason noted). Updated by 
 - [ ] SwiftData schema V1 + repository + migration plan
 - [ ] FeedingSessionManager + integration tests
 - [ ] Breastfeeding timer UI + pill + undo
-- [ ] ActivityAttributes + LiveActivityCoordinator
-- [ ] Lock Screen presentation
-- [ ] Dynamic Island compact / minimal / expanded
-- [ ] Interactive intents
+- [x] ActivityAttributes + LiveActivityCoordinator (ContentState mapping + planner tested on Linux; coordinator tested with a fake client)
+- [x] Lock Screen presentation (code + previews; device check pending)
+- [x] Dynamic Island compact / minimal / expanded (code + previews; device check pending)
+- [x] Interactive intents (route to the session manager once wired at integration)
 - [ ] RecoveryCoordinator + recovery sheet + "still feeding?" notification
 - [ ] Device tests D1–D18 passed (Robby)
 

@@ -4,96 +4,45 @@ import NewbeeShared
 import SwiftUI
 import WidgetKit
 
-/// Phase 4 baseline Live Activity: proves the extension, shared attributes and system-driven
-/// timer rendering work end to end. The full designs (docs/LIVE_ACTIVITIES.md §3) replace these
-/// views in Phase 5.
+/// The feeding Live Activity: Lock Screen / banner plus every Dynamic Island presentation
+/// (docs/LIVE_ACTIVITIES.md §3).
+///
+/// Views render `ContentState` only. Running values tick via system timers
+/// (`Text(timerInterval:)`), so the app never has to push updates while a side is running.
 struct FeedingLiveActivity: Widget {
     var body: some WidgetConfiguration {
         ActivityConfiguration(for: FeedingActivityAttributes.self) { context in
-            LockScreenFeedingView(state: context.state)
-                .padding(NBSpacing.l)
-                .activityBackgroundTint(NBColor.card)
+            LockScreenFeedingView(
+                attributes: context.attributes,
+                state: context.state,
+                isStale: context.isStale
+            )
+            .activityBackgroundTint(NBColor.card)
+            .activitySystemActionForegroundColor(NBColor.accent)
         } dynamicIsland: { context in
-            DynamicIsland {
+            let state = context.state
+            let attributes = context.attributes
+            return DynamicIsland {
                 DynamicIslandExpandedRegion(.leading) {
-                    SideBadge(side: context.state.currentSide)
+                    IslandExpandedLeading(state: state)
                 }
                 DynamicIslandExpandedRegion(.trailing) {
-                    TotalTimerText(state: context.state)
-                        .font(NBFont.timer(size: 24))
+                    IslandExpandedTrailing(state: state)
+                }
+                DynamicIslandExpandedRegion(.center) {
+                    IslandExpandedCenter(state: state, isStale: context.isStale)
+                }
+                DynamicIslandExpandedRegion(.bottom) {
+                    IslandExpandedBottom(attributes: attributes, state: state)
                 }
             } compactLeading: {
-                SideBadge(side: context.state.currentSide)
+                IslandCompactLeading(state: state)
             } compactTrailing: {
-                TotalTimerText(state: context.state)
-                    .frame(maxWidth: 52)
+                IslandCompactTrailing(state: state)
             } minimal: {
-                Circle()
-                    .fill(NBColor.side(context.state.currentSide))
-                    .frame(width: 12, height: 12)
+                IslandMinimal(state: state)
             }
+            .keylineTint(NBColor.side(state.currentSide))
         }
     }
-}
-
-struct LockScreenFeedingView: View {
-    let state: FeedingActivityAttributes.ContentState
-
-    var body: some View {
-        HStack {
-            VStack(alignment: .leading, spacing: NBSpacing.xs) {
-                Text(state.status == .paused ? "Paused" : "Feeding")
-                    .font(.headline)
-                TotalTimerText(state: state)
-                    .font(NBFont.timer(size: 36))
-            }
-            Spacer()
-            SideBadge(side: state.currentSide)
-        }
-    }
-}
-
-struct SideBadge: View {
-    let side: Side
-
-    var body: some View {
-        Text(side.shortLabel)
-            .font(.headline.weight(.bold))
-            .foregroundStyle(.white)
-            .frame(width: 28, height: 28)
-            .background(NBColor.side(side), in: Circle())
-            .accessibilityLabel(side == .left ? "Left side" : "Right side")
-    }
-}
-
-/// Total feeding time. Ticks via the system while active; static when paused or ended.
-struct TotalTimerText: View {
-    let state: FeedingActivityAttributes.ContentState
-
-    var body: some View {
-        if state.status == .active, let start = state.runningTotalTimerStart {
-            Text(timerInterval: start...Date.distantFuture, countsDown: false)
-                .monospacedDigit()
-                .multilineTextAlignment(.trailing)
-        } else {
-            let total = Duration.seconds(state.leftAccumulated + state.rightAccumulated)
-            Text(total, format: .time(pattern: .minuteSecond))
-                .monospacedDigit()
-        }
-    }
-}
-
-#Preview("Lock Screen", as: .content, using: FeedingActivityAttributes(sessionID: UUID(), babyName: "")) {
-    FeedingLiveActivity()
-} contentStates: {
-    FeedingActivityAttributes.ContentState(
-        status: .active, currentSide: .left, sessionStart: .now.addingTimeInterval(-600),
-        currentSegmentStart: .now.addingTimeInterval(-240), leftAccumulated: 0, rightAccumulated: 360,
-        pausedAt: nil, revision: 2
-    )
-    FeedingActivityAttributes.ContentState(
-        status: .paused, currentSide: .right, sessionStart: .now.addingTimeInterval(-900),
-        currentSegmentStart: nil, leftAccumulated: 420, rightAccumulated: 300,
-        pausedAt: .now, revision: 4
-    )
 }

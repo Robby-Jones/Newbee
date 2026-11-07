@@ -1,14 +1,18 @@
-#if canImport(ActivityKit)
-import ActivityKit
 import Foundation
 import NewbeeKit
+#if canImport(ActivityKit)
+import ActivityKit
+#endif
 
 /// Live Activity model shared by the app (which starts and updates activities) and the widget
 /// extension (which renders them). See docs/LIVE_ACTIVITIES.md §2.
 ///
 /// Static properties identify the session; `ContentState` carries only timestamps and
 /// accumulated durations, so the system can render a ticking timer with no updates from the app.
-public struct FeedingActivityAttributes: ActivityAttributes {
+///
+/// The struct itself is platform-independent so the mapping and planning logic can be unit tested
+/// on Linux; the `ActivityAttributes` conformance is added below where ActivityKit exists.
+public struct FeedingActivityAttributes: Codable, Hashable, Sendable {
     public var sessionID: UUID
     public var babyName: String
     public var schemaVersion: Int
@@ -75,4 +79,7 @@ public struct FeedingActivityAttributes: ActivityAttributes {
         }
     }
 }
+
+#if canImport(ActivityKit)
+extension FeedingActivityAttributes: ActivityAttributes {}
 #endif

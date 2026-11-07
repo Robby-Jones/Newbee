@@ -136,6 +136,39 @@ Background gap: if the activity is gone and the app is never opened, nothing can
 - [ ] Settings screen row: "Live Activities: On / Off in iOS Settings" with deep link
 - [ ] Previews for all presentations: `#Preview(as: .dynamicIsland(.expanded), using: attrs) { … } contentStates: { … }` (all 3 island modes + Lock Screen, active/paused/ended, light/dark, large Dynamic Type)
 
-## 8. Device test matrix
+## 8. Implementation map (Phase 5a)
+
+| Piece | Where | Tested by |
+|---|---|---|
+| `FeedingActivityAttributes` + `ContentState(snapshot:)` mapping | `Packages/NewbeeShared/.../LiveActivity/` | `NewbeeSharedTests` (Linux + CI) |
+| `LiveActivityPlanner`: request / update / end decisions for every case in §5–6 | same | `NewbeeSharedTests` |
+| `LiveActivityFormat`: static durations and VoiceOver text | same | `NewbeeSharedTests` |
+| `LiveActivityCommand`, `LiveActivityCommandHandling`, `LiveActivityIntentRouter` | same | `NewbeeSharedTests` |
+| Intents (`SwitchFeedingSideIntent`, `PauseFeedingIntent`, `ResumeFeedingIntent`, `EndFeedingIntent`) | `LiveActivityIntents/`, compiled into **both** targets via `project.yml` | CI build; device |
+| `LiveActivityCoordinator` + `ActivityKitClient` | `Newbee/Core/Services/` | `NewbeeTests/LiveActivity` with a fake client |
+| Views + previews for all presentations | `NewbeeWidgets/LiveActivity/` | Xcode previews; device |
+
+Notes:
+- The `ActivityAttributes` conformance is an extension under `#if canImport(ActivityKit)`, so the
+  struct and its mapping build and test on Linux.
+- Intents live in a source folder shared by both targets, not in the `NewbeeShared` package:
+  App Intents metadata is extracted per target, and target-membership in both is Apple's
+  documented pattern for `LiveActivityIntent`. Their `perform()` only calls
+  `LiveActivityIntentRouter`; there is no timing logic outside the session engine.
+- `LiveActivityCoordinator.sync(_:)` queues calls so ActivityKit updates never interleave, even
+  when several Lock Screen taps arrive at once.
+- A parent swiping the activity away (active → dismissed) is remembered per session revision; the
+  activity comes back on the next state change, not on the next foreground. The system ending it
+  (8-hour limit, reboot) is not treated as a dismissal, so recovery re-requests it.
+
+Integration wiring (done when the session manager and this work are both on `main`):
+1. `FeedingSessionManager` conforms to `LiveActivityCommandHandling` in the app target by
+   mapping `LiveActivityCommand` to its `applyRemote(_:sessionID:)`.
+2. `LiveActivityCoordinator` conforms to the engine's `LiveActivitySyncing` protocol (its
+   `sync(_:)` already matches), and `AppDependencies` uses it instead of the no-op.
+3. `NewbeeApp.init` calls `LiveActivityIntentRouter.register(dependencies.sessionManager)`, so
+   intents work when iOS launches the app in the background just to run one.
+
+## 9. Device test matrix
 
 To be run on Robby's iPhone. Needs an iPhone 14 Pro or newer for the Dynamic Island, and ideally a non-Pro or older iPhone for the Lock Screen-only path. The full list from guide §5.7 lives in `TESTING.md` §5 with expected results.
