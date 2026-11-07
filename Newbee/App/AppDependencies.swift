@@ -20,6 +20,8 @@ final class AppDependencies {
     let sessionManager: FeedingSessionManager
     /// Launch, foreground and clock-change reconciliation.
     let recovery: RecoveryCoordinator
+    /// Shared by recovery and the Live Activity's "Still feeding?" hint so both agree on thresholds.
+    let recoveryPolicy: RecoveryPolicy
 
     init(
         clock: any AppClock = SystemClock(),
@@ -51,6 +53,8 @@ final class AppDependencies {
         let manager = FeedingSessionManager(repository: repository, clock: clock, liveActivity: activity)
         self.liveActivity = activity
         sessionManager = manager
-        recovery = RecoveryCoordinator(manager: manager)
+        let policy = RecoveryPolicy()
+        recoveryPolicy = policy
+        recovery = RecoveryCoordinator(manager: manager, policy: policy)
     }
 }
