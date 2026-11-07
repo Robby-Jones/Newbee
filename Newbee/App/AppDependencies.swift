@@ -42,7 +42,7 @@ final class AppDependencies {
 
         let repository: any FeedingRepository
         if let container {
-            repository = SwiftDataFeedingRepository(context: container.mainContext)
+            repository = SwiftDataFeedingRepository(container: container)
         } else {
             repository = UnavailableFeedingRepository(reason: error?.localizedDescription ?? "unknown error")
         }

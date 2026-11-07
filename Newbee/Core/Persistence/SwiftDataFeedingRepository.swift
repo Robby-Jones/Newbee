@@ -8,10 +8,14 @@ import SwiftData
 /// rolls the context back if the commit fails, so the store holds either the old or the new state.
 @MainActor
 final class SwiftDataFeedingRepository: FeedingRepository {
+    /// Held so the container lives as long as the repository: SwiftData traps if a context is
+    /// used after its container has been deallocated.
+    private let container: ModelContainer
     private let context: ModelContext
 
-    init(context: ModelContext) {
-        self.context = context
+    init(container: ModelContainer) {
+        self.container = container
+        self.context = container.mainContext
     }
 
     func openSessions() throws -> [SessionSnapshot] {

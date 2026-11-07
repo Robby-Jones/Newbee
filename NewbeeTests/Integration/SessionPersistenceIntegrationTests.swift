@@ -12,7 +12,7 @@ struct SessionPersistenceIntegrationTests {
 
     func makeRepository() throws -> (ModelContainer, SwiftDataFeedingRepository) {
         let container = try makeInMemoryContainer()
-        return (container, SwiftDataFeedingRepository(context: container.mainContext))
+        return (container, SwiftDataFeedingRepository(container: container))
     }
 
     func temporaryStoreURL() throws -> URL {
@@ -118,7 +118,7 @@ struct SessionPersistenceIntegrationTests {
         do {
             let container = try PersistenceController.makeContainer(.file(url))
             let manager = FeedingSessionManager(
-                repository: SwiftDataFeedingRepository(context: container.mainContext),
+                repository: SwiftDataFeedingRepository(container: container),
                 clock: clock
             )
             try manager.start(side: .left)
@@ -131,7 +131,7 @@ struct SessionPersistenceIntegrationTests {
         clock.advance(by: 20 * 60)
         let container = try PersistenceController.makeContainer(.file(url))
         let manager = FeedingSessionManager(
-            repository: SwiftDataFeedingRepository(context: container.mainContext),
+            repository: SwiftDataFeedingRepository(container: container),
             clock: clock
         )
         let recovery = RecoveryCoordinator(manager: manager)
