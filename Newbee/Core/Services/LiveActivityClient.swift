@@ -22,6 +22,56 @@ protocol LiveActivityClient: AnyObject {
         state: FeedingActivityAttributes.ContentState,
         staleDate: Date
     ) throws -> String
+    func update(id: String, state: FeedingActivityAttributes.ContentState, staleDate: Date) async
+    func end(id: String, finalState: FeedingActivityAttributes.ContentState?, dismissal: LiveActivityDismissal) async
+}
+
+/// The real client.
+@MainActor
+final class ActivityKitClient: LiveActivityClient {
+    typealias FeedingActivity = Activity<FeedingActivityAttributes>
+
+    var onUserDismissal: (@MainActor (UUID, Int) -> Void)?
+    var onEnablementChange: (@MainActor (Bool) -> Void)? {
+        didSet { observeEnablementIfNeeded() }
+    }
+
+    private var stateObservers: [String: Task<Void, Never>] = [:]
+    private var enablementObserver: Task<Void, Never>?
+    private let logger = Logger(subsystem: "Newbee", category: "LiveActivity")
+
+    init() {}
+
+    var areActivitiesEnabled: Bool {
+        ActivityAuthorizationInfo().areActivitiesEnabled
+    }
+
+    func records() -> [LiveActivityRecord] {
+        FeedingActivity.activities.map { activity in
+            observeState(of: activity)
+            return LiveActivityRecord(
+                id: activity.id,
+                sessionID: activity.attributes.sessionID,
+                state: activity.content.state,
+                phase: Self.phase(of: activity.activityState)
+            )
+        }
+    }
+
+    func request(
+        _ attributes: FeedingActivityAttributes,
+        state: FeedingActivityAttributes.ContentState,
+        staleDate: Date
+    ) throws -> String {
+        let activity = try FeedingActivity.request(
+            attributes: attributes,
+            content: ActivityContent(state: state, staleDate: staleDate),
+            pushType: nil
+        )
+        observeState(of: activity)
+        return activity.id
+    }
+
     func update(id: String, state: FeedingActivityAttributes.ContentState, staleDate: Date) async {
         await Self.updateActivity(id: id, state: state, staleDate: staleDate)
     }
