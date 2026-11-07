@@ -96,6 +96,8 @@ struct HistoryIntegrationTests {
         clock.advance(by: 9 * 60)
         try manager.end()
         let stored = try #require(manager.lastCompletedSession)
+        // Edited later, so the longer feed still ends in the past.
+        clock.advance(by: 3_600)
 
         var draft = try #require(SimpleBreastEdit(stored))
         draft.right = 15 * 60
