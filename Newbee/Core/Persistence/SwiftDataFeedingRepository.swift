@@ -75,7 +75,7 @@ final class SwiftDataFeedingRepository: FeedingRepository {
 
     func delete(sessionID: UUID) throws {
         guard let session = try model(id: sessionID) else { return }
-        context.delete(session)
+        session.deleteWithChildren(from: context)
         do {
             try context.save()
         } catch {

@@ -29,7 +29,7 @@ struct PersistenceSmokeTests {
         #expect(fetched.first?.baby?.name == "Test")
     }
 
-    @Test func deletingASessionCascadesToSegmentsAndBottle() throws {
+    @Test func deletingASessionRemovesItsSegmentsAndBottle() throws {
         let container = try makeInMemoryContainer()
         let context = container.mainContext
         let session = FeedingSession(kind: .bottle, status: .completed, startedAt: .now)
@@ -38,7 +38,7 @@ struct PersistenceSmokeTests {
         session.segments = [FeedingSegment(side: .left, startedAt: .now)]
         try context.save()
 
-        context.delete(session)
+        session.deleteWithChildren(from: context)
         try context.save()
 
         #expect(try context.fetchCount(FetchDescriptor<FeedingSegment>()) == 0)
