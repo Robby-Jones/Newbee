@@ -48,35 +48,6 @@ struct IslandExpandedCenter: View {
     }
 }
 
-struct IslandExpandedBottom: View {
-    let attributes: FeedingActivityAttributes
-    let state: FeedingState
-
-    var body: some View {
-        VStack(spacing: NBSpacing.s) {
-            HStack {
-                SideRow(state: state, side: .left, fontSize: 15)
-                Spacer()
-                SideRow(state: state, side: .right, fontSize: 15)
-            }
-            if state.status != .ended {
-                HStack(spacing: NBSpacing.s) {
-                    // Only the other side is offered: one big, obvious action in a small space.
-                    let other = state.status == .active ? state.currentSide.opposite : state.currentSide
-                    SideSwitchButton(
-                        sessionID: attributes.sessionID, state: state, side: other,
-                        title: state.status == .active ? "Switch to \(other.shortLabel)" : "Resume \(other.shortLabel)"
-                    )
-                    .frame(maxWidth: .infinity)
-                    PauseResumeButton(sessionID: attributes.sessionID, state: state, compact: true)
-                    EndButton(sessionID: attributes.sessionID)
-                }
-            }
-        }
-        .padding(.horizontal, NBSpacing.xs)
-    }
-}
-
 // MARK: Compact
 
 struct IslandCompactLeading: View {

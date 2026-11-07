@@ -53,18 +53,24 @@ Mapping comes from `SessionSnapshot` in one pure function (`ContentState(snapsho
 Colors and typography come from the shared design tokens so the Live Activity matches the in-app timer. **Left = lavender**, **Right = teal**; always paired with the letters "L"/"R".
 
 ### 3.1 Lock Screen / banner
+Mirrors the expanded Dynamic Island (§3.2) so the activity reads and works the same everywhere. The
+per-side times and controls are one shared view (`ActivitySidesAndControls`).
 ```
 ┌──────────────────────────────────────────────────────────┐
-│ 🍼 Feeding · Left              Paused ▌▌ (if paused)     │
+│ (L) Left                                         18:42   │
+│     Feeding on left                                      │
 │                                                          │
-│   18:42                     L  12:05   ◀ active (bold)   │
-│   total                     R   6:37                     │
+│  L  12:05                                    R   6:37    │
 │                                                          │
-│  [  L  ]  [  R  ]        [ ⏸ Pause ]     [ ■ End ]       │
+│  [          Switch to R          ]     [⏸]      [■]     │
 └──────────────────────────────────────────────────────────┘
 ```
-- Big total on the left; per-side breakdown on the right with the active side highlighted (tint + bold + "●").
-- Buttons: `Button(intent: SwitchSideIntent(.left))`, `.right`, `PauseIntent` / `ResumeIntent` (one slot that flips), `EndIntent`. **End** is visually separated and uses a distinct shape so it isn't hit by accident. Undo is available in-app.
+- Header: current side badge + name with the status line under it; big total on the right.
+- Per-side row: running side bold, both sides tinted.
+- Buttons: one large `SwitchSideIntent` for the *other* side ("Resume L" when paused), a compact
+  `PauseIntent` / `ResumeIntent` slot that flips, and `EndIntent`. **End** uses a distinct shape so
+  it isn't hit by accident. Undo is available in-app.
+- Ended: no buttons; a footnote shows start and end times.
 - `activityBackgroundTint` is a soft neutral that works in light and dark. `activitySystemActionForegroundColor` uses the accent color.
 
 ### 3.2 Dynamic Island: expanded

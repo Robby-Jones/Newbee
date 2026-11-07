@@ -33,7 +33,8 @@ struct FeedingLiveActivity: Widget {
                     IslandExpandedCenter(state: state, isStale: context.isStale)
                 }
                 DynamicIslandExpandedRegion(.bottom) {
-                    IslandExpandedBottom(attributes: attributes, state: state)
+                    ActivitySidesAndControls(attributes: attributes, state: state)
+                        .padding(.horizontal, NBSpacing.xs)
                 }
             } compactLeading: {
                 IslandCompactLeading(state: state)

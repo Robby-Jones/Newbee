@@ -5,11 +5,15 @@ import WidgetKit
 
 /// Lock Screen and banner presentation (docs/LIVE_ACTIVITIES.md §3.1).
 ///
+/// Mirrors the expanded Dynamic Island so the activity looks and works the same wherever the
+/// parent sees it: current side and status on the left, total on the right, then the per-side
+/// times and a single "Switch to" button with pause and end.
+///
 /// ```
-/// 🍼 Feeding · Left                       Paused
-///   18:42                     L  12:05  (running side bold)
-///   total                     R   6:37
-///  [ L ] [ R ]          [ ⏸ Pause ]        [■]
+///  (L) Left                                 18:42
+///      Feeding on left
+///  L  12:05                              R   6:37
+///  [       Switch to R       ]     [⏸]     [■]
 /// ```
 struct LockScreenFeedingView: View {
     let attributes: FeedingActivityAttributes
@@ -17,61 +21,36 @@ struct LockScreenFeedingView: View {
     let isStale: Bool
 
     var body: some View {
-        VStack(alignment: .leading, spacing: NBSpacing.m) {
+        VStack(spacing: NBSpacing.m) {
             header
-            HStack(alignment: .center) {
-                VStack(alignment: .leading, spacing: 0) {
-                    TotalTimerText(state: state)
-                        .font(NBFont.timer(size: 40))
-                        .foregroundStyle(state.status == .active ? Color.primary : Color.secondary)
-                    Text(state.status == .ended ? "total feed" : "total")
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-                        .accessibilityHidden(true)
-                }
-                Spacer(minLength: NBSpacing.m)
-                VStack(alignment: .trailing, spacing: NBSpacing.xs) {
-                    SideRow(state: state, side: .left)
-                    SideRow(state: state, side: .right)
-                }
-            }
+            ActivitySidesAndControls(attributes: attributes, state: state, sideFontSize: 16)
             if state.status == .ended {
                 endedFooter
-            } else {
-                controls
             }
         }
         .padding(NBSpacing.l)
     }
 
-    private var title: String {
-        attributes.babyName.isEmpty ? "Feeding" : "Feeding \(attributes.babyName)"
-    }
-
     private var header: some View {
-        HStack(spacing: NBSpacing.s) {
-            Image(systemName: state.status == .ended ? "checkmark.circle.fill" : "drop.fill")
-                .foregroundStyle(NBColor.side(state.currentSide))
-                .accessibilityHidden(true)
-            Text(title)
-                .font(.subheadline.weight(.semibold))
-            Spacer()
-            Text(state.statusLine(isStale: isStale))
-                .font(.subheadline)
-                .foregroundStyle(state.status == .paused || isStale ? NBColor.accent : Color.secondary)
-                .lineLimit(1)
-        }
-        .accessibilityElement(children: .combine)
-    }
-
-    private var controls: some View {
-        HStack(spacing: NBSpacing.s) {
-            SideSwitchButton(sessionID: attributes.sessionID, state: state, side: .left)
-            SideSwitchButton(sessionID: attributes.sessionID, state: state, side: .right)
+        HStack(alignment: .center, spacing: NBSpacing.s) {
+            SideBadge(side: state.currentSide, size: 30, filled: state.status == .active)
+            VStack(alignment: .leading, spacing: 0) {
+                Text(state.currentSide.displayName)
+                    .font(.headline)
+                    .foregroundStyle(NBColor.side(state.currentSide))
+                Text(state.statusLine(isStale: isStale))
+                    .font(.subheadline)
+                    .foregroundStyle(state.status == .paused || isStale ? NBColor.accent : Color.secondary)
+                    .lineLimit(1)
+            }
+            .accessibilityElement(children: .combine)
             Spacer(minLength: NBSpacing.s)
-            PauseResumeButton(sessionID: attributes.sessionID, state: state)
-            Spacer(minLength: NBSpacing.l)
-            EndButton(sessionID: attributes.sessionID)
+            TotalTimerText(state: state)
+                .font(NBFont.timer(size: 32))
+                .foregroundStyle(state.status == .active ? Color.primary : Color.secondary)
+                .multilineTextAlignment(.trailing)
+                // Timer text otherwise claims all available width.
+                .frame(maxWidth: 130, alignment: .trailing)
         }
     }
 
@@ -81,6 +60,7 @@ struct LockScreenFeedingView: View {
             Text("Started \(state.sessionStart, style: .time) · ended \(endedAt, style: .time)")
                 .font(.footnote)
                 .foregroundStyle(.secondary)
+                .frame(maxWidth: .infinity, alignment: .leading)
         }
     }
 }
