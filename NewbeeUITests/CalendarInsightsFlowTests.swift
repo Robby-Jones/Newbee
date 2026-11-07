@@ -27,7 +27,7 @@ final class CalendarInsightsFlowTests: XCTestCase {
         let historyTab = app.tabBars.buttons["History"]
         XCTAssertTrue(historyTab.waitForExistence(timeout: 5), "History tab missing")
         historyTab.tap()
-        XCTAssertTrue(app.navigationBars["History"].waitForExistence(timeout: 5), "History didn't open:\n\(app.debugDescription)")
+        XCTAssertTrue(app.navigationBars["History"].waitForExistence(timeout: 5), "History didn't open: \(hierarchy(app))")
         XCTAssertTrue(element(in: app, containing: "Bottle · 120 mL").waitForExistence(timeout: 5), "List has no bottle row")
         let calendarMode = app.segmentedControls.buttons["Calendar"].firstMatch
         XCTAssertTrue(calendarMode.waitForExistence(timeout: 5), "Calendar mode missing")
@@ -45,7 +45,14 @@ final class CalendarInsightsFlowTests: XCTestCase {
         // Insights shows the bottle card and the one-day note.
         app.tabBars.buttons["Insights"].tap()
         XCTAssertTrue(app.staticTexts["Feeds per day"].firstMatch.waitForExistence(timeout: 5), "No feeds card")
-        XCTAssertTrue(app.staticTexts["Bottles"].firstMatch.waitForExistence(timeout: 5), "No bottles card:\n\(app.debugDescription)")
+        XCTAssertTrue(app.staticTexts["Bottles"].firstMatch.waitForExistence(timeout: 5), "No bottles card: \(hierarchy(app))")
+    }
+
+    /// The accessibility tree on one line, so CI log formatters that keep only an error's first
+    /// line still show it.
+    @MainActor
+    private func hierarchy(_ app: XCUIApplication) -> String {
+        app.debugDescription.split(separator: "\n").map { $0.trimmingCharacters(in: .whitespaces) }.joined(separator: " | ")
     }
 
     @MainActor

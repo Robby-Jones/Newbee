@@ -16,17 +16,20 @@ struct DashboardView: View {
         let entries = recent.compactMap(\.feedEntry)
         // Minute ticks keep "2 h 14 min ago" and the day boundary current without per-second work.
         TimelineView(.everyMinute) { context in
-            let summary = DashboardSummary(entries: entries, now: context.date)
+            // The tick's date is the start of the minute; a feed logged since then would count
+            // as "in the future" and be left out, so use the real time.
+            let now = max(context.date, .now)
+            let summary = DashboardSummary(entries: entries, now: now)
             ScrollView {
                 VStack(alignment: .leading, spacing: NBSpacing.l) {
-                    if let profile = profileLine(at: context.date) {
+                    if let profile = profileLine(at: now) {
                         Text(profile)
                             .font(.subheadline.weight(.medium))
                             .foregroundStyle(.secondary)
                             .padding(.top, -NBSpacing.s)
                     }
                     if sessionModel?.activeSession == nil {
-                        LastFeedCard(summary: summary, now: context.date)
+                        LastFeedCard(summary: summary, now: now)
                     }
                     VStack(alignment: .leading, spacing: NBSpacing.m) {
                         if let sessionModel {
@@ -38,7 +41,7 @@ struct DashboardView: View {
                 }
                 .padding(NBSpacing.l)
             }
-            .navigationTitle(Self.greeting(at: context.date))
+            .navigationTitle(Self.greeting(at: now))
         }
         .background(NBColor.canvas)
     }

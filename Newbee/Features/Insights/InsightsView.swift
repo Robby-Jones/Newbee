@@ -68,7 +68,9 @@ private struct InsightsContent: View {
     var body: some View {
         let entries = sessions.compactMap(\.feedEntry)
         TimelineView(.everyMinute) { context in
-            let report = InsightsReport(entries: entries, range: range, now: context.date)
+            // The tick's date is the start of the minute; use the real time so a feed logged
+            // since then isn't treated as being in the future and left out.
+            let report = InsightsReport(entries: entries, range: range, now: max(context.date, .now))
             let unit = bottleModel?.unit ?? .milliliters
             ScrollView {
                 VStack(alignment: .leading, spacing: NBSpacing.l) {
