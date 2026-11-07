@@ -1,4 +1,5 @@
 import SwiftUI
+import SwiftData
 
 @main
 struct NewbeeApp: App {

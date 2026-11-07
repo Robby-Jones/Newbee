@@ -1,4 +1,5 @@
 import NewbeeShared
+import SwiftData
 import SwiftUI
 
 /// Five-tab navigation (docs/UX_SPEC.md §1).
