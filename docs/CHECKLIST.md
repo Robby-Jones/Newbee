@@ -12,7 +12,7 @@ Legend: `[x]` done · `[ ]` pending · `[!]` blocked (reason noted). Updated by 
 - [x] Testing strategy (`TESTING.md`)
 - [x] Roadmap + parallel split (`ROADMAP.md`)
 - [x] Risks (`RISKS.md`)
-- [ ] **Robby approval** of the plan
+- [x] **Robby approval** of the plan (2026-11-07)
 - [x] Open decisions answered (PRD §4.3): iOS 18, Newbee / com.<team>.newbee, paid developer account, CloudKit post-MVP
 
 ## Phase 3: UI/UX design
@@ -22,11 +22,15 @@ Legend: `[x]` done · `[ ]` pending · `[!]` blocked (reason noted). Updated by 
 - [ ] Dashboard, Calendar, History, Insights mockups
 
 ## Phase 4: Project initialisation
-- [ ] `project.yml` (app, widget ext, unit tests, UI tests) + NewbeeKit + NewbeeShared packages
-- [ ] App Group, Live Activities Info.plist key, entitlements, privacy manifest
-- [ ] Design system skeleton, DI container
-- [ ] CI: linux-core + ios jobs green
-- [ ] Builds on Robby's Mac; launches on Robby's iPhone
+- [x] `project.yml` (app, widget ext, unit tests, UI tests) + NewbeeKit + NewbeeShared packages
+- [x] App Group, Live Activities Info.plist key, entitlements, privacy manifest
+- [x] Design tokens (draft palette), composition root (`AppDependencies`), 5-tab shell
+- [x] SwiftData schema V1 + migration plan + App Group store
+- [x] Domain contract types (`SessionSnapshot`, `Segment`, enums), `AppClock`/`SystemClock`/`TestClock`
+- [x] Baseline Live Activity (proves extension + shared attributes + system timer)
+- [x] NewbeeKit tests pass on Linux (Swift 6.2)
+- [ ] CI: core-linux + ios jobs green
+- [ ] Builds on Robby's Mac; launches on Robby's iPhone (Robby)
 
 ## Phase 5a: Core subsystem (critical gate)
 - [ ] Domain types + SessionEngine + TestClock + unit tests
