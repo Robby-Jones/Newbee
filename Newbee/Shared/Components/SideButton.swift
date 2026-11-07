@@ -2,8 +2,8 @@ import NewbeeKit
 import NewbeeShared
 import SwiftUI
 
-/// One of the two big LEFT / RIGHT controls on the timer screen (docs/UX_SPEC.md §3.3).
-/// At least 160 pt tall so it can be hit with a thumb in the dark.
+/// One of the two big round LEFT / RIGHT controls on the timer screen (docs/UX_SPEC.md §3.3),
+/// with the side's time inside. Up to 168 pt across, so it can be hit with a thumb in the dark.
 struct SideButton: View {
     enum Mode: Equatable {
         /// No session yet. The suggested side is pre-tinted and tagged.
@@ -24,12 +24,9 @@ struct SideButton: View {
 
     var body: some View {
         Button(action: action) {
-            VStack(spacing: NBSpacing.s) {
-                HStack(spacing: NBSpacing.s) {
-                    SideBadge(side: side, style: isFilled ? .onTint : .soft)
-                    Text(side.title)
-                        .font(.headline)
-                }
+            VStack(spacing: NBSpacing.xs) {
+                Text(side.shortLabel)
+                    .font(.system(.title3, design: .rounded, weight: .bold))
                 if let elapsed {
                     TimerText(elapsed, size: 34, relativeTo: .title)
                 } else {
@@ -38,13 +35,18 @@ struct SideButton: View {
                         .padding(.vertical, NBSpacing.xs)
                 }
                 caption
-                    .font(.subheadline.weight(.semibold))
+                    .font(.footnote.weight(.semibold))
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.7)
             }
             .foregroundStyle(isFilled ? NBColor.onSide : Color.primary)
             .padding(NBSpacing.l)
-            .frame(maxWidth: .infinity, minHeight: NBLayout.sideButtonMinHeight)
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
+            .aspectRatio(1, contentMode: .fit)
             .background(background)
-            .contentShape(.rect(cornerRadius: NBRadius.card))
+            .contentShape(Circle())
+            .frame(maxWidth: NBLayout.sideCircleMaxDiameter)
+            .frame(maxWidth: .infinity)
         }
         .buttonStyle(PressableButtonStyle())
         .accessibilityLabel(String(localized: "\(side.title) side"))
@@ -81,10 +83,13 @@ struct SideButton: View {
     @ViewBuilder
     private var background: some View {
         let tint = NBColor.side(side)
-        let shape = RoundedRectangle(cornerRadius: NBRadius.card, style: .continuous)
+        let shape = Circle()
         switch mode {
         case .active:
+            // A soft halo marks the running side without relying on color alone ("Active" is
+            // also written inside).
             shape.fill(tint)
+                .background(shape.fill(tint.opacity(0.22)).padding(-7))
         case .start(suggested: true):
             shape.fill(tint.opacity(0.85))
         case .resumeHere(wasLast: true):

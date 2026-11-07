@@ -152,6 +152,46 @@ final class FeedingSessionUIModel {
         feedback = FeedbackEvent(kind: .success)
     }
 
+    /// Timer's "Edit start", for a feed whose timer was started late (or early): moves the whole
+    /// running feed so it started at `newStart`. Every timestamp shifts by the same amount, so the
+    /// running side gains (or loses) the difference and finished sides keep their times.
+    func editStart(to newStart: Date) {
+        guard let session = controller.activeSession else { return }
+        let reference = Self.adjustReference(of: session)
+        let target = newStart.addingTimeInterval(reference.timeIntervalSince(session.startedAt))
+        perform(.light) { try controller.adjustStart(to: target) }
+    }
+
+    /// The latest start "Edit start" allows: any later would put part of the feed in the future.
+    func latestStart(at now: Date) -> Date? {
+        guard let session = controller.activeSession else { return nil }
+        return session.startedAt.addingTimeInterval(now.timeIntervalSince(Self.adjustReference(of: session)))
+    }
+
+    /// The timestamp `adjustStart(to:)` moves to the given date: the running segment's start, or
+    /// the latest segment end of a paused feed (mirrors `FeedingSessionManager.adjustStart`).
+    private static func adjustReference(of session: SessionSnapshot) -> Date {
+        (session.status == .active ? session.openSegment?.start : nil)
+            ?? session.segments.compactMap(\.end).max()
+            ?? session.startedAt
+    }
+
+    /// Sets the note on the running feed or one that just ended (timer's "Add note", the Feed
+    /// saved summary). Starts from the manager's current copy of the session, so a side switch
+    /// made from the Lock Screen meanwhile isn't overwritten. Only the note changes, so the feed
+    /// keeps its timer source.
+    func saveNote(_ text: String, sessionID: UUID) {
+        let current = [controller.activeSession, controller.lastCompletedSession, completedSummary]
+            .compactMap { $0 }
+            .first { $0.id == sessionID }
+        guard var session = current, session.notes != text else { return }
+        session.notes = text
+        perform(.light) { try controller.saveEdit(session) }
+        if completedSummary?.id == sessionID {
+            completedSummary?.notes = text
+        }
+    }
+
     /// Adds a finished breastfeed entered by hand.
     func addManualFeed(_ session: SessionSnapshot) throws {
         try controller.restore(session)

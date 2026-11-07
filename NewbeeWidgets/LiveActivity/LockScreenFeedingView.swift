@@ -6,14 +6,12 @@ import WidgetKit
 /// Lock Screen and banner presentation (docs/LIVE_ACTIVITIES.md §3.1).
 ///
 /// Mirrors the expanded Dynamic Island so the activity looks and works the same wherever the
-/// parent sees it: current side and status on the left, total on the right, then the per-side
-/// times and a single "Switch to" button with pause and end.
+/// parent sees it. Minimal: the total and a quiet status on one line, then the two side pills
+/// (each shows its own time and switches to that side) with pause and end.
 ///
 /// ```
-///  (L) Left                                 18:42
-///      Feeding on left
-///  L  12:05                              R   6:37
-///  [       Switch to R       ]     [⏸]     [■]
+///  18:42                                Feeding 💧
+///  [  L 12:05  ] [  R 6:37  ]   (⏸)   (■)
 /// ```
 struct LockScreenFeedingView: View {
     let attributes: FeedingActivityAttributes
@@ -22,36 +20,22 @@ struct LockScreenFeedingView: View {
 
     var body: some View {
         VStack(spacing: NBSpacing.m) {
-            header
-            ActivitySidesAndControls(attributes: attributes, state: state, sideFontSize: 16)
+            HStack(alignment: .firstTextBaseline, spacing: NBSpacing.s) {
+                TotalTimerText(state: state)
+                    .font(NBFont.timer(size: 30))
+                    .foregroundStyle(state.status == .active ? Color.primary : Color.secondary)
+                    .multilineTextAlignment(.leading)
+                    // Timer text otherwise claims all available width.
+                    .frame(maxWidth: 150, alignment: .leading)
+                Spacer(minLength: NBSpacing.s)
+                ActivityStatusLabel(state: state, isStale: isStale)
+            }
+            ActivitySidesAndControls(attributes: attributes, state: state)
             if state.status == .ended {
                 endedFooter
             }
         }
         .padding(NBSpacing.l)
-    }
-
-    private var header: some View {
-        HStack(alignment: .center, spacing: NBSpacing.s) {
-            SideBadge(side: state.currentSide, size: 30, filled: state.status == .active)
-            VStack(alignment: .leading, spacing: 0) {
-                Text(state.currentSide.displayName)
-                    .font(.headline)
-                    .foregroundStyle(NBColor.side(state.currentSide))
-                Text(state.statusLine(isStale: isStale))
-                    .font(.subheadline)
-                    .foregroundStyle(state.status == .paused || isStale ? NBColor.accent : Color.secondary)
-                    .lineLimit(1)
-            }
-            .accessibilityElement(children: .combine)
-            Spacer(minLength: NBSpacing.s)
-            TotalTimerText(state: state)
-                .font(NBFont.timer(size: 32))
-                .foregroundStyle(state.status == .active ? Color.primary : Color.secondary)
-                .multilineTextAlignment(.trailing)
-                // Timer text otherwise claims all available width.
-                .frame(maxWidth: 130, alignment: .trailing)
-        }
     }
 
     @ViewBuilder

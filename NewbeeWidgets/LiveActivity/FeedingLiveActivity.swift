@@ -27,10 +27,7 @@ struct FeedingLiveActivity: Widget {
                     IslandExpandedLeading(state: state)
                 }
                 DynamicIslandExpandedRegion(.trailing) {
-                    IslandExpandedTrailing(state: state)
-                }
-                DynamicIslandExpandedRegion(.center) {
-                    IslandExpandedCenter(state: state, isStale: context.isStale)
+                    IslandExpandedTrailing(state: state, isStale: context.isStale)
                 }
                 DynamicIslandExpandedRegion(.bottom) {
                     ActivitySidesAndControls(attributes: attributes, state: state)

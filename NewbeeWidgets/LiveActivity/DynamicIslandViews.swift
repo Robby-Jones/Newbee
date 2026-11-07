@@ -8,43 +8,27 @@ import WidgetKit
 
 // MARK: Expanded
 
+/// The total, where the side badge and name used to be.
 struct IslandExpandedLeading: View {
     let state: FeedingState
 
     var body: some View {
-        HStack(spacing: NBSpacing.s) {
-            SideBadge(side: state.currentSide, size: 30, filled: state.status == .active)
-            Text(state.currentSide.displayName)
-                .font(.headline)
-                .foregroundStyle(NBColor.side(state.currentSide))
-        }
-        .padding(.leading, NBSpacing.xs)
-        .accessibilityElement(children: .combine)
+        TotalTimerText(state: state)
+            .font(NBFont.timer(size: 26))
+            .foregroundStyle(state.status == .active ? Color.white : Color.secondary)
+            .multilineTextAlignment(.leading)
+            .frame(maxWidth: 120, alignment: .leading)
+            .padding(.leading, NBSpacing.xs)
     }
 }
 
 struct IslandExpandedTrailing: View {
     let state: FeedingState
-
-    var body: some View {
-        TotalTimerText(state: state)
-            .font(NBFont.timer(size: 28))
-            .foregroundStyle(state.status == .active ? Color.white : Color.secondary)
-            .multilineTextAlignment(.trailing)
-            .frame(maxWidth: 110, alignment: .trailing)
-            .padding(.trailing, NBSpacing.xs)
-    }
-}
-
-struct IslandExpandedCenter: View {
-    let state: FeedingState
     let isStale: Bool
 
     var body: some View {
-        Text(state.statusLine(isStale: isStale))
-            .font(.subheadline)
-            .foregroundStyle(.secondary)
-            .lineLimit(1)
+        ActivityStatusLabel(state: state, isStale: isStale)
+            .padding(.trailing, NBSpacing.xs)
     }
 }
 

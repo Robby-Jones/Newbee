@@ -20,8 +20,8 @@ extension Side {
 }
 
 enum NBLayout {
-    /// Primary timer controls are at least this tall (thumb zone, one-handed use).
-    static let sideButtonMinHeight: CGFloat = 160
+    /// The round L / R timer buttons are at most this wide (thumb zone, one-handed use).
+    static let sideCircleMaxDiameter: CGFloat = 168
     /// Smallest allowed hit target.
     static let minHitTarget: CGFloat = 44
     /// Pause / End buttons on the timer screen.
