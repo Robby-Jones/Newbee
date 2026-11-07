@@ -12,6 +12,7 @@ struct DashboardView: View {
             VStack(alignment: .leading, spacing: NBSpacing.l) {
                 if let sessionModel {
                     BreastfeedingQuickStart(model: sessionModel)
+                    BottleQuickLogCard()
                 } else {
                     ContentUnavailableView(
                         "No feeds yet",
