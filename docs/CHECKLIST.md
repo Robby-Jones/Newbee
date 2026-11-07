@@ -46,9 +46,9 @@ Legend: `[x]` done · `[ ]` pending · `[!]` blocked (reason noted). Updated by 
 
 ## Phase 5b: Secondary features
 - [x] Bottle logging + presets (default presets 60/90/120 mL or 2/3/4 oz; editing them lands with Settings)
-- [ ] Manual entry / edit / delete
-- [ ] Dashboard
-- [ ] History timeline
+- [x] Manual entry / edit / delete (breastfeeds: add, edit in simple or side-change mode; bottles via Log Bottle sheet; delete with undo from History)
+- [x] Dashboard (last feed, time since, next side, today tiles, rolling 24 h)
+- [x] History timeline (grouped by day, gaps, filters, jump to date, review badge)
 - [ ] Calendar
 - [ ] Analytics (NewbeeKit) + Insights
 - [ ] Reminders + quiet hours

@@ -132,6 +132,32 @@ final class FeedingSessionUIModel {
         perform(.light) { try controller.adjustStart(to: date) }
     }
 
+    // MARK: - History
+
+    /// Deletes a finished breastfeed, with undo. Bottles are deleted through `BottleLogUIModel`.
+    func deleteFeed(id: UUID) {
+        do {
+            let deleted = try controller.deleteCompleted(sessionID: id)
+            showUndo(String(localized: "Feed deleted"), restoring: deleted)
+            errorMessage = nil
+            feedback = FeedbackEvent(kind: .light)
+        } catch {
+            fail(error)
+        }
+    }
+
+    /// Saves an edited finished breastfeed. Throws so the edit sheet can show the problem in place.
+    func saveEdit(_ edited: SessionSnapshot) throws {
+        try controller.saveEdit(edited)
+        feedback = FeedbackEvent(kind: .success)
+    }
+
+    /// Adds a finished breastfeed entered by hand.
+    func addManualFeed(_ session: SessionSnapshot) throws {
+        try controller.restore(session)
+        feedback = FeedbackEvent(kind: .success)
+    }
+
     // MARK: - Undo
 
     func undo() {
@@ -172,7 +198,7 @@ final class FeedingSessionUIModel {
     }
 }
 
-/// A short-lived "Undo" offer (6 s) after ending or discarding a feed.
+/// A short-lived "Undo" offer (6 s) after ending, discarding or deleting a feed.
 struct UndoToast: Identifiable, Equatable {
     let id = UUID()
     var message: String

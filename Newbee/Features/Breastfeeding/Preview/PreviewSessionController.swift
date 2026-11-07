@@ -112,8 +112,27 @@ final class PreviewSessionController: FeedingSessionControlling {
 
     func restore(_ snapshot: SessionSnapshot) throws {
         log.append("restore")
+        if snapshot.status == .completed {
+            if snapshot.startedAt >= (lastCompletedSession?.startedAt ?? .distantPast) {
+                lastCompletedSession = snapshot
+            }
+            return
+        }
         if lastCompletedSession?.id == snapshot.id { lastCompletedSession = nil }
         activeSession = snapshot
+    }
+
+    func saveEdit(_ edited: SessionSnapshot) throws {
+        log.append("saveEdit")
+        if lastCompletedSession?.id == edited.id { lastCompletedSession = edited }
+    }
+
+    @discardableResult
+    func deleteCompleted(sessionID: UUID) throws -> SessionSnapshot {
+        log.append("deleteCompleted")
+        guard let s = lastCompletedSession, s.id == sessionID else { throw PreviewSessionError.notFound }
+        lastCompletedSession = nil
+        return s
     }
 
     func dismissRecovery() {
