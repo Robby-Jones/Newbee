@@ -1,5 +1,6 @@
 import Foundation
 import NewbeeKit
+import NewbeeShared
 import SwiftData
 
 /// The app's composition root. One instance is shared by the UI and by App Intents
@@ -13,15 +14,68 @@ final class AppDependencies {
     let modelContainer: ModelContainer?
     let storeError: Error?
 
-    init(clock: any AppClock = SystemClock(), storage: PersistenceController.Storage? = nil) {
+    /// Keeps the Live Activity in step with the session: `LiveActivityCoordinator` in the app,
+    /// a no-op for in-memory stores (previews, UI and integration tests).
+    let liveActivity: any LiveActivitySyncing
+    /// The single owner of the active feeding session (docs/TIMER_ENGINE.md).
+    let sessionManager: FeedingSessionManager
+    /// Launch, foreground and clock-change reconciliation.
+    let recovery: RecoveryCoordinator
+    /// Shared by recovery and the Live Activity's "Still feeding?" hint so both agree on thresholds.
+    let recoveryPolicy: RecoveryPolicy
+
+    init(
+        clock: any AppClock = SystemClock(),
+        storage: PersistenceController.Storage? = nil,
+        liveActivity: (any LiveActivitySyncing)? = nil
+    ) {
         self.clock = clock
         let resolvedStorage = storage ?? (AppConfiguration.isUITesting ? .inMemory : .appGroup)
+        let container: ModelContainer?
+        let error: Error?
         do {
-            modelContainer = try PersistenceController.makeContainer(resolvedStorage)
-            storeError = nil
-        } catch {
-            modelContainer = nil
-            storeError = error
+            container = try PersistenceController.makeContainer(resolvedStorage)
+            error = nil
+        } catch let openError {
+            container = nil
+            error = openError
         }
+        modelContainer = container
+        storeError = error
+
+        let repository: any FeedingRepository
+        if let container {
+            repository = SwiftDataFeedingRepository(container: container)
+        } else {
+            repository = UnavailableFeedingRepository(reason: error?.localizedDescription ?? "unknown error")
+        }
+
+        // One policy for recovery and for the Live Activity's "Still feeding?" hint.
+        let policy = RecoveryPolicy()
+        let activity: any LiveActivitySyncing
+        if let liveActivity {
+            activity = liveActivity
+        } else if case .inMemory = resolvedStorage {
+            activity = NoLiveActivities()
+        } else {
+            // Same clock as the manager; stale hint at the same threshold as the recovery prompt.
+            activity = LiveActivityCoordinator(
+                client: ActivityKitClient(),
+                clock: clock,
+                planner: LiveActivityPlanner(staleAfter: policy.effectiveThreshold)
+            )
+        }
+        let manager = FeedingSessionManager(repository: repository, clock: clock, liveActivity: activity)
+        recoveryPolicy = policy
+        self.liveActivity = activity
+        sessionManager = manager
+        recovery = RecoveryCoordinator(manager: manager, policy: policy)
+    }
+
+    /// Routes Lock Screen and Dynamic Island buttons to `sessionManager`. Called from
+    /// `NewbeeApp.init`, which runs even when iOS launches the app in the background just to
+    /// perform a Live Activity intent (a view `.task` might never run then).
+    func registerLiveActivityIntents() {
+        LiveActivityIntentRouter.register(sessionManager)
     }
 }

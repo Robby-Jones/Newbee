@@ -49,30 +49,6 @@ protocol FeedingSessionControlling: AnyObject, Observable {
     func dismissRecovery()
 }
 
-/// Why the recovery sheet is shown (docs/TIMER_ENGINE.md §5).
-///
-/// Integration note: the session-engine work ships the same type in NewbeeKit. When both are on
-/// main, delete this copy and the one in NewbeeKit is used unchanged.
-struct RecoveryPrompt: Identifiable, Hashable, Sendable {
-    enum Reason: Hashable, Sendable {
-        /// The open segment has run longer than the "still feeding?" threshold.
-        case longRunning
-        /// The device clock changed during the session.
-        case clockChanged
-        /// The session appears to start in the future (clock moved backwards).
-        case futureStart
-    }
-
-    var session: SessionSnapshot
-    /// A plausible end time to pre-fill, for example segment start + this baby's typical side duration.
-    var suggestedEnd: Date
-    var reason: Reason
-    /// For `.clockChanged`: the start time implied by the monotonic clock, offered as a fix.
-    var correctedStart: Date?
-
-    var id: UUID { session.id }
-}
-
 /// Errors thrown by the in-memory preview controller. The real manager throws `SessionEngineError`.
 enum PreviewSessionError: Error, Equatable {
     case alreadyActive

@@ -46,6 +46,8 @@ enum NewbeeSchemaV1: VersionedSchema {
         var notes: String = ""
         var sourceRaw: String = EntrySource.timer.rawValue
         var needsReview: Bool = false
+        /// When the parent last answered "Keep going" on the recovery sheet.
+        var recoveryAcknowledgedAt: Date?
         var revision: Int = 0
         var createdAt: Date = Date()
         var modifiedAt: Date = Date()

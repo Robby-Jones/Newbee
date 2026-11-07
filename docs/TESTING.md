@@ -51,6 +51,7 @@ Run each case on an **iPhone 14 Pro or later** (Dynamic Island). Where marked �
 | D3 | Switch side from Lock Screen ×5 rapidly† | Final side correct; no duplicate segments; app agrees |
 | D4 | Pause / resume from island expanded | State and timers frozen and resumed correctly |
 | D5 | End from Lock Screen† | Activity shows final summary, dismisses after the policy; session completed in History |
+| D5b | Within 15 min of D5: tap Undo in the app, or start the next feed† | The "Feed complete" summary disappears at once; only one activity is on the Lock Screen / island |
 | D6 | Double-tap End | One completed session, no errors |
 | D7 | Background app, open 3 other apps, return | Timer accurate |
 | D8 | Force-quit during active feed | Record what iOS does with the activity; reopening restores the session; activity reconciled |
@@ -58,6 +59,7 @@ Run each case on an **iPhone 14 Pro or later** (Dynamic Island). Where marked �
 | D10 | Feed across midnight | Calendar dot on start day; durations correct |
 | D11 | Change time zone mid-feed | Durations unchanged; history times sensible |
 | D12 | Manually set clock +1 h mid-feed (same boot) | Recovery detects it and offers a correction |
+| D12b | Set clock −2 h mid-feed after a side switch, force-quit, relaunch | Still detected as a clock change (boot ID unchanged); "Fix start time" keeps both segments' lengths |
 | D13 | Leave a feed running 8 h+ | Activity ends by system; "still feeding?" notification fired earlier; on open, recovery sheet + activity re-requested |
 | D14 | Disable Live Activities in iOS Settings, start feed | App works; gentle hint shown; no crash |
 | D15 | Compact / minimal island with another app's activity (e.g. a timer) | Minimal presentation renders correctly |

@@ -52,14 +52,27 @@ public struct SystemClock: AppClock {
         #endif
     }
 
-    /// Boot time rounded to the second, stable for the life of one boot.
+    /// Identifies the current boot, stable for the life of one boot.
+    ///
+    /// Darwin: `kern.bootsessionuuid`, a per-boot UUID that does not depend on the wall clock.
+    /// (`kern.boottime` is only a fallback: XNU moves it when the clock is set, so after a clock
+    /// change and relaunch it would look like a reboot and hide the change. To verify on device:
+    /// TESTING.md D12b.)
     static let bootID: String? = {
         #if canImport(Darwin)
+        var size = 0
+        if sysctlbyname("kern.bootsessionuuid", nil, &size, nil, 0) == 0, size > 1 {
+            var buffer = [CChar](repeating: 0, count: size)
+            if sysctlbyname("kern.bootsessionuuid", &buffer, &size, nil, 0) == 0 {
+                let uuid = buffer.withUnsafeBufferPointer { String(cString: $0.baseAddress!) }
+                if !uuid.isEmpty { return uuid }
+            }
+        }
         var tv = timeval()
-        var size = MemoryLayout<timeval>.stride
+        var tvSize = MemoryLayout<timeval>.stride
         var mib: [Int32] = [CTL_KERN, KERN_BOOTTIME]
-        guard sysctl(&mib, 2, &tv, &size, nil, 0) == 0 else { return nil }
-        return String(tv.tv_sec)
+        guard sysctl(&mib, 2, &tv, &tvSize, nil, 0) == 0 else { return nil }
+        return "boottime-\(tv.tv_sec)"
         #else
         guard let id = try? String(contentsOfFile: "/proc/sys/kernel/random/boot_id", encoding: .utf8) else { return nil }
         return id.trimmingCharacters(in: .whitespacesAndNewlines)

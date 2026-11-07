@@ -29,19 +29,19 @@ Legend: `[x]` done · `[ ]` pending · `[!]` blocked (reason noted). Updated by 
 - [x] Domain contract types (`SessionSnapshot`, `Segment`, enums), `AppClock`/`SystemClock`/`TestClock`
 - [x] Baseline Live Activity (proves extension + shared attributes + system timer)
 - [x] NewbeeKit tests pass on Linux (Swift 6.2)
-- [ ] CI: core-linux + ios jobs green
+- [x] CI: core-linux + ios jobs green (11 NewbeeKit tests on Linux; 3 persistence tests + 1 UI launch test on iOS simulator)
 - [ ] Builds on Robby's Mac; launches on Robby's iPhone (Robby)
 
 ## Phase 5a: Core subsystem (critical gate)
-- [ ] Domain types + SessionEngine + TestClock + unit tests
-- [ ] SwiftData schema V1 + repository + migration plan
-- [ ] FeedingSessionManager + integration tests
-- [x] Breastfeeding timer UI + pill + undo + recovery sheet (bound to `FeedingSessionControlling`; wired to the real manager at integration)
-- [ ] ActivityAttributes + LiveActivityCoordinator
-- [ ] Lock Screen presentation
-- [ ] Dynamic Island compact / minimal / expanded
-- [ ] Interactive intents
-- [ ] RecoveryCoordinator + recovery sheet + "still feeding?" notification
+- [x] Domain types + SessionEngine + TestClock + unit tests (state table, rapid taps, midnight/DST, clock jumps, reboot; Linux)
+- [x] SwiftData schema V1 + repository + migration plan (`SwiftDataFeedingRepository`, snapshot mapping)
+- [x] FeedingSessionManager + integration tests (save-before-effects, ordered effects, undo via restore, stale intents, termination/relaunch)
+- [x] Breastfeeding timer UI + pill + undo + recovery sheet (bound to `FeedingSessionControlling`; wired to the real `FeedingSessionManager`)
+- [x] ActivityAttributes + LiveActivityCoordinator (ContentState mapping + planner tested on Linux; coordinator tested with a fake client)
+- [x] Lock Screen presentation (code + previews; device check pending)
+- [x] Dynamic Island compact / minimal / expanded (code + previews; device check pending)
+- [x] Interactive intents (wired to `FeedingSessionManager` via `LiveActivityIntentRouter`)
+- [ ] RecoveryCoordinator + recovery sheet + "still feeding?" notification (coordinator + `RecoveryPrompt` done; sheet in timer UI thread; notification with reminders in 5b)
 - [ ] Device tests D1–D18 passed (Robby)
 
 ## Phase 5b: Secondary features

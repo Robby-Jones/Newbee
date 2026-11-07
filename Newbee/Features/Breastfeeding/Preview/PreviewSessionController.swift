@@ -163,7 +163,7 @@ extension PreviewSessionController {
         let session = SessionSnapshot(status: .active, segments: [Segment(side: .left, start: start)], startedAt: start, revision: 1)
         return PreviewSessionController(
             activeSession: session,
-            recoveryPrompt: RecoveryPrompt(session: session, suggestedEnd: start.addingTimeInterval(26 * 60), reason: .longRunning)
+            recoveryPrompt: RecoveryPrompt(session: session, reason: .longRunning, suggestedEnd: start.addingTimeInterval(26 * 60))
         )
     }
 

@@ -37,6 +37,7 @@ One feeding event of any kind.
 | `notes` | `String` = `""` | |
 | `sourceRaw` | `String` = `"timer"` | `timer`, `manual`, `recovered`. Lets insights flag estimated data. |
 | `needsReview` | `Bool` = `false` | set by recovery when data is ambiguous |
+| `recoveryAcknowledgedAt` | `Date?` | when the parent last answered "Keep going"; recovery doesn't ask again about older data |
 | `revision` | `Int` = `0` | bumped on every mutation; used for intent idempotency |
 | `createdAt` / `modifiedAt` | `Date` | |
 | `segments` | `[FeedingSegment]?` | `.cascade` |

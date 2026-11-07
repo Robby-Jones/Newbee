@@ -35,6 +35,8 @@ targets:
     platform: iOS
     sources:
       - path: Newbee
+      # Live Activity intents: compiled into the app AND the extension (perform() runs in the app).
+      - path: LiveActivityIntents
     dependencies:
       - package: NewbeeKit
       - package: NewbeeShared
@@ -74,6 +76,7 @@ targets:
     platform: iOS
     sources:
       - path: NewbeeWidgets
+      - path: LiveActivityIntents
     dependencies:
       - package: NewbeeKit
       - package: NewbeeShared
