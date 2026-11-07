@@ -9,6 +9,11 @@ struct NewbeeApp: App {
     @State private var sessionModel = NewbeeApp.makeSessionModel()
     @Environment(\.scenePhase) private var scenePhase
 
+    init() {
+        // Before any scene exists: Live Activity intents can launch the app in the background.
+        dependencies.registerLiveActivityIntents()
+    }
+
     var body: some Scene {
         WindowGroup {
             if let container = dependencies.modelContainer {

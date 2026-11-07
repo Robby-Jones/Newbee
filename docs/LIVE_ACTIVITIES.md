@@ -167,7 +167,7 @@ Notes:
 - `staleDate` is the open segment's start (or the pause) plus the "still feeding?" threshold, so
   the Lock Screen shows "Still feeding? Open Newbee" at the same moment the app would ask.
 
-Integration wiring (done when the session manager and this work are both on `main`):
+Integration wiring (done; see `Newbee/Core/Services/LiveActivityWiring.swift`, `AppDependencies`, `NewbeeApp.init`, tested in `NewbeeTests/LiveActivity/LiveActivityWiringTests.swift`):
 1. `FeedingSessionManager` conforms to `LiveActivityCommandHandling` in the app target by
    mapping `LiveActivityCommand` to its `applyRemote(_:sessionID:)`.
 2. `LiveActivityCoordinator` conforms to the engine's `LiveActivitySyncing` protocol (its

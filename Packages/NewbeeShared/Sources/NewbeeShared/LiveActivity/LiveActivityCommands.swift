@@ -40,6 +40,9 @@ public enum LiveActivityIntentRouter {
 
     public static var isRegistered: Bool { handler != nil }
 
+    /// The registered handler, for wiring tests.
+    public static var registeredHandler: (any LiveActivityCommandHandling)? { handler }
+
     /// Forwards the command. Returns `false` if no handler was registered (a wiring bug, which
     /// the app's tests guard against), so the intent can log it instead of crashing.
     @discardableResult

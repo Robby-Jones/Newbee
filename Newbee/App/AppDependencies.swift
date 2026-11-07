@@ -1,5 +1,6 @@
 import Foundation
 import NewbeeKit
+import NewbeeShared
 import SwiftData
 
 /// The app's composition root. One instance is shared by the UI and by App Intents
@@ -13,8 +14,8 @@ final class AppDependencies {
     let modelContainer: ModelContainer?
     let storeError: Error?
 
-    /// Keeps the Live Activity in step with the session. A no-op until `LiveActivityCoordinator`
-    /// is wired in here.
+    /// Keeps the Live Activity in step with the session: `LiveActivityCoordinator` in the app,
+    /// a no-op for in-memory stores (previews, UI and integration tests).
     let liveActivity: any LiveActivitySyncing
     /// The single owner of the active feeding session (docs/TIMER_ENGINE.md).
     let sessionManager: FeedingSessionManager
@@ -51,11 +52,30 @@ final class AppDependencies {
 
         // One policy for recovery and for the Live Activity's "Still feeding?" hint.
         let policy = RecoveryPolicy()
-        let activity = liveActivity ?? NoLiveActivities()
+        let activity: any LiveActivitySyncing
+        if let liveActivity {
+            activity = liveActivity
+        } else if case .inMemory = resolvedStorage {
+            activity = NoLiveActivities()
+        } else {
+            // Same clock as the manager; stale hint at the same threshold as the recovery prompt.
+            activity = LiveActivityCoordinator(
+                client: ActivityKitClient(),
+                clock: clock,
+                planner: LiveActivityPlanner(staleAfter: policy.effectiveThreshold)
+            )
+        }
         let manager = FeedingSessionManager(repository: repository, clock: clock, liveActivity: activity)
         recoveryPolicy = policy
         self.liveActivity = activity
         sessionManager = manager
         recovery = RecoveryCoordinator(manager: manager, policy: policy)
+    }
+
+    /// Routes Lock Screen and Dynamic Island buttons to `sessionManager`. Called from
+    /// `NewbeeApp.init`, which runs even when iOS launches the app in the background just to
+    /// perform a Live Activity intent (a view `.task` might never run then).
+    func registerLiveActivityIntents() {
+        LiveActivityIntentRouter.register(sessionManager)
     }
 }
