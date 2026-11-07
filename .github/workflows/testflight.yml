@@ -47,9 +47,7 @@ jobs:
 
       - name: Select Xcode
         if: steps.secrets.outputs.ready == 'true'
-        run: |
-          sudo xcode-select -s "$(ls -d /Applications/Xcode_16*.app | sort -V | tail -1)"
-          xcodebuild -version
+        run: scripts/select-xcode.sh 26
 
       - name: Install XcodeGen
         if: steps.secrets.outputs.ready == 'true'

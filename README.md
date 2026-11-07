@@ -6,7 +6,7 @@ Planning docs: [docs/README.md](docs/README.md). Progress: [docs/CHECKLIST.md](d
 
 ## Getting started (Mac)
 
-1. Install Xcode 16 or newer and XcodeGen: `brew install xcodegen`
+1. Install Xcode 26 or newer and XcodeGen: `brew install xcodegen`
 2. Create your signing config:
    ```sh
    cp Config/Signing.local.xcconfig.example Config/Signing.local.xcconfig
@@ -21,7 +21,7 @@ Planning docs: [docs/README.md](docs/README.md). Progress: [docs/CHECKLIST.md](d
 
 ## Getting it on an iPhone without a local Mac (TestFlight)
 
-Building needs Xcode 16 (macOS 14.5+). Without a Mac that runs it, the **TestFlight** workflow
+Building needs Xcode 26 (macOS 15.6+), which App Store uploads also require. Without a Mac that runs it, the **TestFlight** workflow
 (`.github/workflows/testflight.yml`) archives, signs and uploads the app from GitHub Actions on
 every push to `main` (or manually from **Actions → TestFlight → Run workflow**). Install builds
 with the TestFlight app on the iPhone.
