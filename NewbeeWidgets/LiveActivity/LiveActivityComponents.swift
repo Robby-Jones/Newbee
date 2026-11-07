@@ -49,20 +49,17 @@ struct TotalTimerText: View {
     let state: FeedingState
 
     var body: some View {
-        Group {
-            if state.status == .active, let start = state.runningTotalTimerStart {
-                Text(timerInterval: start...Date.distantFuture, countsDown: false)
-                    .monospacedDigit()
-                    .accessibilityLabel(Text("Total feeding time"))
-                    .accessibilityValue(Text(timerInterval: start...Date.distantFuture, countsDown: false))
-            } else {
-                Text(LiveActivityFormat.clock(state.totalAccumulated))
-                    .monospacedDigit()
-                    .accessibilityLabel("Total feeding time")
-                    .accessibilityValue(LiveActivityFormat.spoken(state.totalAccumulated))
-            }
+        if state.status == .active, let start = state.runningTotalTimerStart {
+            Text(timerInterval: start...Date.distantFuture, countsDown: false)
+                .monospacedDigit()
+                .accessibilityLabel(Text("Total feeding time"))
+                .accessibilityValue(Text(timerInterval: start...Date.distantFuture, countsDown: false))
+        } else {
+            Text(LiveActivityFormat.clock(state.totalAccumulated))
+                .monospacedDigit()
+                .accessibilityLabel("Total feeding time")
+                .accessibilityValue(LiveActivityFormat.spoken(state.totalAccumulated))
         }
-        .invalidatableContent()
     }
 }
 
@@ -98,8 +95,6 @@ struct SideRow: View {
                 .multilineTextAlignment(.trailing)
                 .frame(minWidth: fontSize * 3.2, alignment: .trailing)
         }
-        // Dims while a button's intent is running, so a tap shows at once that it registered.
-        .invalidatableContent()
         .accessibilityElement(children: .ignore)
         .accessibilityLabel(side.displayName + (running ? ", running" : ""))
         .accessibilityValue(accessibilityValue)
@@ -137,7 +132,6 @@ struct ActivityControlLabel: View {
             Capsule().fill(prominent ? tint : tint.opacity(0.18))
         )
         .contentShape(Capsule())
-        .invalidatableContent()
     }
 }
 
