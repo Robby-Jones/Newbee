@@ -1,6 +1,6 @@
 import XCTest
 
-/// Calendar and Insights pick up a feed logged on Home (docs/UX_SPEC.md §3.5, §3.8).
+/// History (list and calendar) and Insights pick up a feed logged on Home (docs/UX_SPEC.md §3.5, §3.6, §3.8).
 final class CalendarInsightsFlowTests: XCTestCase {
     override func setUpWithError() throws {
         continueAfterFailure = false
@@ -23,11 +23,15 @@ final class CalendarInsightsFlowTests: XCTestCase {
         let saved = NSPredicate(format: "label CONTAINS %@", "120 mL")
         XCTAssertEqual(XCTWaiter().wait(for: [XCTNSPredicateExpectation(predicate: saved, object: logBottle)], timeout: 5), .completed, logBottle.label)
 
-        // Calendar opens on today, selected, with the bottle in its summary.
-        let calendarTab = app.tabBars.buttons["Calendar"]
-        XCTAssertTrue(calendarTab.waitForExistence(timeout: 5), "Calendar tab missing")
-        calendarTab.tap()
-        XCTAssertTrue(app.navigationBars["Calendar"].waitForExistence(timeout: 5), "Calendar didn't open")
+        // History's Calendar mode opens on today, selected, with the bottle in its summary.
+        let historyTab = app.tabBars.buttons["History"]
+        XCTAssertTrue(historyTab.waitForExistence(timeout: 5), "History tab missing")
+        historyTab.tap()
+        XCTAssertTrue(app.navigationBars["History"].waitForExistence(timeout: 5), "History didn't open: \(hierarchy(app))")
+        XCTAssertTrue(element(in: app, containing: "Bottle · 120 mL").waitForExistence(timeout: 5), "List has no bottle row")
+        let calendarMode = app.segmentedControls.buttons["Calendar"].firstMatch
+        XCTAssertTrue(calendarMode.waitForExistence(timeout: 5), "Calendar mode missing")
+        calendarMode.tap()
         let openDay = app.buttons.matching(NSPredicate(format: "identifier == %@ OR label == %@", "calendar.openDay", "Open day")).firstMatch
         if !openDay.waitForExistence(timeout: 3) {
             app.swipeUp()
@@ -41,7 +45,14 @@ final class CalendarInsightsFlowTests: XCTestCase {
         // Insights shows the bottle card and the one-day note.
         app.tabBars.buttons["Insights"].tap()
         XCTAssertTrue(app.staticTexts["Feeds per day"].firstMatch.waitForExistence(timeout: 5), "No feeds card")
-        XCTAssertTrue(app.staticTexts["Bottles"].firstMatch.exists, "No bottles card")
+        XCTAssertTrue(app.staticTexts["Bottles"].firstMatch.waitForExistence(timeout: 5), "No bottles card: \(hierarchy(app))")
+    }
+
+    /// The accessibility tree on one line, so CI log formatters that keep only an error's first
+    /// line still show it.
+    @MainActor
+    private func hierarchy(_ app: XCUIApplication) -> String {
+        app.debugDescription.split(separator: "\n").map { $0.trimmingCharacters(in: .whitespaces) }.joined(separator: " | ")
     }
 
     @MainActor

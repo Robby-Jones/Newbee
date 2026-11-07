@@ -3,56 +3,56 @@ import NewbeeShared
 import SwiftData
 import SwiftUI
 
-/// Home (docs/UX_SPEC.md §3.2): when the last feed was and how long ago, the side to start on,
-/// the Start buttons (or the running feed), and today's totals.
+/// Home (docs/UX_SPEC.md §3.2): how long ago the last feed was, the Start buttons (or the
+/// running feed), Log bottle, and today's totals. Answers the 3 a.m. questions in one glance;
+/// everything older lives in History and Insights.
 struct DashboardView: View {
     @Environment(FeedingSessionUIModel.self) private var sessionModel: FeedingSessionUIModel?
     /// Enough recent feeds for "today" and the rolling 24 hours, even on a very busy day.
     @Query(FeedingSession.completedFeeds(limit: 80)) private var recent: [FeedingSession]
-    @State private var showingSettings = false
+    @Query(sort: \Baby.createdAt) private var babies: [Baby]
 
     var body: some View {
         let entries = recent.compactMap(\.feedEntry)
         // Minute ticks keep "2 h 14 min ago" and the day boundary current without per-second work.
         TimelineView(.everyMinute) { context in
-            let summary = DashboardSummary(entries: entries, now: context.date)
+            // The tick's date is the start of the minute; a feed logged since then would count
+            // as "in the future" and be left out, so use the real time.
+            let now = max(context.date, .now)
+            let summary = DashboardSummary(entries: entries, now: now)
             ScrollView {
                 VStack(alignment: .leading, spacing: NBSpacing.l) {
+                    if let profile = profileLine(at: now) {
+                        Text(profile)
+                            .font(.subheadline.weight(.medium))
+                            .foregroundStyle(.secondary)
+                            .padding(.top, -NBSpacing.s)
+                    }
                     if sessionModel?.activeSession == nil {
-                        LastFeedCard(summary: summary, suggestedSide: sessionModel?.controller.suggestedNextSide, now: context.date)
+                        LastFeedCard(summary: summary, now: now)
                     }
-                    if let sessionModel {
-                        BreastfeedingQuickStart(model: sessionModel)
+                    VStack(alignment: .leading, spacing: NBSpacing.m) {
+                        if let sessionModel {
+                            BreastfeedingQuickStart(model: sessionModel)
+                        }
+                        BottleQuickLogCard()
                     }
-                    // "Log bottle" with today's bottle total and the last few bottles.
-                    BottleQuickLogCard()
                     TodaySection(summary: summary)
                 }
                 .padding(NBSpacing.l)
             }
-            .navigationTitle(Self.greeting(at: context.date))
+            .navigationTitle(Self.greeting(at: now))
         }
         .background(NBColor.canvas)
-        .toolbar {
-            ToolbarItem(placement: .topBarTrailing) {
-                Button {
-                    showingSettings = true
-                } label: {
-                    Label("Settings", systemImage: "gearshape")
-                }
-                .accessibilityIdentifier("home.settings")
-            }
-        }
-        .sheet(isPresented: $showingSettings) {
-            NavigationStack {
-                SettingsView()
-                    .toolbar {
-                        ToolbarItem(placement: .confirmationAction) {
-                            Button("Done") { showingSettings = false }
-                        }
-                    }
-            }
-        }
+    }
+
+    /// "Ava · 3 wk 2 d old" from the profile in Settings, when there is one.
+    private func profileLine(at now: Date) -> String? {
+        guard let baby = babies.first else { return nil }
+        let name = baby.name.trimmingCharacters(in: .whitespacesAndNewlines)
+        let age = baby.birthDate.map { BabyAge.text(from: $0, now: now) }
+        let parts = [name.isEmpty ? nil : name, age].compactMap { $0 }
+        return parts.isEmpty ? nil : parts.joined(separator: " · ")
     }
 
     static func greeting(at date: Date, calendar: Calendar = .current) -> String {
@@ -65,20 +65,24 @@ struct DashboardView: View {
     }
 }
 
-/// "Last feed: 2 h 14 min ago · 9:41 PM · Breast · L 12 min R 9 min · Next side R".
+/// "Last feed: 2 h 14 min ago · 9:41 PM · Breast · L 12 min · R 9 min". The side to start on
+/// next is shown on the Start buttons below, not repeated here.
 private struct LastFeedCard: View {
     let summary: DashboardSummary
-    /// The session manager's suggestion, which the Start buttons also use.
-    let suggestedSide: Side?
     let now: Date
 
     var body: some View {
         Card {
             VStack(alignment: .leading, spacing: NBSpacing.s) {
-                Text("Last feed")
+                if let last = summary.lastFeed, let since = summary.timeSinceLastFeed(at: now) {
+                    Label {
+                        Text("Last feed")
+                    } icon: {
+                        Image(systemName: last.symbolName)
+                            .foregroundStyle(last.tint)
+                    }
                     .font(.subheadline.weight(.semibold))
                     .foregroundStyle(.secondary)
-                if let last = summary.lastFeed, let since = summary.timeSinceLastFeed(at: now) {
                     Text(FeedText.ago(since))
                         .font(.system(.largeTitle, design: .rounded, weight: .bold))
                         .monospacedDigit()
@@ -86,11 +90,10 @@ private struct LastFeedCard: View {
                     Text(detail(last))
                         .font(.subheadline)
                         .foregroundStyle(.secondary)
-                    nextSide
                 } else {
                     Text("No feeds yet")
                         .font(.title2.weight(.bold))
-                    Text("Start your first one below.")
+                    Text("Tap a side to start timing, or log a bottle.")
                         .font(.subheadline)
                         .foregroundStyle(.secondary)
                 }
@@ -106,21 +109,6 @@ private struct LastFeedCard: View {
         }
         return "\(time) · \(FeedText.title(entry))"
     }
-
-    private var nextSide: some View {
-        let side = suggestedSide ?? summary.suggestedNextSide
-        return HStack(spacing: NBSpacing.s) {
-            Text("Next side")
-                .font(.subheadline)
-            SideBadge(side: side)
-            Text(side.title)
-                .font(.subheadline.weight(.semibold))
-            Text("suggested")
-                .font(.caption)
-                .foregroundStyle(.secondary)
-        }
-        .padding(.top, NBSpacing.xs)
-    }
 }
 
 /// Today's tiles and the rolling 24-hour line.
@@ -133,14 +121,16 @@ private struct TodaySection: View {
         VStack(alignment: .leading, spacing: NBSpacing.m) {
             Text("Today")
                 .font(.title3.weight(.semibold))
+                .accessibilityAddTraits(.isHeader)
             LazyVGrid(columns: columns, spacing: NBSpacing.m) {
-                StatTile(value: "\(summary.today.feedCount)", label: summary.today.feedCount == 1 ? String(localized: "feed") : String(localized: "feeds"))
-                StatTile(value: DurationText.short(summary.today.breastDuration), label: String(localized: "breastfeeding"))
-                StatTile(value: FeedText.volume(ml: summary.today.bottleML), label: String(localized: "from bottles"))
-                StatTile(
-                    value: summary.today.averageInterval.map(DurationText.short) ?? "–",
-                    label: String(localized: "average gap")
-                )
+                StatTile(title: String(localized: "Feeds"), systemImage: "drop.fill", tint: NBColor.accent,
+                         value: "\(summary.today.feedCount)")
+                StatTile(title: String(localized: "Breastfeeding"), systemImage: "heart.fill", tint: NBColor.left,
+                         value: DurationText.short(summary.today.breastDuration))
+                StatTile(title: String(localized: "Bottles"), systemImage: "waterbottle.fill", tint: NBColor.bottleBreastMilk,
+                         value: FeedText.volume(ml: summary.today.bottleML))
+                StatTile(title: String(localized: "Average gap"), systemImage: "clock.fill", tint: NBColor.right,
+                         value: summary.today.averageInterval.map(DurationText.short) ?? "–")
             }
             Text(last24Line)
                 .font(.footnote)
@@ -157,21 +147,34 @@ private struct TodaySection: View {
     }
 }
 
+/// Apple Health-style summary tile: a tinted symbol and label, then the value.
+/// The tint is on the symbol only, so the text keeps full contrast.
 private struct StatTile: View {
+    let title: String
+    let systemImage: String
+    let tint: Color
     let value: String
-    let label: String
 
     var body: some View {
         Card(padding: NBSpacing.m) {
-            VStack(alignment: .leading, spacing: NBSpacing.xs) {
+            VStack(alignment: .leading, spacing: NBSpacing.s) {
+                Label {
+                    Text(title)
+                        .foregroundStyle(.secondary)
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.8)
+                } icon: {
+                    Image(systemName: systemImage)
+                        .foregroundStyle(tint)
+                        .accessibilityHidden(true)
+                }
+                .font(.footnote.weight(.semibold))
                 Text(value)
                     .font(.system(.title2, design: .rounded, weight: .bold))
                     .monospacedDigit()
                     .lineLimit(1)
                     .minimumScaleFactor(0.7)
-                Text(label)
-                    .font(.footnote)
-                    .foregroundStyle(.secondary)
+                    .contentTransition(.numericText())
             }
         }
         .accessibilityElement(children: .combine)
@@ -189,8 +192,9 @@ struct BreastfeedingQuickStart: View {
             VStack(alignment: .leading, spacing: NBSpacing.m) {
                 switch display.phase {
                 case .notStarted:
-                    Text("Breastfeed")
+                    Text("Start a feed")
                         .font(.title3.weight(.semibold))
+                        .accessibilityAddTraits(.isHeader)
                     let layout = dynamicTypeSize.isAccessibilitySize
                         ? AnyLayout(VStackLayout(spacing: NBSpacing.m))
                         : AnyLayout(HStackLayout(spacing: NBSpacing.m))

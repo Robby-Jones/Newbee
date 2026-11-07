@@ -3,7 +3,7 @@ import NewbeeKit
 import Observation
 
 /// View model for bottle logging: presents the Log Bottle sheet (new or edit), saves and deletes
-/// through `BottleLog`, offers undo, and keeps a small recent list and today's totals for Home.
+/// through `BottleLog`, offers undo, and keeps today's totals for Home and the latest few bottles.
 ///
 /// It's in the SwiftUI environment, so any screen can call `presentNew()` or
 /// `presentEdit(sessionID:)`; `RootView` hosts the sheet and the undo toast.
@@ -41,7 +41,7 @@ final class BottleLogUIModel {
     /// Changes on every event that should produce a haptic.
     private(set) var feedback: FeedbackEvent?
 
-    /// How many recent bottles Home lists.
+    /// How many recent bottles `recent` keeps.
     static let recentLimit = 3
 
     init(log: BottleLog, preferences: AppPreferences, onChange: @escaping @MainActor () -> Void = {}) {

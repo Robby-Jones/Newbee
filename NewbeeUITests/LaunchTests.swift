@@ -6,16 +6,19 @@ final class LaunchTests: XCTestCase {
     }
 
     @MainActor
-    func testLaunchShowsAllFiveTabs() throws {
+    func testLaunchShowsAllFourTabs() throws {
         let app = XCUIApplication()
         app.launchArguments = ["-uiTesting"]
         app.launch()
 
         let tabBar = app.tabBars.firstMatch
         XCTAssertTrue(tabBar.waitForExistence(timeout: 10))
-        for title in ["Home", "Calendar", "History", "Insights", "Tools"] {
+        for title in ["Home", "History", "Insights", "Settings"] {
             XCTAssertTrue(tabBar.buttons[title].exists, "Missing tab \(title)")
         }
+        // Calendar and Tools were folded into History, Home and Insights.
+        XCTAssertFalse(tabBar.buttons["Calendar"].exists)
+        XCTAssertFalse(tabBar.buttons["Tools"].exists)
         tabBar.buttons["Insights"].tap()
         XCTAssertTrue(app.navigationBars["Insights"].waitForExistence(timeout: 5))
     }

@@ -5,24 +5,20 @@ final class SettingsFlowTests: XCTestCase {
         continueAfterFailure = false
     }
 
+    /// Settings is its own tab; there's no second route to it from Home.
     @MainActor
-    func testSettingsOpensFromHomeAndTools() throws {
+    func testSettingsOpensFromItsTab() throws {
         let app = XCUIApplication()
         app.launchArguments = ["-uiTesting"]
         app.launch()
 
-        let gear = app.buttons["home.settings"]
-        XCTAssertTrue(gear.waitForExistence(timeout: 10))
-        gear.tap()
+        let tab = app.tabBars.firstMatch.buttons["Settings"]
+        XCTAssertTrue(tab.waitForExistence(timeout: 10))
+        XCTAssertFalse(app.buttons["home.settings"].exists, "Home shouldn't duplicate the Settings tab")
+        tab.tap()
         XCTAssertTrue(app.navigationBars["Settings"].waitForExistence(timeout: 5))
-        XCTAssertTrue(app.switches["settings.reminderToggle"].exists)
-        app.navigationBars["Settings"].buttons["Done"].tap()
-
-        app.tabBars.firstMatch.buttons["Tools"].tap()
-        XCTAssertTrue(app.navigationBars["Tools"].waitForExistence(timeout: 5))
-        let link = app.buttons["tools.settings"]
-        for _ in 0..<4 where !link.isHittable { app.swipeUp() }
-        link.tap()
-        XCTAssertTrue(app.navigationBars["Settings"].waitForExistence(timeout: 5))
+        let reminders = app.switches["settings.reminderToggle"]
+        for _ in 0..<3 where !reminders.exists { app.swipeUp() }
+        XCTAssertTrue(reminders.exists)
     }
 }

@@ -3,61 +3,40 @@ import NewbeeShared
 import SwiftData
 import SwiftUI
 
-/// Every finished feed, breast and bottle, grouped by day (docs/UX_SPEC.md §3.6).
+/// Every finished feed, breast and bottle (docs/UX_SPEC.md §3.6), as a day-grouped list or a
+/// month calendar (§3.5). One place for looking back, like the history screens in Huckleberry
+/// and Apple Fitness.
 ///
-/// Tap or swipe right to edit, swipe left to delete (with confirmation and undo), filter by kind,
-/// jump to a date, and add a feed that wasn't timed.
+/// In the list: tap or swipe right to edit, swipe left to delete (with confirmation and undo),
+/// and filter by kind. Both modes can add a feed that wasn't timed.
 struct HistoryView: View {
+    enum Mode: Hashable {
+        case list, calendar
+    }
+
     @Environment(FeedingSessionUIModel.self) private var model: FeedingSessionUIModel?
     @Environment(BottleLogUIModel.self) private var bottleModel: BottleLogUIModel?
     @Query(FeedingSession.completedFeeds()) private var sessions: [FeedingSession]
 
+    @State private var mode: Mode = .list
     @State private var filter: FeedFilter = .all
     @State private var editing: EditTarget?
     @State private var pendingDelete: FeedEntry?
-    @State private var jumpDate: Date = .now
-    @State private var showingJump = false
-    @State private var scrollTarget: UUID?
-
-    private var days: [TimelineDay] {
-        FeedTimeline.days(from: sessions.compactMap(\.feedEntry), filter: filter)
-    }
 
     var body: some View {
-        let days = days
-        ScrollViewReader { proxy in
-            List {
-                if days.isEmpty {
-                    emptyState
-                        .listRowBackground(Color.clear)
-                        .listRowSeparator(.hidden)
-                } else {
-                    ForEach(days) { day in
-                        Section {
-                            ForEach(day.rows) { row in
-                                rowView(row)
-                            }
-                        } header: {
-                            Text(FeedText.dayTitle(day.day))
-                                .font(.subheadline.weight(.semibold))
-                                .foregroundStyle(.primary)
-                                .textCase(nil)
-                        }
-                    }
-                }
-            }
-            .listStyle(.plain)
-            .scrollContentBackground(.hidden)
-            .safeAreaInset(edge: .top, spacing: 0) { filterBar }
-            .onChange(of: scrollTarget) { _, target in
-                guard let target else { return }
-                withAnimation { proxy.scrollTo(target, anchor: .top) }
-                scrollTarget = nil
+        Group {
+            switch mode {
+            case .list: list
+            case .calendar: CalendarView()
             }
         }
+        .safeAreaInset(edge: .top, spacing: 0) { modePicker }
         .background(NBColor.canvas)
         .navigationTitle("History")
-        .toolbar { toolbar(days: days) }
+        .toolbar { toolbar }
+        .navigationDestination(for: DayRoute.self) { route in
+            DayFeedsView(day: route.day)
+        }
         .sheet(item: $editing) { target in
             if let model {
                 switch target {
@@ -67,9 +46,6 @@ struct HistoryView: View {
                     BreastFeedEditSheet(model: model, original: nil, suggestedSide: model.controller.suggestedNextSide)
                 }
             }
-        }
-        .sheet(isPresented: $showingJump) {
-            jumpSheet(days: days)
         }
         .confirmationDialog(
             "Delete this feed?",
@@ -81,6 +57,32 @@ struct HistoryView: View {
         } message: { _ in
             Text("You can undo for a few seconds afterwards.")
         }
+    }
+
+    private var list: some View {
+        let days = FeedTimeline.days(from: sessions.compactMap(\.feedEntry), filter: filter)
+        return List {
+            if days.isEmpty {
+                emptyState
+                    .listRowBackground(Color.clear)
+                    .listRowSeparator(.hidden)
+            } else {
+                ForEach(days) { day in
+                    Section {
+                        ForEach(day.rows) { row in
+                            rowView(row)
+                        }
+                    } header: {
+                        Text(FeedText.dayTitle(day.day))
+                            .font(.subheadline.weight(.semibold))
+                            .foregroundStyle(.primary)
+                            .textCase(nil)
+                    }
+                }
+            }
+        }
+        .listStyle(.plain)
+        .scrollContentBackground(.hidden)
     }
 
     // MARK: - Rows
@@ -130,28 +132,35 @@ struct HistoryView: View {
 
     // MARK: - Chrome
 
-    private var filterBar: some View {
-        Picker("Show", selection: $filter) {
-            Text("All").tag(FeedFilter.all)
-            Text("Breast").tag(FeedFilter.breast)
-            Text("Bottle").tag(FeedFilter.bottle)
+    private var modePicker: some View {
+        Picker("View", selection: $mode) {
+            Text("List").tag(Mode.list)
+            Text("Calendar").tag(Mode.calendar)
         }
         .pickerStyle(.segmented)
+        .accessibilityIdentifier("history.mode")
         .padding(.horizontal, NBSpacing.l)
         .padding(.vertical, NBSpacing.s)
         .background(.bar)
     }
 
     @ToolbarContentBuilder
-    private func toolbar(days: [TimelineDay]) -> some ToolbarContent {
-        ToolbarItem(placement: .topBarLeading) {
-            Button {
-                jumpDate = days.first?.day ?? .now
-                showingJump = true
-            } label: {
-                Label("Jump to date", systemImage: "calendar")
+    private var toolbar: some ToolbarContent {
+        if mode == .list {
+            ToolbarItem(placement: .topBarLeading) {
+                Menu {
+                    Picker("Show", selection: $filter) {
+                        Label("All feeds", systemImage: "list.bullet").tag(FeedFilter.all)
+                        Label("Breastfeeds", systemImage: "heart").tag(FeedFilter.breast)
+                        Label("Bottles", systemImage: "waterbottle").tag(FeedFilter.bottle)
+                    }
+                } label: {
+                    Label("Filter", systemImage: filter == .all
+                        ? "line.3.horizontal.decrease.circle"
+                        : "line.3.horizontal.decrease.circle.fill")
+                }
+                .accessibilityIdentifier("history.filter")
             }
-            .disabled(days.isEmpty)
         }
         if model != nil || bottleModel != nil {
             ToolbarItem(placement: .topBarTrailing) {
@@ -169,31 +178,6 @@ struct HistoryView: View {
         }
     }
 
-    private func jumpSheet(days: [TimelineDay]) -> some View {
-        NavigationStack {
-            DatePicker("Date", selection: $jumpDate, in: (days.last?.day ?? .now)...Date.now, displayedComponents: .date)
-                .datePickerStyle(.graphical)
-                .padding()
-                .navigationTitle("Jump to date")
-                .navigationBarTitleDisplayMode(.inline)
-                .toolbar {
-                    ToolbarItem(placement: .cancellationAction) {
-                        Button("Cancel") { showingJump = false }
-                    }
-                    ToolbarItem(placement: .confirmationAction) {
-                        Button("Go") {
-                            showingJump = false
-                            // The newest day on or before the chosen date (days are newest first).
-                            let chosen = Calendar.current.startOfDay(for: jumpDate)
-                            let day = days.first(where: { $0.day <= chosen }) ?? days.last
-                            scrollTarget = day?.rows.first?.id
-                        }
-                    }
-                }
-        }
-        .presentationDetents([.medium, .large])
-    }
-
     @ViewBuilder
     private var emptyState: some View {
         if sessions.isEmpty {
@@ -206,7 +190,7 @@ struct HistoryView: View {
             ContentUnavailableView(
                 filter == .bottle ? "No bottle feeds yet" : "No breastfeeds yet",
                 systemImage: "line.3.horizontal.decrease.circle",
-                description: Text("Choose All to see every feed.")
+                description: Text("Choose All feeds in the filter menu to see every feed.")
             )
         }
     }

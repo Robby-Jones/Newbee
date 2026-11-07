@@ -5,6 +5,8 @@ import SwiftUI
 
 /// Monthly feeding calendar (docs/UX_SPEC.md §3.5): a month grid with side and bottle dots,
 /// shaded by how busy each day was, and the selected day's summary underneath.
+///
+/// Shown as History's Calendar mode; `HistoryView` owns the title and the `DayRoute` destination.
 struct CalendarView: View {
     @State private var month: Date = FeedCalendar.startOfMonth(.now)
     @State private var selectedDay: Date? = Calendar.current.startOfDay(for: .now)
@@ -14,18 +16,14 @@ struct CalendarView: View {
         CalendarMonthView(month: month, selectedDay: $selectedDay, changeMonth: changeMonth(by:), showDay: show(day:))
             .id(month)
             .background(NBColor.canvas)
-            .navigationTitle("Calendar")
             .toolbar {
-                ToolbarItem(placement: .topBarTrailing) {
+                ToolbarItem(placement: .topBarLeading) {
                     Button("Today") {
                         month = FeedCalendar.startOfMonth(.now)
                         selectedDay = Calendar.current.startOfDay(for: .now)
                     }
                     .disabled(month == FeedCalendar.startOfMonth(.now) && selectedDay == Calendar.current.startOfDay(for: .now))
                 }
-            }
-            .navigationDestination(for: DayRoute.self) { route in
-                DayFeedsView(day: route.day)
             }
     }
 
@@ -392,7 +390,7 @@ private struct MonthSummary: View {
 #Preview("With feeds") {
     let container = try! PersistenceController.makeContainer(.inMemory)
     HistoryPreviewData.insert(into: container.mainContext)
-    return NavigationStack { CalendarView() }
+    return NavigationStack { CalendarView().navigationDestination(for: DayRoute.self) { DayFeedsView(day: $0.day) } }
         .modelContainer(container)
         .environment(BottleLogUIModel.preview())
 }

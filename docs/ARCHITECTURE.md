@@ -168,10 +168,9 @@ Newbee/
 │   │   ├── Dashboard/
 │   │   ├── Breastfeeding/          # timer screen + edit segments
 │   │   ├── BottleFeeding/
-│   │   ├── Calendar/
+│   │   ├── Calendar/               # History's calendar mode
 │   │   ├── History/
 │   │   ├── Insights/
-│   │   ├── Tools/
 │   │   └── Settings/
 │   ├── Shared/
 │   │   ├── Components/             # Card, StatTile, SideButton, TimerText, UndoToast, EmptyState…

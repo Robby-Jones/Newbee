@@ -5,7 +5,8 @@ import SwiftData
 import SwiftUI
 
 /// Feeding trends (docs/UX_SPEC.md §3.8): feeds per day, intervals, breast side balance, bottle
-/// volume, comparisons and a time-of-day heatmap, each with a one-line plain summary.
+/// volume and a time-of-day heatmap, each with a one-line plain summary that compares with the
+/// previous period. Everything follows the range picker.
 struct InsightsView: View {
     @State private var range: InsightsRange = .week
 
@@ -67,7 +68,9 @@ private struct InsightsContent: View {
     var body: some View {
         let entries = sessions.compactMap(\.feedEntry)
         TimelineView(.everyMinute) { context in
-            let report = InsightsReport(entries: entries, range: range, now: context.date)
+            // The tick's date is the start of the minute; use the real time so a feed logged
+            // since then isn't treated as being in the future and left out.
+            let report = InsightsReport(entries: entries, range: range, now: max(context.date, .now))
             let unit = bottleModel?.unit ?? .milliliters
             ScrollView {
                 VStack(alignment: .leading, spacing: NBSpacing.l) {
@@ -92,10 +95,10 @@ private struct InsightsContent: View {
                         if report.bottle.count > 0 {
                             BottleCard(report: report, unit: unit)
                         }
-                        ComparisonsCard(report: report, unit: unit)
                         if range != .day, !report.isEmpty {
                             HeatmapCard(report: report)
                         }
+                        InsightsFooter(includesEstimated: report.includesEstimated)
                     }
                 }
                 .padding(NBSpacing.l)
@@ -106,11 +109,10 @@ private struct InsightsContent: View {
 
 // MARK: - Cards
 
-/// Title, a one-line summary, the chart, and the disclaimer footer.
+/// Title, a one-line summary, then the chart.
 private struct InsightCard<Content: View>: View {
     let title: LocalizedStringKey
     let summary: String
-    let report: InsightsReport
     @ViewBuilder var content: Content
 
     var body: some View {
@@ -126,17 +128,23 @@ private struct InsightCard<Content: View>: View {
                         .fixedSize(horizontal: false, vertical: true)
                 }
                 content
-                Text(footer)
-                    .font(.caption2)
-                    .foregroundStyle(.tertiary)
             }
         }
     }
+}
 
-    private var footer: String {
+/// The disclaimer, once under all the cards rather than on each.
+private struct InsightsFooter: View {
+    let includesEstimated: Bool
+
+    var body: some View {
         let base = String(localized: "Based on your recorded feeds. Not medical advice.")
-        guard report.includesEstimated else { return base }
-        return base + " " + String(localized: "Includes estimated entries.")
+        Text(includesEstimated ? base + " " + String(localized: "Includes estimated entries.") : base)
+            .font(.caption)
+            .foregroundStyle(.secondary)
+            .frame(maxWidth: .infinity)
+            .multilineTextAlignment(.center)
+            .padding(.top, NBSpacing.s)
     }
 }
 
@@ -158,7 +166,7 @@ private struct FeedsCard: View {
     var body: some View {
         let unit: Calendar.Component = report.range == .day ? .hour : .day
         let average = Double(report.entries.count) / Double(max(1, report.buckets.count))
-        InsightCard(title: report.range == .day ? "Feeds by hour" : "Feeds per day", summary: summary, report: report) {
+        InsightCard(title: report.range == .day ? "Feeds by hour" : "Feeds per day", summary: summary) {
             Chart {
                 ForEach(report.buckets) { bucket in
                     BarMark(x: .value("Time", bucket.start, unit: unit), y: .value("Feeds", bucket.breastCount))
@@ -210,7 +218,7 @@ private struct IntervalsCard: View {
     let report: InsightsReport
 
     var body: some View {
-        InsightCard(title: "Time between feeds", summary: summary, report: report) {
+        InsightCard(title: "Time between feeds", summary: summary) {
             HStack(alignment: .top, spacing: NBSpacing.l) {
                 MiniStat(value: report.averageInterval.map(DurationText.short) ?? "–", label: String(localized: "average"))
                 MiniStat(value: report.shortestInterval.map(DurationText.short) ?? "–", label: String(localized: "shortest"))
@@ -272,7 +280,7 @@ private struct BreastCard: View {
 
     var body: some View {
         let breast = report.breast
-        InsightCard(title: "Breastfeeding", summary: summary, report: report) {
+        InsightCard(title: "Breastfeeding", summary: summary) {
             HStack(alignment: .center, spacing: NBSpacing.l) {
                 Chart {
                     SectorMark(angle: .value("Time", breast.totalLeft), innerRadius: .ratio(0.62), angularInset: 1.5)
@@ -337,7 +345,7 @@ private struct BottleCard: View {
     var body: some View {
         let timeUnit: Calendar.Component = report.range == .day ? .hour : .day
         let bottle = report.bottle
-        InsightCard(title: "Bottles", summary: summary, report: report) {
+        InsightCard(title: "Bottles", summary: summary) {
             HStack(alignment: .top, spacing: NBSpacing.l) {
                 MiniStat(value: FeedText.volume(ml: bottle.totalML, unit: unit), label: String(localized: "total"))
                 MiniStat(value: bottle.averageML.map { FeedText.volume(ml: $0, unit: unit) } ?? "–", label: String(localized: "average bottle"))
@@ -375,96 +383,12 @@ private struct BottleCard: View {
     }
 }
 
-/// 5. Today vs yesterday and this week vs last week, as delta chips.
-private struct ComparisonsCard: View {
-    let report: InsightsReport
-    let unit: VolumeUnit
-
-    var body: some View {
-        InsightCard(title: "Compared with before", summary: summary, report: report) {
-            VStack(alignment: .leading, spacing: NBSpacing.m) {
-                section(String(localized: "Today vs this time yesterday"), report.todayVsYesterday)
-                section(String(localized: "Last 7 days vs the 7 before"), report.weekVsLastWeek)
-            }
-        }
-    }
-
-    private func section(_ title: String, _ comparison: FeedComparison) -> some View {
-        VStack(alignment: .leading, spacing: NBSpacing.s) {
-            Text(title)
-                .font(.subheadline.weight(.semibold))
-            ViewThatFits(in: .horizontal) {
-                HStack(spacing: NBSpacing.s) { chips(comparison) }
-                VStack(alignment: .leading, spacing: NBSpacing.s) { chips(comparison) }
-            }
-        }
-    }
-
-    @ViewBuilder
-    private func chips(_ comparison: FeedComparison) -> some View {
-        DeltaChip(label: String(localized: "Feeds"), value: "\(Int(comparison.feeds.current))", comparison: comparison.feeds,
-                  delta: Self.signed(Int(comparison.feeds.delta)))
-        DeltaChip(label: String(localized: "Breast"), value: DurationText.short(comparison.breastDuration.current), comparison: comparison.breastDuration,
-                  delta: (comparison.breastDuration.delta < 0 ? "−" : "+") + DurationText.short(abs(comparison.breastDuration.delta)))
-        DeltaChip(label: String(localized: "Bottle"), value: FeedText.volume(ml: comparison.bottleML.current, unit: unit), comparison: comparison.bottleML,
-                  delta: (comparison.bottleML.delta < 0 ? "−" : "+") + FeedText.volume(ml: abs(comparison.bottleML.delta), unit: unit))
-    }
-
-    private var summary: String {
-        let today = report.todayVsYesterday.feeds
-        let previous = Int(today.previous)
-        return String(localized: "\(Int(today.current)) feeds so far today; \(previous) by this time yesterday.")
-    }
-
-    static func signed(_ value: Int) -> String {
-        value > 0 ? "+\(value)" : value < 0 ? "−\(abs(value))" : "±0"
-    }
-}
-
-private struct DeltaChip: View {
-    let label: String
-    let value: String
-    let comparison: Comparison
-    let delta: String
-
-    var body: some View {
-        VStack(alignment: .leading, spacing: 2) {
-            Text(label)
-                .font(.caption)
-                .foregroundStyle(.secondary)
-            Text(value)
-                .font(.system(.subheadline, design: .rounded, weight: .bold))
-                .monospacedDigit()
-            HStack(spacing: 2) {
-                Image(systemName: symbol)
-                Text(comparison.direction == .same ? String(localized: "same") : delta)
-            }
-            .font(.caption2.weight(.semibold).monospacedDigit())
-            .foregroundStyle(comparison.direction == .same ? Color.secondary : NBColor.accent)
-        }
-        .padding(.horizontal, NBSpacing.m)
-        .padding(.vertical, NBSpacing.s)
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .background(NBColor.accent.opacity(0.07), in: RoundedRectangle(cornerRadius: NBRadius.control, style: .continuous))
-        .accessibilityElement(children: .combine)
-    }
-
-    /// Neutral arrows: more or fewer feeds is information, not good or bad.
-    private var symbol: String {
-        switch comparison.direction {
-        case .up: "arrow.up.right"
-        case .down: "arrow.down.right"
-        case .same: "equal"
-        }
-    }
-}
-
-/// 6. Hour-of-day × day heatmap.
+/// 5. Hour-of-day × day heatmap.
 private struct HeatmapCard: View {
     let report: InsightsReport
 
     var body: some View {
-        InsightCard(title: "When feeds happen", summary: summary, report: report) {
+        InsightCard(title: "When feeds happen", summary: summary) {
             let days = Array(Set(report.heatmap.map(\.day))).sorted()
             let maxCount = max(1, report.heatmap.map(\.count).max() ?? 1)
             VStack(alignment: .leading, spacing: NBSpacing.xs) {

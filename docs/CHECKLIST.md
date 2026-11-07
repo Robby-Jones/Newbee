@@ -52,7 +52,8 @@ Legend: `[x]` done · `[ ]` pending · `[!]` blocked (reason noted). Updated by 
 - [x] Calendar
 - [x] Analytics (NewbeeKit) + Insights
 - [ ] Reminders + quiet hours
-- [ ] Tools
+- [x] ~~Tools~~ (dropped 2026-11-07: duplicated Home, History and Insights)
+- [x] Navigation simplified to 4 tabs; Calendar is a mode of History; Settings is a tab
 - [ ] CSV / PDF export
 - [ ] Settings + onboarding + delete all data
 
