@@ -46,9 +46,9 @@ Legend: `[x]` done · `[ ]` pending · `[!]` blocked (reason noted). Updated by 
 
 ## Phase 5b: Secondary features
 - [ ] Bottle logging + presets
-- [ ] Manual entry / edit / delete
-- [ ] Dashboard
-- [ ] History timeline
+- [ ] Manual entry / edit / delete (breastfeeds: add, edit in simple or side-change mode, delete with undo; bottles: delete with undo, edit via Log Bottle sheet pending)
+- [x] Dashboard (last feed, time since, next side, today tiles, rolling 24 h)
+- [x] History timeline (grouped by day, gaps, filters, jump to date, review badge)
 - [ ] Calendar
 - [ ] Analytics (NewbeeKit) + Insights
 - [ ] Reminders + quiet hours

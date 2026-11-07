@@ -9,6 +9,8 @@ import Observation
 @Observable
 final class FeedingSessionUIModel {
     let controller: any FeedingSessionControlling
+    /// Deletes and restores bottle feeds from History. `nil` in previews without a store.
+    let bottleFeeds: (any BottleFeedDeleting)?
 
     /// Whether the full-screen timer is showing. Dismissing it never affects the session.
     var isTimerPresented = false
@@ -20,8 +22,9 @@ final class FeedingSessionUIModel {
     /// Changes on every event that should produce a haptic.
     private(set) var feedback: FeedbackEvent?
 
-    init(controller: any FeedingSessionControlling) {
+    init(controller: any FeedingSessionControlling, bottleFeeds: (any BottleFeedDeleting)? = nil) {
         self.controller = controller
+        self.bottleFeeds = bottleFeeds
     }
 
     var activeSession: SessionSnapshot? { controller.activeSession }
@@ -132,13 +135,52 @@ final class FeedingSessionUIModel {
         perform(.light) { try controller.adjustStart(to: date) }
     }
 
+    // MARK: - History
+
+    /// Deletes a finished feed of any kind, with undo.
+    func deleteFeed(_ entry: FeedEntry) {
+        do {
+            switch entry.kind {
+            case .bottle:
+                guard let bottleFeeds else { throw BottleFeedError.notFound }
+                let record = try bottleFeeds.deleteBottleFeed(id: entry.id)
+                toast = UndoToast(message: String(localized: "Bottle deleted"), undo: .bottle(record))
+            default:
+                let deleted = try controller.deleteCompleted(sessionID: entry.id)
+                toast = UndoToast(message: String(localized: "Feed deleted"), undo: .session(deleted))
+            }
+            errorMessage = nil
+            feedback = FeedbackEvent(kind: .light)
+        } catch {
+            fail(error)
+        }
+    }
+
+    /// Saves an edited finished breastfeed. Throws so the edit sheet can show the problem in place.
+    func saveEdit(_ edited: SessionSnapshot) throws {
+        try controller.saveEdit(edited)
+        feedback = FeedbackEvent(kind: .success)
+    }
+
+    /// Adds a finished breastfeed entered by hand.
+    func addManualFeed(_ session: SessionSnapshot) throws {
+        try controller.restore(session)
+        feedback = FeedbackEvent(kind: .success)
+    }
+
     // MARK: - Undo
 
     func undo() {
         guard let toast else { return }
         self.toast = nil
         do {
-            try controller.restore(toast.snapshot)
+            switch toast.undo {
+            case .session(let snapshot):
+                try controller.restore(snapshot)
+            case .bottle(let record):
+                guard let bottleFeeds else { throw BottleFeedError.notFound }
+                try bottleFeeds.restoreBottleFeed(record)
+            }
             completedSummary = nil
             feedback = FeedbackEvent(kind: .light)
         } catch {
@@ -172,12 +214,26 @@ final class FeedingSessionUIModel {
     }
 }
 
-/// A short-lived "Undo" offer (6 s) after ending or discarding a feed.
+/// A short-lived "Undo" offer (6 s) after ending, discarding or deleting a feed.
 struct UndoToast: Identifiable, Equatable {
+    /// What tapping Undo writes back.
+    enum Undo: Equatable {
+        case session(SessionSnapshot)
+        case bottle(BottleFeedRecord)
+    }
+
     let id = UUID()
     var message: String
-    /// The state to write back if the user taps Undo.
-    var snapshot: SessionSnapshot
+    var undo: Undo
+
+    init(message: String, undo: Undo) {
+        self.message = message
+        self.undo = undo
+    }
+
+    init(message: String, snapshot: SessionSnapshot) {
+        self.init(message: message, undo: .session(snapshot))
+    }
 
     static let lifetime: Duration = .seconds(6)
 }

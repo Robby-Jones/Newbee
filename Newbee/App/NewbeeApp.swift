@@ -41,6 +41,10 @@ struct NewbeeApp: App {
     /// The timer UI drives the shared `FeedingSessionManager`, the same instance Live Activity
     /// intents use. UI tests (`-uiTesting`) get it on an in-memory store.
     private static func makeSessionModel() -> FeedingSessionUIModel? {
-        FeedingSessionUIModel(controller: AppDependencies.shared.sessionManager)
+        let dependencies = AppDependencies.shared
+        return FeedingSessionUIModel(
+            controller: dependencies.sessionManager,
+            bottleFeeds: dependencies.modelContainer.map { SwiftDataBottleFeedDeleter(container: $0) }
+        )
     }
 }

@@ -141,6 +141,22 @@ public final class FeedingSessionManager {
         return session
     }
 
+    /// Deletes a finished breastfeed (History's Delete). A running feed is removed with
+    /// `discardActive()` instead, so the Live Activity ends with it.
+    /// - Returns: the deleted session, so the UI can offer undo via `restore`.
+    @discardableResult
+    public func deleteCompleted(sessionID: UUID) throws -> SessionSnapshot {
+        guard let session = try read({ try repository.session(id: sessionID) }) else {
+            throw FeedingSessionError.sessionNotFound(sessionID)
+        }
+        guard session.status == .completed else { throw FeedingSessionError.statusChangeNotAllowed }
+        try write { try repository.delete(sessionID: sessionID) }
+        try? refresh()
+        // "Last side" and reminders may now come from an earlier feed.
+        enqueueEffects(activity: .unchanged, reminders: true)
+        return session
+    }
+
     /// Writes `snapshot` back (undo of end, switch or discard) with a new revision.
     /// Refused if it would create a second active or paused session.
     public func restore(_ snapshot: SessionSnapshot) throws {

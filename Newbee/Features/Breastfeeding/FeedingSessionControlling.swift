@@ -43,7 +43,16 @@ protocol FeedingSessionControlling: AnyObject, Observable {
     func discardActive() throws -> SessionSnapshot
 
     /// Undo: writes `snapshot` back (re-opens an ended session or re-inserts a discarded one).
+    /// Also inserts a new finished feed entered by hand in History.
     func restore(_ snapshot: SessionSnapshot) throws
+
+    /// Saves a hand-edited finished feed (History's Edit). Throws if the times break the session rules.
+    func saveEdit(_ edited: SessionSnapshot) throws
+
+    /// Deletes a finished feed (History's Delete).
+    /// - Returns: the deleted session, so the UI can offer undo via `restore(_:)`.
+    @discardableResult
+    func deleteCompleted(sessionID: UUID) throws -> SessionSnapshot
 
     /// Recovery sheet's "Keep going": clears `recoveryPrompt` without changing the session.
     func dismissRecovery()
@@ -53,4 +62,5 @@ protocol FeedingSessionControlling: AnyObject, Observable {
 enum PreviewSessionError: Error, Equatable {
     case alreadyActive
     case noActiveSession
+    case notFound
 }
