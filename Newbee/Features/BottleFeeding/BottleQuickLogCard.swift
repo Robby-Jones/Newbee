@@ -60,22 +60,25 @@ struct BottleQuickLogCard: View {
 // MARK: - Presentation
 
 extension View {
-    /// Hosts the Log Bottle sheet, its undo toast and errors for the whole app.
+    /// Hosts the Log Bottle sheet, haptics and errors for the whole app.
     func bottleLogPresentation(_ model: BottleLogUIModel?) -> some View {
         modifier(BottleLogPresentation(model: model))
     }
+
+    /// Shows the bottle undo toast at the bottom of this view's safe area. Applied inside each
+    /// tab so the toast sits above the tab bar instead of covering it.
+    func bottleToastHost(_ model: BottleLogUIModel?) -> some View {
+        modifier(BottleToastHost(model: model))
+    }
 }
 
-private struct BottleLogPresentation: ViewModifier {
+private struct BottleToastHost: ViewModifier {
     let model: BottleLogUIModel?
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     func body(content: Content) -> some View {
         if let model {
             content
-                .sheet(item: Binding(get: { model.editor }, set: { model.editor = $0 })) { request in
-                    LogBottleSheet(model: model, draft: request.draft)
-                }
                 .overlay(alignment: .bottom) {
                     if let toast = model.toast {
                         BottleToastView(toast: toast, onUndo: { model.undo() }, onExpire: { model.dismissToast(id: toast.id) })
@@ -84,6 +87,21 @@ private struct BottleLogPresentation: ViewModifier {
                     }
                 }
                 .animation(reduceMotion ? nil : .nbState, value: model.toast)
+        } else {
+            content
+        }
+    }
+}
+
+private struct BottleLogPresentation: ViewModifier {
+    let model: BottleLogUIModel?
+
+    func body(content: Content) -> some View {
+        if let model {
+            content
+                .sheet(item: Binding(get: { model.editor }, set: { model.editor = $0 })) { request in
+                    LogBottleSheet(model: model, draft: request.draft)
+                }
                 .sensoryFeedback(trigger: model.feedback) { _, event in event?.sensoryFeedback }
                 .alert(
                     "Something went wrong",
@@ -155,4 +173,5 @@ extension BottleLogUIModel {
     .background(NBColor.canvas)
     .environment(model)
     .bottleLogPresentation(model)
+    .bottleToastHost(model)
 }

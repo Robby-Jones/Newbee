@@ -28,19 +28,19 @@ struct RootView: View {
         // `.tabItem` + `.tag` rather than the iOS 18 `Tab` API, to support iOS 17.
         TabView(selection: $selection) {
             NavigationStack { DashboardView() }
-                .activeSessionPillInset(sessionModel)
+                .tabChrome(sessionModel, bottleModel)
                 .tabItem { Label("Home", systemImage: "house") }
                 .tag(TabID.home)
             NavigationStack { HistoryView() }
-                .activeSessionPillInset(sessionModel)
+                .tabChrome(sessionModel, bottleModel)
                 .tabItem { Label("History", systemImage: "clock.arrow.circlepath") }
                 .tag(TabID.history)
             NavigationStack { InsightsView() }
-                .activeSessionPillInset(sessionModel)
+                .tabChrome(sessionModel, bottleModel)
                 .tabItem { Label("Insights", systemImage: "chart.bar") }
                 .tag(TabID.insights)
             NavigationStack { SettingsView() }
-                .activeSessionPillInset(sessionModel)
+                .tabChrome(sessionModel, bottleModel)
                 .tabItem { Label("Settings", systemImage: "gearshape") }
                 .tag(TabID.settings)
         }
@@ -53,7 +53,30 @@ struct RootView: View {
     }
 }
 
-/// Presents the timer cover, recovery sheet and undo toast for the whole app.
+private extension View {
+    /// Per-tab bottom chrome: the undo toasts float just above the Active Session Pill, which
+    /// sits just above the tab bar. Hosting the toasts inside each tab (not over the whole
+    /// TabView) keeps them from covering the tab bar for their 6 seconds.
+    func tabChrome(_ sessionModel: FeedingSessionUIModel?, _ bottleModel: BottleLogUIModel?) -> some View {
+        modifier(FeedingToastHost(model: sessionModel))
+            .bottleToastHost(bottleModel)
+            .activeSessionPillInset(sessionModel)
+    }
+}
+
+private struct FeedingToastHost: ViewModifier {
+    let model: FeedingSessionUIModel?
+
+    func body(content: Content) -> some View {
+        if let model {
+            content.undoToastHost(model)
+        } else {
+            content
+        }
+    }
+}
+
+/// Presents the timer cover, recovery sheet, haptics and errors for the whole app.
 private struct FeedingPresentation: ViewModifier {
     let model: FeedingSessionUIModel?
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
@@ -62,7 +85,6 @@ private struct FeedingPresentation: ViewModifier {
         if let model {
             content
                 .animation(reduceMotion ? nil : .nbState, value: model.activeSession?.id)
-                .undoToastHost(model)
                 .sensoryFeedback(trigger: model.feedback) { _, event in
                     // While the timer is up it plays its own feedback.
                     model.isTimerPresented ? nil : event?.sensoryFeedback
