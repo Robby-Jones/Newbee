@@ -19,6 +19,24 @@ Planning docs: [docs/README.md](docs/README.md). Progress: [docs/CHECKLIST.md](d
    Re-run `xcodegen generate` after pulling changes that add or move files. The `.xcodeproj` is generated and not committed.
 4. Choose the **Newbee** scheme and run on your iPhone. With automatic signing, Xcode registers the App Group (`group.<bundle id>`) the first time.
 
+## Getting it on an iPhone without a local Mac (TestFlight)
+
+Building needs Xcode 16 (macOS 14.5+). Without a Mac that runs it, the **TestFlight** workflow
+(`.github/workflows/testflight.yml`) archives, signs and uploads the app from GitHub Actions on
+every push to `main` (or manually from **Actions → TestFlight → Run workflow**). Install builds
+with the TestFlight app on the iPhone.
+
+One-time setup:
+1. developer.apple.com → Identifiers: register App Group `group.com.robbyjones.newbee`, and App IDs
+   `com.robbyjones.newbee` and `com.robbyjones.newbee.widgets`, both with that App Group.
+2. App Store Connect → Apps → New App with bundle ID `com.robbyjones.newbee`.
+3. App Store Connect → Users and Access → Integrations → App Store Connect API: create a Team Key
+   with the **Admin** role (needed for cloud-managed signing) and download the `.p8`.
+4. Repository secrets: `APPLE_TEAM_ID`, `ASC_KEY_ID`, `ASC_ISSUER_ID`, `ASC_KEY_P8` (the `.p8` contents).
+5. App Store Connect → TestFlight: add yourself to an internal testing group.
+
+Without the secrets the workflow skips instead of failing.
+
 ## Layout
 
 | Path | What |
