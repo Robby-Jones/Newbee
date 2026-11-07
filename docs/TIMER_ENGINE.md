@@ -19,9 +19,12 @@ The UI ticks by *re-rendering* that formula, using `TimelineView(.periodic(from:
 |---|---|---|
 | `SessionEngine` | NewbeeKit (pure) | State machine: `apply(_ command: Command, to state: SessionSnapshot?, at now: Instant) throws -> Transition` |
 | `AppClock` | NewbeeKit | `now`, `monotonic` (continuous since boot, includes sleep), `bootID` |
-| `FeedingSessionManager` | App, `@MainActor @Observable` | Loads state, runs the engine, persists, publishes, fans out side effects |
-| `RecoveryCoordinator` | App | Launch and foreground reconciliation, the "still feeding?" flow |
-| `FeedingRepository` | App | SwiftData persistence for snapshots |
+| `RecoveryPlanner`, `SessionValidator` | NewbeeKit (pure) | Recovery decisions; the invariants shared by the engine and manual edits |
+| `FeedingSessionManager` | NewbeeKit `SessionManagement/`, `@MainActor @Observable` | Loads state, runs the engine, persists, publishes, fans out side effects |
+| `RecoveryCoordinator` | NewbeeKit `SessionManagement/` | Launch and foreground reconciliation, the "still feeding?" flow |
+| `FeedingRepository` | Protocol + `InMemoryFeedingRepository` in NewbeeKit; `SwiftDataFeedingRepository` in the app | Persistence for snapshots |
+
+The manager and coordinator talk to storage and ActivityKit only through protocols (`FeedingRepository`, `LiveActivitySyncing`, `ReminderScheduling`), so they live in NewbeeKit and are tested on Linux with fakes. The app supplies the SwiftData repository and the ActivityKit coordinator.
 
 ### Value types (NewbeeKit)
 ```swift

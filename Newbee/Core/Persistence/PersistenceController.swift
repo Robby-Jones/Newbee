@@ -8,6 +8,9 @@ enum PersistenceController {
         case appGroup
         /// An in-memory store for previews, UI tests and integration tests.
         case inMemory
+        /// A store at a specific file, used by tests that simulate the app being terminated
+        /// and relaunched on the same data.
+        case file(URL)
     }
 
     static func makeContainer(_ storage: Storage) throws -> ModelContainer {
@@ -16,6 +19,8 @@ enum PersistenceController {
         switch storage {
         case .inMemory:
             configuration = ModelConfiguration(schema: schema, isStoredInMemoryOnly: true, cloudKitDatabase: .none)
+        case .file(let url):
+            configuration = ModelConfiguration(schema: schema, url: url, cloudKitDatabase: .none)
         case .appGroup:
             configuration = ModelConfiguration(
                 schema: schema,
@@ -41,11 +46,14 @@ enum PersistenceController {
 
 enum PersistenceError: LocalizedError {
     case appGroupUnavailable(String)
+    case storeUnavailable(String)
 
     var errorDescription: String? {
         switch self {
         case .appGroupUnavailable(let id):
             "The shared app container (\(id)) is unavailable. Check the App Group entitlement."
+        case .storeUnavailable(let reason):
+            "Your feeding data couldn't be opened: \(reason)"
         }
     }
 }

@@ -33,15 +33,15 @@ Legend: `[x]` done · `[ ]` pending · `[!]` blocked (reason noted). Updated by 
 - [ ] Builds on Robby's Mac; launches on Robby's iPhone (Robby)
 
 ## Phase 5a: Core subsystem (critical gate)
-- [ ] Domain types + SessionEngine + TestClock + unit tests
-- [ ] SwiftData schema V1 + repository + migration plan
-- [ ] FeedingSessionManager + integration tests
+- [x] Domain types + SessionEngine + TestClock + unit tests (state table, rapid taps, midnight/DST, clock jumps, reboot; Linux)
+- [x] SwiftData schema V1 + repository + migration plan (`SwiftDataFeedingRepository`, snapshot mapping)
+- [x] FeedingSessionManager + integration tests (save-before-effects, ordered effects, undo via restore, stale intents, termination/relaunch)
 - [ ] Breastfeeding timer UI + pill + undo
 - [ ] ActivityAttributes + LiveActivityCoordinator
 - [ ] Lock Screen presentation
 - [ ] Dynamic Island compact / minimal / expanded
 - [ ] Interactive intents
-- [ ] RecoveryCoordinator + recovery sheet + "still feeding?" notification
+- [ ] RecoveryCoordinator + recovery sheet + "still feeding?" notification (coordinator + `RecoveryPrompt` done; sheet in timer UI thread; notification with reminders in 5b)
 - [ ] Device tests D1–D18 passed (Robby)
 
 ## Phase 5b: Secondary features
