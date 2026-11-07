@@ -45,7 +45,7 @@ Legend: `[x]` done · `[ ]` pending · `[!]` blocked (reason noted). Updated by 
 - [ ] Device tests D1–D18 passed (Robby)
 
 ## Phase 5b: Secondary features
-- [ ] Bottle logging + presets
+- [x] Bottle logging + presets (default presets 60/90/120 mL or 2/3/4 oz; editing them lands with Settings)
 - [ ] Manual entry / edit / delete
 - [ ] Dashboard
 - [ ] History timeline

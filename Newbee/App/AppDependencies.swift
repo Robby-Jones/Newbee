@@ -23,6 +23,10 @@ final class AppDependencies {
     let recovery: RecoveryCoordinator
     /// Shared by recovery and the Live Activity's "Still feeding?" hint so both agree on thresholds.
     let recoveryPolicy: RecoveryPolicy
+    /// Bottle feeds: instant entries, separate from the breastfeeding session manager.
+    let bottleLog: BottleLog
+    /// Units and presets (App Group `UserDefaults`).
+    let preferences: AppPreferences
 
     init(
         clock: any AppClock = SystemClock(),
@@ -44,11 +48,17 @@ final class AppDependencies {
         storeError = error
 
         let repository: any FeedingRepository
+        let bottleRepository: any BottleRepository
         if let container {
             repository = SwiftDataFeedingRepository(container: container)
+            bottleRepository = SwiftDataBottleRepository(container: container)
         } else {
-            repository = UnavailableFeedingRepository(reason: error?.localizedDescription ?? "unknown error")
+            let reason = error?.localizedDescription ?? "unknown error"
+            repository = UnavailableFeedingRepository(reason: reason)
+            bottleRepository = UnavailableBottleRepository(reason: reason)
         }
+        bottleLog = BottleLog(repository: bottleRepository, clock: clock)
+        preferences = AppPreferences(defaults: AppPreferences.makeDefaults())
 
         // One policy for recovery and for the Live Activity's "Still feeding?" hint.
         let policy = RecoveryPolicy()

@@ -7,6 +7,10 @@ import SwiftUI
 struct NewbeeApp: App {
     private let dependencies = AppDependencies.shared
     @State private var sessionModel = NewbeeApp.makeSessionModel()
+    @State private var bottleModel = BottleLogUIModel(
+        log: AppDependencies.shared.bottleLog,
+        preferences: AppDependencies.shared.preferences
+    )
     @Environment(\.scenePhase) private var scenePhase
 
     init() {
@@ -18,7 +22,7 @@ struct NewbeeApp: App {
         WindowGroup {
             if let container = dependencies.modelContainer {
                 let recovery = dependencies.recovery
-                RootView(sessionModel: sessionModel)
+                RootView(sessionModel: sessionModel, bottleModel: bottleModel)
                     .modelContainer(container)
                     // Restore any session interrupted by termination, reboot or a clock change
                     // (docs/TIMER_ENGINE.md §5). Reconciling is idempotent, so overlapping
@@ -27,6 +31,8 @@ struct NewbeeApp: App {
                     .onChange(of: scenePhase) { _, phase in
                         if phase == .active {
                             Task { await recovery.reconcile() }
+                            // Today's bottle total rolls over at midnight.
+                            bottleModel.refresh()
                         }
                     }
                     .onReceive(NotificationCenter.default.publisher(for: .NSSystemClockDidChange)) { _ in
