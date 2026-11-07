@@ -8,7 +8,7 @@ import SwiftData
 /// is optional, and there are no unique constraints. Enums are stored as raw strings so predicates
 /// work and values stay stable.
 enum NewbeeSchemaV1: VersionedSchema {
-    static let versionIdentifier = Schema.Version(1, 0, 0)
+    static var versionIdentifier: Schema.Version { Schema.Version(1, 0, 0) }
 
     static var models: [any PersistentModel.Type] {
         [Baby.self, FeedingSession.self, FeedingSegment.self, BottleDetails.self]
