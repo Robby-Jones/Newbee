@@ -49,8 +49,8 @@ Legend: `[x]` done · `[ ]` pending · `[!]` blocked (reason noted). Updated by 
 - [x] Manual entry / edit / delete (breastfeeds: add, edit in simple or side-change mode; bottles via Log Bottle sheet; delete with undo from History)
 - [x] Dashboard (last feed, time since, next side, today tiles, rolling 24 h)
 - [x] History timeline (grouped by day, gaps, filters, jump to date, review badge)
-- [ ] Calendar
-- [ ] Analytics (NewbeeKit) + Insights
+- [x] Calendar
+- [x] Analytics (NewbeeKit) + Insights
 - [ ] Reminders + quiet hours
 - [ ] Tools
 - [ ] CSV / PDF export
