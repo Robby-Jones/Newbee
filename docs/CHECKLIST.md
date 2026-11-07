@@ -29,7 +29,7 @@ Legend: `[x]` done · `[ ]` pending · `[!]` blocked (reason noted). Updated by 
 - [x] Domain contract types (`SessionSnapshot`, `Segment`, enums), `AppClock`/`SystemClock`/`TestClock`
 - [x] Baseline Live Activity (proves extension + shared attributes + system timer)
 - [x] NewbeeKit tests pass on Linux (Swift 6.2)
-- [ ] CI: core-linux + ios jobs green
+- [x] CI: core-linux + ios jobs green (11 NewbeeKit tests on Linux; 3 persistence tests + 1 UI launch test on iOS simulator)
 - [ ] Builds on Robby's Mac; launches on Robby's iPhone (Robby)
 
 ## Phase 5a: Core subsystem (critical gate)
