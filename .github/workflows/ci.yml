@@ -1,0 +1,56 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  core-linux:
+    name: NewbeeKit tests (Linux)
+    runs-on: ubuntu-latest
+    container: swift:6.1-noble
+    steps:
+      - uses: actions/checkout@v4
+      - name: Test NewbeeKit
+        working-directory: Packages/NewbeeKit
+        run: swift test --parallel
+
+  ios:
+    name: iOS build and tests
+    runs-on: macos-15
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+      - name: Select Xcode
+        run: |
+          sudo xcode-select -s "$(ls -d /Applications/Xcode_16*.app | sort -V | tail -1)"
+          xcodebuild -version
+      - name: Install XcodeGen and xcbeautify
+        run: brew install xcodegen xcbeautify
+      - name: Generate project
+        run: xcodegen generate
+      - name: Pick simulator
+        id: sim
+        run: echo "udid=$(scripts/pick-simulator.sh)" >> "$GITHUB_OUTPUT"
+      - name: Build and test
+        run: |
+          set -o pipefail
+          xcodebuild test \
+            -project Newbee.xcodeproj \
+            -scheme Newbee \
+            -destination "id=${{ steps.sim.outputs.udid }}" \
+            -resultBundlePath TestResults.xcresult \
+            CODE_SIGNING_ALLOWED=NO \
+            | xcbeautify --renderer github-actions
+      - name: Upload test results
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: TestResults
+          path: TestResults.xcresult

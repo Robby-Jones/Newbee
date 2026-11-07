@@ -1,0 +1,142 @@
+# XcodeGen spec: the source of truth for Newbee.xcodeproj (ADR-006).
+# Generate the project with:  xcodegen generate
+name: Newbee
+
+options:
+  deploymentTarget:
+    iOS: "18.0"
+  createIntermediateGroups: true
+  groupSortPosition: top
+  generateEmptyDirectories: true
+
+configFiles:
+  Debug: Config/Base.xcconfig
+  Release: Config/Base.xcconfig
+
+settings:
+  base:
+    SWIFT_VERSION: "6.0"
+    MARKETING_VERSION: "0.1.0"
+    CURRENT_PROJECT_VERSION: "1"
+    CODE_SIGN_STYLE: Automatic
+    ENABLE_USER_SCRIPT_SANDBOXING: YES
+    SWIFT_STRICT_CONCURRENCY: complete
+    LOCALIZATION_PREFERS_STRING_CATALOGS: YES
+
+packages:
+  NewbeeKit:
+    path: Packages/NewbeeKit
+  NewbeeShared:
+    path: Packages/NewbeeShared
+
+targets:
+  Newbee:
+    type: application
+    platform: iOS
+    sources:
+      - path: Newbee
+    dependencies:
+      - package: NewbeeKit
+      - package: NewbeeShared
+      - target: NewbeeWidgets
+    info:
+      path: Newbee/Info.plist
+      properties:
+        CFBundleDisplayName: Newbee
+        CFBundleShortVersionString: $(MARKETING_VERSION)
+        CFBundleVersion: $(CURRENT_PROJECT_VERSION)
+        LSApplicationCategoryType: public.app-category.healthcare-fitness
+        NSSupportsLiveActivities: true
+        NewbeeAppGroup: $(NEWBEE_APP_GROUP)
+        UILaunchScreen:
+          UIColorName: AccentColor
+        UIApplicationSceneManifest:
+          UIApplicationSupportsMultipleScenes: false
+        UISupportedInterfaceOrientations:
+          - UIInterfaceOrientationPortrait
+        ITSAppUsesNonExemptEncryption: false
+    entitlements:
+      path: Newbee/Newbee.entitlements
+      properties:
+        com.apple.security.application-groups:
+          - $(NEWBEE_APP_GROUP)
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: $(NEWBEE_BUNDLE_ID)
+        PRODUCT_NAME: Newbee
+        TARGETED_DEVICE_FAMILY: "1"
+        ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
+        ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME: AccentColor
+        SUPPORTS_MACCATALYST: NO
+
+  NewbeeWidgets:
+    type: app-extension
+    platform: iOS
+    sources:
+      - path: NewbeeWidgets
+    dependencies:
+      - package: NewbeeKit
+      - package: NewbeeShared
+      - sdk: WidgetKit.framework
+      - sdk: SwiftUI.framework
+    info:
+      path: NewbeeWidgets/Info.plist
+      properties:
+        CFBundleDisplayName: Newbee
+        CFBundleShortVersionString: $(MARKETING_VERSION)
+        CFBundleVersion: $(CURRENT_PROJECT_VERSION)
+        NewbeeAppGroup: $(NEWBEE_APP_GROUP)
+        NSExtension:
+          NSExtensionPointIdentifier: com.apple.widgetkit-extension
+    entitlements:
+      path: NewbeeWidgets/NewbeeWidgets.entitlements
+      properties:
+        com.apple.security.application-groups:
+          - $(NEWBEE_APP_GROUP)
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: $(NEWBEE_BUNDLE_ID).widgets
+        TARGETED_DEVICE_FAMILY: "1"
+        SKIP_INSTALL: YES
+
+  NewbeeTests:
+    type: bundle.unit-test
+    platform: iOS
+    sources:
+      - path: NewbeeTests
+    dependencies:
+      - target: Newbee
+    settings:
+      base:
+        GENERATE_INFOPLIST_FILE: YES
+        PRODUCT_BUNDLE_IDENTIFIER: $(NEWBEE_BUNDLE_ID).tests
+
+  NewbeeUITests:
+    type: bundle.ui-testing
+    platform: iOS
+    sources:
+      - path: NewbeeUITests
+    dependencies:
+      - target: Newbee
+    settings:
+      base:
+        GENERATE_INFOPLIST_FILE: YES
+        PRODUCT_BUNDLE_IDENTIFIER: $(NEWBEE_BUNDLE_ID).uitests
+
+schemes:
+  Newbee:
+    build:
+      targets:
+        Newbee: all
+    run:
+      config: Debug
+    test:
+      config: Debug
+      gatherCoverageData: true
+      coverageTargets:
+        - Newbee
+      targets:
+        - name: NewbeeTests
+        - name: NewbeeUITests
+    archive:
+      config: Release

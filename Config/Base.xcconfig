@@ -1,0 +1,11 @@
+// Shared build settings. Personal signing values go in Config/Signing.local.xcconfig
+// (git-ignored); copy Config/Signing.local.xcconfig.example to create it.
+
+NEWBEE_BUNDLE_PREFIX = com.robbyjones
+NEWBEE_DEVELOPMENT_TEAM =
+
+#include? "Signing.local.xcconfig"
+
+NEWBEE_BUNDLE_ID = $(NEWBEE_BUNDLE_PREFIX).newbee
+NEWBEE_APP_GROUP = group.$(NEWBEE_BUNDLE_ID)
+DEVELOPMENT_TEAM = $(NEWBEE_DEVELOPMENT_TEAM)
