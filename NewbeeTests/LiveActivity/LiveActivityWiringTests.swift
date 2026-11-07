@@ -66,6 +66,30 @@ struct LiveActivityWiringTests {
         #expect(visible.first?.state.status == .paused)
     }
 
+    @Test func undoOnTheSummaryReopensTheFeedAndItsActivity() async throws {
+        let clock = TestClock()
+        let client = FakeLiveActivityClient()
+        let coordinator = LiveActivityCoordinator(client: client, clock: clock)
+        let dependencies = AppDependencies(clock: clock, storage: .inMemory, liveActivity: coordinator)
+        let manager = dependencies.sessionManager
+
+        try manager.start(side: .left)
+        await manager.waitForPendingEffects()
+        let id = try #require(manager.activeSession?.id)
+        clock.advance(by: 8 * 60)
+        await manager.handleLiveActivityCommand(.end, sessionID: id)
+        #expect(client.activities[0].state.status == .ended)
+
+        clock.advance(by: 20)
+        await manager.handleLiveActivityCommand(.undoEnd, sessionID: id)
+        #expect(manager.activeSession?.id == id)
+        #expect(manager.activeSession?.status == .active)
+        let visible = client.activities.filter { $0.phase != .dismissed }
+        #expect(visible.count == 1)
+        #expect(visible.first?.state.status == .active)
+        #expect(visible.first?.state.currentSide == .left)
+    }
+
     @Test(arguments: [
         (LiveActivityCommand.switchTo(.left), SessionCommand.switchTo(.left)),
         (.switchTo(.right), .switchTo(.right)),
@@ -75,5 +99,9 @@ struct LiveActivityWiringTests {
     ])
     func commandMapping(button: LiveActivityCommand, engine: SessionCommand) {
         #expect(SessionCommand(button) == engine)
+    }
+
+    @Test func undoIsNotAnEngineCommand() {
+        #expect(SessionCommand(LiveActivityCommand.undoEnd) == nil)
     }
 }

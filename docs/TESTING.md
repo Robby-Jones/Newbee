@@ -51,6 +51,7 @@ Run each case on an **iPhone 14 Pro or later** (Dynamic Island). Where marked �
 | D3 | Switch side from Lock Screen ×5 rapidly† | Final side correct; no duplicate segments; app agrees |
 | D4 | Pause / resume from island expanded | State and timers frozen and resumed correctly |
 | D5 | End from Lock Screen† | Activity shows final summary, dismisses after the policy; session completed in History |
+| D5c | End from the Lock Screen, then tap **Undo end** on the summary (also from the island) | Feed is back on the same side and still running; app shows it running; only one activity visible |
 | D5b | Within 15 min of D5: tap Undo in the app, or start the next feed† | The "Feed complete" summary disappears at once; only one activity is on the Lock Screen / island |
 | D6 | Double-tap End | One completed session, no errors |
 | D7 | Background app, open 3 other apps, return | Timer accurate |

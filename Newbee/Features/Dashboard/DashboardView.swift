@@ -9,13 +9,6 @@ struct DashboardView: View {
     @Environment(FeedingSessionUIModel.self) private var sessionModel: FeedingSessionUIModel?
     /// Enough recent feeds for "today" and the rolling 24 hours, even on a very busy day.
     @Query(FeedingSession.completedFeeds(limit: 80)) private var recent: [FeedingSession]
-    /// Shows the Log bottle entry point when set (RootView wires it to the bottle sheet).
-    private let onLogBottle: (() -> Void)?
-
-    init(onLogBottle: (() -> Void)? = nil) {
-        self.onLogBottle = onLogBottle
-    }
-
     var body: some View {
         let entries = recent.compactMap(\.feedEntry)
         // Minute ticks keep "2 h 14 min ago" and the day boundary current without per-second work.
@@ -29,9 +22,8 @@ struct DashboardView: View {
                     if let sessionModel {
                         BreastfeedingQuickStart(model: sessionModel)
                     }
-                    if let onLogBottle {
-                        LogBottleButton(action: onLogBottle)
-                    }
+                    // "Log bottle" with today's bottle total and the last few bottles.
+                    BottleQuickLogCard()
                     TodaySection(summary: summary)
                 }
                 .padding(NBSpacing.l)
@@ -106,21 +98,6 @@ private struct LastFeedCard: View {
                 .foregroundStyle(.secondary)
         }
         .padding(.top, NBSpacing.xs)
-    }
-}
-
-private struct LogBottleButton: View {
-    let action: () -> Void
-
-    var body: some View {
-        Button(action: action) {
-            Card {
-                Label("Log bottle", systemImage: "waterbottle.fill")
-                    .font(.headline)
-                    .foregroundStyle(Color.primary)
-            }
-        }
-        .buttonStyle(PressableButtonStyle())
     }
 }
 
@@ -243,9 +220,10 @@ struct BreastfeedingQuickStart: View {
 #Preview("Idle") {
     let container = try! PersistenceController.makeContainer(.inMemory)
     HistoryPreviewData.insert(into: container.mainContext)
-    return NavigationStack { DashboardView(onLogBottle: {}) }
+    return NavigationStack { DashboardView() }
         .modelContainer(container)
         .environment(FeedingSessionUIModel(controller: PreviewSessionController.idleFixture()))
+        .environment(BottleLogUIModel.preview())
 }
 
 #Preview("Empty") {

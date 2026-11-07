@@ -4,7 +4,8 @@ import SwiftData
 import Testing
 @testable import Newbee
 
-/// History and Home against a real SwiftData store: mapping, delete with undo, manual entry.
+/// History and Home against a real SwiftData store: mapping, breastfeed delete with undo, manual entry.
+/// Bottle delete and undo are covered by the bottle tests (`BottleLogUIModel`).
 @MainActor
 @Suite("History integration")
 struct HistoryIntegrationTests {
@@ -13,7 +14,7 @@ struct HistoryIntegrationTests {
     func makeStack() throws -> (ModelContainer, FeedingSessionManager, FeedingSessionUIModel) {
         let container = try makeInMemoryContainer()
         let manager = FeedingSessionManager(repository: SwiftDataFeedingRepository(container: container), clock: clock)
-        let model = FeedingSessionUIModel(controller: manager, bottleFeeds: SwiftDataBottleFeedDeleter(container: container))
+        let model = FeedingSessionUIModel(controller: manager)
         return (container, manager, model)
     }
 
@@ -62,7 +63,7 @@ struct HistoryIntegrationTests {
         try manager.end()
         let entry = try #require(try completedEntries(container).first)
 
-        model.deleteFeed(entry)
+        model.deleteFeed(id: entry.id)
         #expect(try completedEntries(container).isEmpty)
         #expect(try container.mainContext.fetchCount(FetchDescriptor<FeedingSegment>()) == 0)
         #expect(manager.lastCompletedSession == nil)
@@ -73,24 +74,6 @@ struct HistoryIntegrationTests {
         #expect(restored.map(\.id) == [entry.id])
         #expect(restored.first?.breastDuration == entry.breastDuration)
         #expect(manager.lastCompletedSession?.id == entry.id)
-        #expect(model.errorMessage == nil)
-    }
-
-    @Test func deletingABottleRemovesItsDetailsAndUndoBringsItBack() throws {
-        let (container, _, model) = try makeStack()
-        let bottle = try insertBottle(container.mainContext, at: clock.now)
-        let entry = try #require(bottle.feedEntry)
-
-        model.deleteFeed(entry)
-        #expect(try completedEntries(container).isEmpty)
-        #expect(try container.mainContext.fetchCount(FetchDescriptor<BottleDetails>()) == 0)
-
-        model.undo()
-        let restored = try #require(try completedEntries(container).first)
-        #expect(restored.id == entry.id)
-        #expect(restored.details == entry.details)
-        #expect(restored.notes == entry.notes)
-        #expect(restored.start == entry.start)
         #expect(model.errorMessage == nil)
     }
 

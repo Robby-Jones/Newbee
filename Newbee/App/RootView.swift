@@ -11,11 +11,14 @@ struct RootView: View {
 
     /// `nil` only when no session manager is available (Release builds before integration).
     let sessionModel: FeedingSessionUIModel?
+    /// Log Bottle sheet and its undo toast; `nil` in previews that don't need it.
+    let bottleModel: BottleLogUIModel?
 
     @State private var selection: TabID = .home
 
-    init(sessionModel: FeedingSessionUIModel? = nil) {
+    init(sessionModel: FeedingSessionUIModel? = nil, bottleModel: BottleLogUIModel? = nil) {
         self.sessionModel = sessionModel
+        self.bottleModel = bottleModel
     }
 
     var body: some View {
@@ -44,7 +47,9 @@ struct RootView: View {
         }
         .tint(NBColor.accent)
         .environment(sessionModel)
+        .environment(bottleModel)
         .modifier(FeedingPresentation(model: sessionModel))
+        .bottleLogPresentation(bottleModel)
     }
 }
 
@@ -90,7 +95,10 @@ struct StoreErrorView: View {
 }
 
 #Preview("Idle") {
-    RootView(sessionModel: FeedingSessionUIModel(controller: PreviewSessionController.idleFixture()))
+    RootView(
+        sessionModel: FeedingSessionUIModel(controller: PreviewSessionController.idleFixture()),
+        bottleModel: .preview()
+    )
         .modelContainer(try! PersistenceController.makeContainer(.inMemory))
 }
 

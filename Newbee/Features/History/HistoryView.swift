@@ -9,6 +9,7 @@ import SwiftUI
 /// jump to a date, and add a feed that wasn't timed.
 struct HistoryView: View {
     @Environment(FeedingSessionUIModel.self) private var model: FeedingSessionUIModel?
+    @Environment(BottleLogUIModel.self) private var bottleModel: BottleLogUIModel?
     @Query(FeedingSession.completedFeeds()) private var sessions: [FeedingSession]
 
     @State private var filter: FeedFilter = .all
@@ -76,7 +77,7 @@ struct HistoryView: View {
             titleVisibility: .visible,
             presenting: pendingDelete
         ) { entry in
-            Button("Delete feed", role: .destructive) { model?.deleteFeed(entry) }
+            Button("Delete feed", role: .destructive) { delete(entry) }
         } message: { _ in
             Text("You can undo for a few seconds afterwards.")
         }
@@ -86,7 +87,7 @@ struct HistoryView: View {
 
     private func rowView(_ row: TimelineRow) -> some View {
         let entry = row.entry
-        let canEdit = model != nil && entry.kind == .breast
+        let canEdit = entry.kind == .bottle ? bottleModel != nil : model != nil
         return Button {
             edit(entry)
         } label: {
@@ -95,7 +96,7 @@ struct HistoryView: View {
         .buttonStyle(.plain)
         .listRowBackground(Color.clear)
         .swipeActions(edge: .trailing, allowsFullSwipe: false) {
-            if model != nil {
+            if canEdit {
                 Button("Delete", systemImage: "trash", role: .destructive) { pendingDelete = entry }
             }
         }
@@ -109,9 +110,22 @@ struct HistoryView: View {
     }
 
     private func edit(_ entry: FeedEntry) {
-        // Bottle feeds open the Log Bottle sheet once bottle editing lands.
-        guard entry.kind == .breast, let session = sessions.first(where: { $0.id == entry.id }) else { return }
+        if entry.kind == .bottle {
+            bottleModel?.presentEdit(sessionID: entry.id)
+            return
+        }
+        guard let session = sessions.first(where: { $0.id == entry.id }) else { return }
         editing = .breast(session.sessionSnapshot)
+    }
+
+    /// Breastfeeds go through the session manager (keeps "last side" right); bottles through
+    /// the bottle log. Both offer undo.
+    private func delete(_ entry: FeedEntry) {
+        if entry.kind == .bottle {
+            bottleModel?.delete(id: entry.id)
+        } else {
+            model?.deleteFeed(id: entry.id)
+        }
     }
 
     // MARK: - Chrome
@@ -139,10 +153,15 @@ struct HistoryView: View {
             }
             .disabled(days.isEmpty)
         }
-        if model != nil {
+        if model != nil || bottleModel != nil {
             ToolbarItem(placement: .topBarTrailing) {
                 Menu {
-                    Button("Breastfeed", systemImage: "heart") { editing = .newBreast }
+                    if model != nil {
+                        Button("Breastfeed", systemImage: "heart") { editing = .newBreast }
+                    }
+                    if let bottleModel {
+                        Button("Bottle", systemImage: "waterbottle") { bottleModel.presentNew() }
+                    }
                 } label: {
                     Label("Add feed", systemImage: "plus")
                 }
@@ -212,6 +231,7 @@ private enum EditTarget: Identifiable {
     return NavigationStack { HistoryView() }
         .modelContainer(container)
         .environment(FeedingSessionUIModel(controller: PreviewSessionController.idleFixture()))
+        .environment(BottleLogUIModel.preview())
 }
 
 #Preview("Empty") {

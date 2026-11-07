@@ -45,8 +45,8 @@ Legend: `[x]` done · `[ ]` pending · `[!]` blocked (reason noted). Updated by 
 - [ ] Device tests D1–D18 passed (Robby)
 
 ## Phase 5b: Secondary features
-- [ ] Bottle logging + presets
-- [ ] Manual entry / edit / delete (breastfeeds: add, edit in simple or side-change mode, delete with undo; bottles: delete with undo, edit via Log Bottle sheet pending)
+- [x] Bottle logging + presets (default presets 60/90/120 mL or 2/3/4 oz; editing them lands with Settings)
+- [x] Manual entry / edit / delete (breastfeeds: add, edit in simple or side-change mode; bottles via Log Bottle sheet; delete with undo from History)
 - [x] Dashboard (last feed, time since, next side, today tiles, rolling 24 h)
 - [x] History timeline (grouped by day, gaps, filters, jump to date, review badge)
 - [ ] Calendar

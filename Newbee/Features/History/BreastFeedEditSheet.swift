@@ -116,7 +116,7 @@ struct BreastFeedEditSheet: View {
                     }
                     .confirmationDialog("Delete this feed?", isPresented: $confirmingDelete, titleVisibility: .visible) {
                         Button("Delete feed", role: .destructive) {
-                            model.deleteFeed(FeedEntry(breast: original))
+                            model.deleteFeed(id: original.id)
                             dismiss()
                         }
                     } message: {
