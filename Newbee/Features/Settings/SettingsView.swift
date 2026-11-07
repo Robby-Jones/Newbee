@@ -8,7 +8,7 @@ import UIKit
 /// Settings (docs/UX_SPEC.md §3.10): baby profile, units and bottle presets, reminders,
 /// Live Activities, appearance, data (export, backup, delete all) and about.
 ///
-/// Reached from the gear on Home (as a sheet) and from Tools (pushed).
+/// The Settings tab.
 struct SettingsView: View {
     @Environment(AppPreferences.self) private var preferences: AppPreferences?
     @Environment(ReminderScheduler.self) private var reminders: ReminderScheduler?
@@ -26,7 +26,6 @@ struct SettingsView: View {
             AboutSection()
         }
         .navigationTitle("Settings")
-        .navigationBarTitleDisplayMode(.inline)
         .task { await reminders?.reschedule() }
     }
 }
@@ -65,9 +64,9 @@ private struct BabyProfileSection: View {
             Text("Baby")
         } footer: {
             if let birthDate = baby?.birthDate {
-                Text(Self.age(from: birthDate))
+                Text(BabyAge.text(from: birthDate))
             } else {
-                Text("Optional. Only used on this iPhone.")
+                Text("Optional. Shown on Home and only stored on this iPhone.")
             }
         }
     }
@@ -83,9 +82,11 @@ private struct BabyProfileSection: View {
         change(baby)
         try? context.save()
     }
+}
 
-    /// "3 weeks, 2 days old", "4 months old".
-    static func age(from birth: Date, now: Date = .now, calendar: Calendar = .current) -> String {
+/// "3 wk 2 d old", "4 mo 1 wk old". Shown in Settings and on Home.
+enum BabyAge {
+    static func text(from birth: Date, now: Date = .now, calendar: Calendar = .current) -> String {
         let parts = calendar.dateComponents([.month, .weekOfMonth, .day], from: calendar.startOfDay(for: birth), to: calendar.startOfDay(for: now))
         let months = parts.month ?? 0
         let weeks = parts.weekOfMonth ?? 0

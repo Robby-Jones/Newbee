@@ -1,6 +1,6 @@
 import XCTest
 
-/// Calendar and Insights pick up a feed logged on Home (docs/UX_SPEC.md §3.5, §3.8).
+/// History (list and calendar) and Insights pick up a feed logged on Home (docs/UX_SPEC.md §3.5, §3.6, §3.8).
 final class CalendarInsightsFlowTests: XCTestCase {
     override func setUpWithError() throws {
         continueAfterFailure = false
@@ -23,11 +23,15 @@ final class CalendarInsightsFlowTests: XCTestCase {
         let saved = NSPredicate(format: "label CONTAINS %@", "120 mL")
         XCTAssertEqual(XCTWaiter().wait(for: [XCTNSPredicateExpectation(predicate: saved, object: logBottle)], timeout: 5), .completed, logBottle.label)
 
-        // Calendar opens on today, selected, with the bottle in its summary.
-        let calendarTab = app.tabBars.buttons["Calendar"]
-        XCTAssertTrue(calendarTab.waitForExistence(timeout: 5), "Calendar tab missing")
-        calendarTab.tap()
-        XCTAssertTrue(app.navigationBars["Calendar"].waitForExistence(timeout: 5), "Calendar didn't open")
+        // History's Calendar mode opens on today, selected, with the bottle in its summary.
+        let historyTab = app.tabBars.buttons["History"]
+        XCTAssertTrue(historyTab.waitForExistence(timeout: 5), "History tab missing")
+        historyTab.tap()
+        XCTAssertTrue(app.navigationBars["History"].waitForExistence(timeout: 5), "History didn't open")
+        XCTAssertTrue(element(in: app, containing: "Bottle · 120 mL").waitForExistence(timeout: 5), "List has no bottle row")
+        let calendarMode = app.segmentedControls.buttons["Calendar"].firstMatch
+        XCTAssertTrue(calendarMode.waitForExistence(timeout: 5), "Calendar mode missing")
+        calendarMode.tap()
         let openDay = app.buttons.matching(NSPredicate(format: "identifier == %@ OR label == %@", "calendar.openDay", "Open day")).firstMatch
         if !openDay.waitForExistence(timeout: 3) {
             app.swipeUp()

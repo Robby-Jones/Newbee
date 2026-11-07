@@ -8,16 +8,27 @@ Status: **Draft for approval** · Deliverables 6 (navigation) and 7 (preliminary
 
 ```
 TabView
-├── Home        (house)          ← default tab
-├── Calendar    (calendar)
-├── History     (list.bullet)
+├── Home        (house)                   ← default tab
+├── History     (clock.arrow.circlepath)  → List | Calendar switch at the top
 ├── Insights    (chart.bar)
-└── Tools       (wrench.and.screwdriver) → Settings lives here too
+└── Settings    (gearshape)
 ```
+
+**Why four tabs (revised 2026-11-07).** The first build had five: Home, Calendar, History,
+Insights, Tools. In use they overlapped. Calendar and History were two views of the same past
+feeds, and every Tools card repeated something already elsewhere: "since last feed" (Home),
+the side tracker (Home's suggested side, Insights' L/R split), quick stats (Home's Today tiles and
+Insights), and the interval calculator (the gap labels between History rows). Popular feeding
+trackers keep one place for "now", one for "looking back" and one for trends, plus
+settings/profile: Huckleberry, Baby Tracker and Glow Baby all have a single history screen with
+a list/calendar switch, and Apple Fitness puts its calendar inside History. So:
+- Calendar is History's second mode, and replaces History's old "Jump to date" sheet.
+- Tools is gone. Its kit code (`IntervalCalculator`, `SideTracker`, `QuickStats`) was deleted with it.
+- Settings is a tab, the only route to it. The Home gear and the Tools link are gone.
 
 **Global elements**
 - **Active Session Pill**: when a breastfeeding session is active or paused, a compact pill floats above the tab bar on *every* tab ("● L 12:05 · total 18:42", side-tinted). Tap opens the timer sheet. Built with `safeAreaInset(edge: .bottom)` on iOS 17; adopt the system tab-bar accessory API on newer iOS via availability checks.
-- **Settings** gear on Home (top-right) and a row in Tools.
+- **Settings** is its own tab, with no second entry point.
 
 **Modal presentation choices** (keeps navigation depth at most 2)
 
@@ -93,10 +104,14 @@ Good evening                                   ⚙︎
 └──────────────┘ └──────────────┘
 ┌ 🍼 Log bottle ───────────────────────────────┐
 Today ───────────────────────────────────────────
-[ 7 feeds ] [ 1 h 48 m breast ] [ 180 mL bottle ] [ avg 2 h 51 m ]
+[ ● Feeds 7 ] [ ♥ Breastfeeding 1 h 48 m ] [ 🍼 Bottles 180 mL ] [ ◷ Average gap 2 h 51 m ]
 Last 24 h: 9 feeds · avg interval 2 h 40 m  (rolling)
-Shortcuts: Calendar · History
 ```
+- The baby's name and age from Settings show under the greeting ("Ava · 3 wk 2 d old").
+- The suggested next side is shown once, on its Start button ("Suggested"), not repeated in the
+  Last feed card.
+- Log bottle is a single row with today's bottle count. Past bottles are in History, not listed on Home.
+- Tiles follow Apple Health's summary style: a tinted symbol and label, then the value.
 - **Active state:** the "Last feed" card becomes a live **Active Session card** (side, per-side and total timers, Pause / Open timer). Start buttons are replaced by "Switch to R".
 - **Empty state:** "No feeds yet. Start your first one below." Start buttons remain.
 - **Error state:** store failed to load → full-screen message with Retry and "Export data" (never silently reset).
@@ -128,7 +143,7 @@ Shortcuts: Calendar · History
 - **Save** is primary at the bottom, reachable one-handed. Validation: amount > 0 and ≤ 500 mL.
 - Two-tap path: open sheet → tap preset → Save (preset tap can auto-focus Save).
 
-### 3.5 Calendar
+### 3.5 Calendar (History → Calendar)
 - Month grid (custom SwiftUI `LazyVGrid`), swipe or chevrons to change month, "Today" button.
 - Each day: up to 3 dots (lavender/teal for breast sides used, peach for bottle). Background intensity scales with feed count (5 steps, subtle). Today has a ring.
 - Selecting a day shows an inline **Day Summary** card below the grid: feeds, breast time (L/R `SegmentBar`), bottle volume, avg interval. Then the day's `FeedRow`s, then "Open day" pushes the full day timeline.
@@ -137,7 +152,9 @@ Shortcuts: Calendar · History
 ### 3.6 History / Timeline
 - Vertical timeline grouped by day (sticky headers "Today", "Yesterday", "Tue 4 Nov").
 - `FeedRow`: time column, colored rail, icon, title ("Breast · 21 min" / "Bottle · 90 mL formula"), `SegmentBar` for L/R, note preview, **gap label** between rows ("2 h 40 m later") so intervals are visible at a glance.
-- Filter chips: All · Breast · Bottle. Jump-to-date via a date picker toolbar button.
+- **List | Calendar** switch at the top (Calendar is §3.5).
+- Filter menu in the toolbar (All feeds · Breastfeeds · Bottles); its icon fills when a filter is on.
+  Picking a date is done in Calendar mode.
 - Swipe actions: Edit, Delete (confirmation + undo). Tap opens Edit.
 - Rows with `needsReview` show a small amber "Review" badge.
 - **Empty:** illustration + "Your feeds will appear here".
@@ -154,18 +171,17 @@ Shortcuts: Calendar · History
   2. Intervals: avg / shortest / longest + scatter of intervals by time of day.
   3. Breastfeeding: avg session, avg L vs R, L/R distribution (donut).
   4. Bottle: daily volume (stacked bar breast milk vs formula), avg bottle.
-  5. Comparisons: today vs yesterday, this week vs last week (delta chips).
-  6. Activity heatmap (hour-of-day × day).
-- Footer on every card: "Based on your recorded feeds. Not medical advice." Values from `manual`/`recovered` sessions are marked "includes estimated entries" when present.
+  5. Activity heatmap (hour-of-day × day).
+- Comparisons with the previous period are part of each card's one-line summary. The former
+  "Compared with before" card was removed: it ignored the range picker and repeated the Feeds
+  card and Home's Today tiles.
+- One footer under all the cards: "Based on your recorded feeds. Not medical advice." Values from `manual`/`recovered` sessions are marked "includes estimated entries" when present.
 - **Insufficient data state:** "Insights appear after a couple of days of tracking". Show what exists.
 
-### 3.9 Tools
-- Interval calculator (since last feed; between two chosen feeds).
-- Side tracker (last side, suggested next, last 5 sessions' starting sides).
-- Quick stats (today / this week).
-- Manual entry (opens 3.7).
-- Export (CSV / PDF with a date range, then the share sheet).
-- Settings.
+### 3.9 Tools (removed)
+Folded into other screens (see §1): time since last feed is on Home, side balance in Insights,
+today and week totals on Home and in Insights, gaps between feeds in History, manual entry under
+History's **+**, and export in Settings.
 
 ### 3.10 Settings
 Baby profile · Units · Bottle presets · Reminders (enable, interval, basis start/end, quiet hours, "still feeding?" threshold) · Live Activities status + dismissal policy · Interval definition · Appearance (system/light/dark) · Data (export, how backup works, **Delete all data** with typed confirmation) · About / privacy / disclaimer.

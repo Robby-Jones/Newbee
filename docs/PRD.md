@@ -57,7 +57,7 @@ Priority tiers: **P0** means the app is pointless without it. **P1** is required
 | 17 | Settings: baby profile, units, bottle presets, reminders, appearance, delete all data | **P1** | |
 | 18 | Onboarding: baby nickname (optional), units, Live Activity and notification explainer | **P1** | |
 | 19 | CSV export through the share sheet | **P1** | |
-| 20 | Tools: interval calculator, side tracker, quick stats | **P2** | Mostly reuses dashboard and insights pieces |
+| 20 | ~~Tools: interval calculator, side tracker, quick stats~~ | Dropped | Everything it showed was already on Home, History or Insights (UX_SPEC §1) |
 | 21 | PDF summary export | **P2** | Built with `ImageRenderer` and PDF context |
 | 22 | "Long-running session" safety notification for a timer that may have been forgotten | **P1** | New; see gaps below |
 
@@ -113,7 +113,7 @@ Roughly in order of value:
 3. **"Device restarted, where recovery is possible."** With absolute timestamps, recovery is *always* possible for the data. Only the Live Activity UI is lost if iOS doesn't restore it, and it comes back on next foreground.
 4. **Live Activity interactivity "where supported".** With the iOS 17 deployment target, every supported device gets Live Activity buttons. Dynamic Island needs iPhone 14 Pro or newer; other iPhones get the Lock Screen presentation and banner only.
 5. **AppPreferences in SwiftData vs UserDefaults.** Decision: use **UserDefaults in the App Group**, because preferences are needed by the widget extension, are tiny, and shouldn't sync blindly with feeding data.
-6. **Five tabs plus a settings home.** Decision: 5 tabs as suggested. Settings is reached from a gear on Home and from Tools.
+6. **Five tabs plus a settings home.** Decision: 5 tabs as suggested. Settings is reached from a gear on Home and from Tools. *Revised 2026-11-07:* four tabs (Home, History with a calendar mode, Insights, Settings); see UX_SPEC §1.
 
 ### 4.3 Decisions (answered by Robby, 2026-11-07)
 

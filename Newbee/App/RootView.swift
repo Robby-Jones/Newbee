@@ -2,11 +2,12 @@ import NewbeeShared
 import SwiftData
 import SwiftUI
 
-/// Five-tab navigation (docs/UX_SPEC.md §1), plus the global feeding UI: the Active Session
-/// Pill above the tab bar, the full-screen timer, the recovery sheet and the undo toast.
+/// Four-tab navigation (docs/UX_SPEC.md §1): Home, History (list and calendar), Insights and
+/// Settings, plus the global feeding UI: the Active Session Pill above the tab bar, the
+/// full-screen timer, the recovery sheet and the undo toast.
 struct RootView: View {
     enum TabID: Hashable {
-        case home, calendar, history, insights, tools
+        case home, history, insights, settings
     }
 
     /// `nil` only when no session manager is available (Release builds before integration).
@@ -30,22 +31,18 @@ struct RootView: View {
                 .activeSessionPillInset(sessionModel)
                 .tabItem { Label("Home", systemImage: "house") }
                 .tag(TabID.home)
-            NavigationStack { CalendarView() }
-                .activeSessionPillInset(sessionModel)
-                .tabItem { Label("Calendar", systemImage: "calendar") }
-                .tag(TabID.calendar)
             NavigationStack { HistoryView() }
                 .activeSessionPillInset(sessionModel)
-                .tabItem { Label("History", systemImage: "list.bullet") }
+                .tabItem { Label("History", systemImage: "clock.arrow.circlepath") }
                 .tag(TabID.history)
             NavigationStack { InsightsView() }
                 .activeSessionPillInset(sessionModel)
                 .tabItem { Label("Insights", systemImage: "chart.bar") }
                 .tag(TabID.insights)
-            NavigationStack { ToolsView() }
+            NavigationStack { SettingsView() }
                 .activeSessionPillInset(sessionModel)
-                .tabItem { Label("Tools", systemImage: "wrench.and.screwdriver") }
-                .tag(TabID.tools)
+                .tabItem { Label("Settings", systemImage: "gearshape") }
+                .tag(TabID.settings)
         }
         .tint(NBColor.accent)
         .preferredColorScheme(preferences?.appearance.colorScheme)

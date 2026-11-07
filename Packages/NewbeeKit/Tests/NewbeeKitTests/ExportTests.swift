@@ -24,53 +24,6 @@ private func bottle(_ start: Date, ml: Double, unit: VolumeUnit = .milliliters) 
     FeedEntry(id: UUID(), start: start, end: start, details: .bottle(BottleSummary(contents: .formula, amountML: ml, enteredUnit: unit)), source: .manual)
 }
 
-@Suite("Tools")
-struct ToolsTests {
-    @Test func intervalBetweenFeedsBothWays() {
-        let a = breast(at(2.25), left: 12 * 60, right: 9 * 60)
-        let b = bottle(at(5.25), ml: 90)
-        #expect(IntervalCalculator.interval(between: a, and: b, basis: .startToStart) == 3 * 3600)
-        #expect(IntervalCalculator.interval(between: b, and: a, basis: .startToStart) == 3 * 3600)
-        #expect(IntervalCalculator.interval(between: a, and: b, basis: .endToStart) == 3 * 3600 - 21 * 60)
-        #expect(IntervalCalculator.since(a, at: at(3), basis: .endToStart) == 45 * 60 - 21 * 60)
-        #expect(IntervalCalculator.since(a, at: at(1), basis: .startToStart) == 0)
-    }
-
-    @Test func sideTrackerSuggestsTheOppositeOfTheLastSide() {
-        let entries = [
-            breast(at(1), left: 600, right: 300, first: .left),   // ends right
-            bottle(at(3), ml: 60),
-            breast(at(5), left: 0, right: 900, first: .right),    // ends right
-        ]
-        let tracker = SideTracker(entries: entries)
-        #expect(tracker.lastSide == .right)
-        #expect(tracker.suggestedNextSide == .left)
-        #expect(tracker.recentStartingSides == [.right, .left])
-        #expect(tracker.recentLeft == 600)
-        #expect(tracker.recentRight == 1200)
-        #expect(tracker.leftShare == 600.0 / 1800.0)
-        #expect(SideTracker(entries: []).suggestedNextSide == .left)
-        #expect(SideTracker(entries: []).leftShare == nil)
-    }
-
-    @Test func quickStatsCoverTodayAndThisWeek() {
-        // Week starts Monday 2026-11-02 (day -5).
-        let entries = [
-            breast(at(10, day: -6), left: 600, right: 0), // previous week
-            breast(at(10, day: -5), left: 600, right: 0),
-            bottle(at(12, day: -1), ml: 90),
-            breast(at(3), left: 600, right: 600),
-            bottle(at(6), ml: 120),
-            bottle(at(20), ml: 60), // in the future at 08:00
-        ]
-        let stats = QuickStats(entries: entries, now: at(8), calendar: utc)
-        #expect(stats.today.feedCount == 2)
-        #expect(stats.today.bottleML == 120)
-        #expect(stats.thisWeek.feedCount == 4)
-        #expect(stats.averageFeedsPerDayThisWeek == 4.0 / 6.0)
-    }
-}
-
 @Suite("CSV export")
 struct FeedCSVTests {
     @Test func writesHeaderAndRowsOldestFirst() {
