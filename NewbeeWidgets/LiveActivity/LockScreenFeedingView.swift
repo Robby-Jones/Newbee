@@ -60,6 +60,7 @@ struct LockScreenFeedingView: View {
                 .font(.subheadline)
                 .foregroundStyle(state.status == .paused || isStale ? NBColor.accent : Color.secondary)
                 .lineLimit(1)
+                .invalidatableContent()
         }
         .accessibilityElement(children: .combine)
     }
