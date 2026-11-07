@@ -251,7 +251,24 @@ struct ActivitySidesAndControls: View {
                     PauseResumeButton(sessionID: attributes.sessionID, state: state, compact: true)
                     EndButton(sessionID: attributes.sessionID)
                 }
+            } else {
+                UndoEndButton(sessionID: attributes.sessionID)
             }
         }
+    }
+}
+
+/// "Undo" on the "Feed complete" summary, for an End tapped by mistake.
+struct UndoEndButton: View {
+    let sessionID: UUID
+
+    var body: some View {
+        Button(intent: UndoEndFeedingIntent(sessionID: sessionID)) {
+            ActivityControlLabel(title: "Undo end", systemImage: "arrow.uturn.backward", tint: NBColor.accent)
+                .frame(maxWidth: .infinity)
+        }
+        .buttonStyle(.plain)
+        .accessibilityLabel("Undo end feeding")
+        .accessibilityHint("Reopens the feed you just ended")
     }
 }

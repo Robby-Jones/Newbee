@@ -87,7 +87,7 @@ struct ResumeFeedingIntent: LiveActivityIntent {
     }
 }
 
-/// Ends the feed. Undo is offered in the app.
+/// Ends the feed. The "Feed complete" summary then offers Undo (`UndoEndFeedingIntent`).
 struct EndFeedingIntent: LiveActivityIntent {
     static var title: LocalizedStringResource { "End Feeding" }
     static var isDiscoverable: Bool { false }
@@ -102,6 +102,25 @@ struct EndFeedingIntent: LiveActivityIntent {
 
     func perform() async throws -> some IntentResult {
         await LiveActivityIntentRunner.run(.end, sessionID: sessionID)
+        return .result()
+    }
+}
+
+/// Undo on the "Feed complete" summary: reopens the feed that just ended, as it was.
+struct UndoEndFeedingIntent: LiveActivityIntent {
+    static var title: LocalizedStringResource { "Undo End Feeding" }
+    static var isDiscoverable: Bool { false }
+
+    @Parameter(title: "Session") var sessionID: String
+
+    init() {}
+
+    init(sessionID: UUID) {
+        self.sessionID = sessionID.uuidString
+    }
+
+    func perform() async throws -> some IntentResult {
+        await LiveActivityIntentRunner.run(.undoEnd, sessionID: sessionID)
         return .result()
     }
 }

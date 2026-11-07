@@ -69,8 +69,9 @@ per-side times and controls are one shared view (`ActivitySidesAndControls`).
 - Per-side row: running side bold, both sides tinted.
 - Buttons: one large `SwitchSideIntent` for the *other* side ("Resume L" when paused), a compact
   `PauseIntent` / `ResumeIntent` slot that flips, and `EndIntent`. **End** uses a distinct shape so
-  it isn't hit by accident. Undo is available in-app.
-- Ended: no buttons; a footnote shows start and end times.
+  it isn't hit by accident.
+- Ended: an **Undo end** button (`UndoEndFeedingIntent`, also in the island) and a footnote with
+  start and end times. See §3.5.
 - `activityBackgroundTint` is a soft neutral that works in light and dark. `activitySystemActionForegroundColor` uses the accent color.
 
 ### 3.2 Dynamic Island: expanded
@@ -88,6 +89,12 @@ per-side times and controls are one shared view (`ActivitySidesAndControls`).
 
 ### 3.5 Ended state
 - On End, update to `.ended` with final L/R/total and `dismissalPolicy: .after(now + 15 min)`, so the parent can glance at the result, then it disappears. The policy is configurable: immediate / 15 min / default.
+- The summary offers **Undo end** for those 15 minutes (`FeedingSessionManager.undoEnd(sessionID:)`,
+  window `undoEndWindow`). It reopens the feed only if it is still the latest one and no other
+  feed has started. If the app process saw the End, the feed comes back exactly as it was (a
+  running side keeps running, as with the in-app undo). If the app was terminated in between,
+  it can't tell running from paused, so it reopens the feed **paused**. The planner then removes
+  the summary and requests a fresh activity.
 
 ## 4. App Intents
 
@@ -97,6 +104,7 @@ per-side times and controls are one shared view (`ActivitySidesAndControls`).
 | `PauseIntent` | `sessionID` | `manager.pause()` |
 | `ResumeIntent` | `sessionID` | `manager.resume()` |
 | `EndSessionIntent` | `sessionID` | `manager.end()` |
+| `UndoEndFeedingIntent` | `sessionID` | `manager.undoEnd(sessionID:)` (§3.5) |
 | *(future)* `StartFeedingIntent: AppIntent` | `side` | Siri/Shortcuts/Control. Opens app or starts in background (to verify). |
 
 All `perform()`s are `@MainActor` and go through the single `FeedingSessionManager` (from `AppDependencies.shared`, created lazily if the app was launched just for the intent). They return `.result()` after the manager has saved **and** awaited `activity.update`.
