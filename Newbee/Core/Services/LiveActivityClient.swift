@@ -107,7 +107,8 @@ final class ActivityKitClient: LiveActivityClient {
 
     private static func phase(of state: ActivityState) -> LiveActivityRecord.Phase {
         switch state {
-        case .ended, .dismissed: .finished
+        case .ended: .ended
+        case .dismissed: .dismissed
         default: .live
         }
     }

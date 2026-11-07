@@ -98,9 +98,11 @@ struct ContentStateMappingTests {
         #expect(state.total(at: switchAt + minutes(1)) == minutes(10))
     }
 
-    @Test func staleDateIsEightHoursAfterLastChange() {
-        #expect(State(snapshot: activeOnRight()).staleDate == t0 + minutes(12) + 8 * 3600)
-        #expect(State(snapshot: pausedAfterRight()).staleDate == t0 + minutes(17) + 8 * 3600)
+    @Test func staleDateIsTheStillFeedingThresholdAfterTheLastChange() {
+        // Running: measured from the open segment's start, like the in-app recovery prompt.
+        #expect(State(snapshot: activeOnRight()).staleDate(after: minutes(45)) == t0 + minutes(12 + 45))
+        // Paused: measured from the pause.
+        #expect(State(snapshot: pausedAfterRight()).staleDate(after: minutes(45)) == t0 + minutes(17 + 45))
     }
 
     @Test func payloadIsWellUnderTheFourKilobyteLimit() throws {

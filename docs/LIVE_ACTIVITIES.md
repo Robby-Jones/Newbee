@@ -106,7 +106,7 @@ All `perform()`s are `@MainActor` and go through the single `FeedingSessionManag
 ```
 `sync` makes the system match the snapshot:
 - snapshot active/paused and no activity for its id → `Activity.request(attributes:content:pushType: nil)` (only if `ActivityAuthorizationInfo().areActivitiesEnabled`, otherwise record "disabled" for a gentle in-app hint).
-- activity exists and `content.state.revision < snapshot.revision` → `update(ActivityContent(state:, staleDate: segmentStart + 8h))`.
+- activity exists and `content.state.revision < snapshot.revision` → `update(ActivityContent(state:, staleDate: segmentStart (or pausedAt) + the "still feeding?" threshold))`.
 - snapshot completed or nil → `end(finalContent, dismissalPolicy:)` for every activity of ours.
 - any activity whose `sessionID` ≠ active session → end it immediately.
 - Observes `activity.activityStateUpdates`: if the user dismissed it (`.dismissed`) while the session is active, respect that until the next state change (don't fight the user).
@@ -160,6 +160,12 @@ Notes:
 - A parent swiping the activity away (active → dismissed) is remembered per session revision; the
   activity comes back on the next state change, not on the next foreground. The system ending it
   (8-hour limit, reboot) is not treated as a dismissal, so recovery re-requests it.
+- Records have three phases: live, ended (still on screen, e.g. the 15-minute summary or an
+  activity the system ended at 8 h) and dismissed. Whenever a session is active or paused, every
+  ended record is removed immediately, so Undo of End or a next feed started within 15 minutes
+  never leaves two activities on the Lock Screen.
+- `staleDate` is the open segment's start (or the pause) plus the "still feeding?" threshold, so
+  the Lock Screen shows "Still feeding? Open Newbee" at the same moment the app would ask.
 
 Integration wiring (done when the session manager and this work are both on `main`):
 1. `FeedingSessionManager` conforms to `LiveActivityCommandHandling` in the app target by
@@ -167,7 +173,10 @@ Integration wiring (done when the session manager and this work are both on `mai
 2. `LiveActivityCoordinator` conforms to the engine's `LiveActivitySyncing` protocol (its
    `sync(_:)` already matches), and `AppDependencies` uses it instead of the no-op.
 3. `NewbeeApp.init` calls `LiveActivityIntentRouter.register(dependencies.sessionManager)`, so
-   intents work when iOS launches the app in the background just to run one.
+   intents work when iOS launches the app in the background just to run one (not a view `.task`:
+   a background launch may never build the view tree).
+4. Build the coordinator with `LiveActivityPlanner(staleAfter: RecoveryPolicy().effectiveThreshold)`
+   (or the user's configured policy) so the stale hint matches the recovery prompt.
 
 ## 9. Device test matrix
 

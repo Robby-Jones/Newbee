@@ -72,12 +72,10 @@ extension FeedingActivityAttributes.ContentState {
         status == .active && currentSide == side
     }
 
-    /// Content becomes stale this long after the last state change. ActivityKit ends a Live
-    /// Activity after 8 hours anyway; past this point views show a "check the app" hint.
-    public static let staleInterval: TimeInterval = 8 * 60 * 60
-
-    /// The `staleDate` to pass with this content.
-    public var staleDate: Date {
-        (currentSegmentStart ?? pausedAt ?? sessionStart).addingTimeInterval(Self.staleInterval)
+    /// The `staleDate` to pass with this content: `threshold` after the running segment started
+    /// (or after the pause). Pass the same "still feeding?" threshold the in-app recovery prompt
+    /// uses, so the Lock Screen shows "Still feeding? Open Newbee" exactly when the app would ask.
+    public func staleDate(after threshold: TimeInterval) -> Date {
+        (currentSegmentStart ?? pausedAt ?? sessionStart).addingTimeInterval(threshold)
     }
 }

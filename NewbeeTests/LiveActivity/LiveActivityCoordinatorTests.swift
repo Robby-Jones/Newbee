@@ -81,14 +81,47 @@ struct LiveActivityCoordinatorTests {
         #expect(client.calls.last == .end(id: "activity-1", final: nil, dismissal: .immediate))
     }
 
-    @Test func recoveryReRequestsAfterRebootOrExpiry() async {
+    @Test func recoveryReRequestsAfterReboot() async {
         let coordinator = makeCoordinator()
         let snapshot = active(on: .left, revision: 1, since: clock.now)
         await coordinator.sync(snapshot)
         client.systemRemovesAll()
-        clock.advance(by: 8 * 3600 + 60)
         await coordinator.sync(snapshot)
         #expect(client.calls == [.request(sessionID: id, revision: 1), .request(sessionID: id, revision: 1)])
+    }
+
+    @Test func recoveryReplacesAnActivityTheSystemEndedAtEightHours() async {
+        let coordinator = makeCoordinator()
+        let snapshot = active(on: .left, revision: 1, since: clock.now)
+        await coordinator.sync(snapshot)
+        clock.advance(by: 8 * 3600 + 60)
+        client.systemEndsAll()
+        client.clearCalls()
+        await coordinator.sync(snapshot)
+        #expect(client.calls == [
+            .end(id: "activity-1", final: nil, dismissal: .immediate),
+            .request(sessionID: id, revision: 1),
+        ])
+        #expect(client.activities.filter { $0.phase != .dismissed }.count == 1)
+    }
+
+    @Test func undoOfEndLeavesOnlyOneActivityOnScreen() async {
+        let coordinator = makeCoordinator()
+        let start = clock.now
+        await coordinator.sync(active(on: .left, revision: 1, since: start))
+        clock.advance(by: 600)
+        let completed = SessionSnapshot(
+            id: id, status: .completed, segments: [Segment(side: .left, start: start, end: clock.now)],
+            startedAt: start, endedAt: clock.now, revision: 2
+        )
+        await coordinator.sync(completed) // summary stays visible for 15 min
+        let restored = SessionSnapshot(
+            id: id, status: .active, segments: [Segment(side: .left, start: start)], startedAt: start, revision: 3
+        )
+        await coordinator.sync(restored) // Undo in the app
+        let visible = client.activities.filter { $0.phase != .dismissed }
+        #expect(visible.count == 1)
+        #expect(visible.first?.state.status == .active)
     }
 
     @Test func respectsUserDismissalUntilTheNextChange() async {

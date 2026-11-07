@@ -21,6 +21,7 @@ final class LiveActivityCoordinator {
     private(set) var activitiesEnabled: Bool
 
     /// Name shown in the activity header; empty for a generic "Feeding".
+    /// TODO(5b): set from the baby profile once onboarding stores a name.
     @ObservationIgnored var babyName = ""
 
     private let client: any LiveActivityClient

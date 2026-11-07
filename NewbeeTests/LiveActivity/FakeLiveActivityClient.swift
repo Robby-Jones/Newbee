@@ -48,21 +48,29 @@ final class FakeLiveActivityClient: LiveActivityClient {
         await Task.yield()
         guard let index = activities.firstIndex(where: { $0.id == id }) else { return }
         if let finalState { activities[index].state = finalState }
-        activities[index].phase = .finished
+        // A summary with a later dismissal stays visible in the ended state; immediate removes it.
+        activities[index].phase = dismissal == .immediate ? .dismissed : .ended
         calls.append(.end(id: id, final: finalState?.status, dismissal: dismissal))
     }
 
     // MARK: Simulated system events
 
-    /// The device restarted or the 8-hour limit hit: activities are gone.
+    /// The device restarted: activities are gone.
     func systemRemovesAll() {
-        for index in activities.indices { activities[index].phase = .finished }
+        activities.removeAll()
+    }
+
+    /// The 8-hour limit hit: the system ends the activity but it stays visible for a while.
+    func systemEndsAll() {
+        for index in activities.indices where activities[index].phase == .live {
+            activities[index].phase = .ended
+        }
     }
 
     /// The parent swiped the activity away on the Lock Screen.
     func userDismisses(_ id: String) {
         guard let index = activities.firstIndex(where: { $0.id == id }) else { return }
-        activities[index].phase = .finished
+        activities[index].phase = .dismissed
         onUserDismissal?(activities[index].sessionID, activities[index].state.revision)
     }
 
