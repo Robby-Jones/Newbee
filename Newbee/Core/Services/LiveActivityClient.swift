@@ -22,73 +22,37 @@ protocol LiveActivityClient: AnyObject {
         state: FeedingActivityAttributes.ContentState,
         staleDate: Date
     ) throws -> String
-    func update(id: String, state: FeedingActivityAttributes.ContentState, staleDate: Date) async
-    func end(id: String, finalState: FeedingActivityAttributes.ContentState?, dismissal: LiveActivityDismissal) async
-}
-
-/// The real client.
-@MainActor
-final class ActivityKitClient: LiveActivityClient {
-    typealias FeedingActivity = Activity<FeedingActivityAttributes>
-
-    var onUserDismissal: (@MainActor (UUID, Int) -> Void)?
-    var onEnablementChange: (@MainActor (Bool) -> Void)? {
-        didSet { observeEnablementIfNeeded() }
-    }
-
-    private var stateObservers: [String: Task<Void, Never>] = [:]
-    private var enablementObserver: Task<Void, Never>?
-    private let logger = Logger(subsystem: "Newbee", category: "LiveActivity")
-
-    init() {}
-
-    var areActivitiesEnabled: Bool {
-        ActivityAuthorizationInfo().areActivitiesEnabled
-    }
-
-    func records() -> [LiveActivityRecord] {
-        FeedingActivity.activities.map { activity in
-            observeState(of: activity)
-            return LiveActivityRecord(
-                id: activity.id,
-                sessionID: activity.attributes.sessionID,
-                state: activity.content.state,
-                phase: Self.phase(of: activity.activityState)
-            )
-        }
-    }
-
-    func request(
-        _ attributes: FeedingActivityAttributes,
-        state: FeedingActivityAttributes.ContentState,
-        staleDate: Date
-    ) throws -> String {
-        let activity = try FeedingActivity.request(
-            attributes: attributes,
-            content: ActivityContent(state: state, staleDate: staleDate),
-            pushType: nil
-        )
-        observeState(of: activity)
-        return activity.id
-    }
-
     func update(id: String, state: FeedingActivityAttributes.ContentState, staleDate: Date) async {
-        guard let activity = Self.activity(id: id) else { return }
-        await activity.update(ActivityContent(state: state, staleDate: staleDate))
+        await Self.updateActivity(id: id, state: state, staleDate: staleDate)
     }
 
     func end(id: String, finalState: FeedingActivityAttributes.ContentState?, dismissal: LiveActivityDismissal) async {
-        guard let activity = Self.activity(id: id) else { return }
+        await Self.endActivity(id: id, finalState: finalState, dismissal: dismissal)
+    }
+
+    // `Activity` isn't Sendable, so its async calls are made from nonisolated helpers that look
+    // the activity up themselves; only Sendable values cross from the main actor.
+    private nonisolated static func updateActivity(
+        id: String,
+        state: FeedingActivityAttributes.ContentState,
+        staleDate: Date
+    ) async {
+        guard let activity = FeedingActivity.activities.first(where: { $0.id == id }) else { return }
+        await activity.update(ActivityContent(state: state, staleDate: staleDate))
+    }
+
+    private nonisolated static func endActivity(
+        id: String,
+        finalState: FeedingActivityAttributes.ContentState?,
+        dismissal: LiveActivityDismissal
+    ) async {
+        guard let activity = FeedingActivity.activities.first(where: { $0.id == id }) else { return }
         let content = finalState.map { ActivityContent(state: $0, staleDate: nil) }
         let policy: ActivityUIDismissalPolicy = switch dismissal {
         case .immediate: .immediate
         case .after(let date): .after(date)
         }
         await activity.end(content, dismissalPolicy: policy)
-    }
-
-    private static func activity(id: String) -> FeedingActivity? {
-        FeedingActivity.activities.first { $0.id == id }
     }
 
     private static func phase(of state: ActivityState) -> LiveActivityRecord.Phase {
