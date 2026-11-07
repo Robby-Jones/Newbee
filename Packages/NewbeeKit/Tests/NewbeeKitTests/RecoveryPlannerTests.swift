@@ -152,6 +152,7 @@ struct RecoveryPlannerTests {
         clock.jumpWall(by: -2 * 3600)
         let plan = planner.plan(openSessions: [s], at: clock.instant())
         #expect(plan.prompt?.reason == .futureStart)
+        #expect(plan.prompt?.correctedStart == clock.now)
         #expect(plan.survivor?.needsReview == true)
     }
 
@@ -220,6 +221,15 @@ struct RecoveryPlannerTests {
         clock.jumpWall(by: 3600)
         let ack2 = [s.id: clock.now]
         #expect(planner.plan(openSessions: [s], at: clock.instant(), acknowledged: ack2).prompt == nil)
+    }
+
+    @Test func acknowledgementStoredOnTheSessionIsHonoured() throws {
+        let clock = TestClock()
+        var s = try started(clock: clock)
+        clock.advance(by: 60 * 60)
+        s.recoveryAcknowledgedAt = clock.now
+        clock.advance(by: 10 * 60)
+        #expect(planner.plan(openSessions: [s], at: clock.instant()).prompt == nil)
     }
 
     @Test func typicalSegmentDurationIsTheMedianOfRealSegments() {

@@ -62,38 +62,43 @@ public struct SessionEngine: Sendable {
 
         case .end:
             let endedAt: Date
-            if isRunning {
+            if isRunning, let open = state.openSegment, open.start <= now.wall {
                 closeOpenSegment(&next, at: now.wall)
                 endedAt = now.wall
-            } else {
+            } else if !isRunning, (state.segments.last?.end ?? state.startedAt) <= now.wall.addingTimeInterval(Self.futureTolerance) {
                 // Paused: the feed really ended when the last segment closed.
                 endedAt = state.segments.last?.end ?? state.startedAt
+            } else {
+                // Some stored times are later than now (the clock moved backwards): end at now and
+                // drop what lies beyond it. Refused if the whole session is in the future.
+                guard Self.endTimeRange(for: state, now: now.wall) != nil else { throw .invalidTime }
+                if isRunning { closeOpenSegment(&next, at: now.wall) }
+                truncate(&next, at: now.wall)
+                endedAt = now.wall
             }
             complete(&next, at: endedAt)
             effects = [.persist, .endActivity, .rescheduleReminders]
 
         case .endAt(let date):
-            let earliest = isRunning ? state.openSegment!.start : (state.segments.last?.end ?? state.startedAt)
-            guard date >= earliest, date <= now.wall.addingTimeInterval(Self.futureTolerance) else {
+            guard let range = Self.endTimeRange(for: state, now: now.wall), range.contains(date) else {
                 throw .invalidTime
             }
             if isRunning { closeOpenSegment(&next, at: date) }
+            truncate(&next, at: date)
             complete(&next, at: date)
             // The parent picked the end time after the fact, so it's an estimate.
             if next.source == .timer { next.source = .recovered }
             effects = [.persist, .endActivity, .rescheduleReminders]
 
-        case .adjustOpenSegmentStart(let date):
-            guard isRunning, let index = state.segments.lastIndex(where: \.isOpen) else {
-                throw .noActiveSession
+        case .shiftTimestamps(let offset):
+            guard offset != 0 else { return .noOp(state) }
+            next.startedAt = state.startedAt.addingTimeInterval(offset)
+            for index in next.segments.indices {
+                next.segments[index].start = next.segments[index].start.addingTimeInterval(offset)
+                next.segments[index].end = next.segments[index].end?.addingTimeInterval(offset)
             }
-            let previousEnd = index > 0 ? state.segments[index - 1].end : nil
-            guard date <= now.wall, previousEnd.map({ date >= $0 }) ?? true else { throw .invalidTime }
-            guard date != state.segments[index].start else { return .noOp(state) }
-            next.segments[index].start = date
-            next.segments[index].startMonotonic = now.monotonic.map { $0 - now.wall.timeIntervalSince(date) }
-            next.segments[index].startBootID = now.bootID
-            if index == 0 { next.startedAt = date }
+            let latest = next.segments.flatMap { [$0.start, $0.end] }.compactMap { $0 }.max() ?? next.startedAt
+            guard latest <= now.wall.addingTimeInterval(Self.futureTolerance) else { throw .invalidTime }
             effects = [.persist, .updateActivity, .rescheduleReminders]
         }
 
@@ -151,10 +156,39 @@ public struct SessionEngine: Sendable {
         }
     }
 
+    /// Removes everything after `date`: segments that start later are dropped (the first is
+    /// always kept) and the rest end no later than `date`.
+    private func truncate(_ s: inout SessionSnapshot, at date: Date) {
+        s.segments = s.segments.enumerated()
+            .filter { $0.offset == 0 || $0.element.start < date }
+            .map(\.element)
+        for index in s.segments.indices {
+            s.segments[index].start = min(s.segments[index].start, date)
+            s.segments[index].end = min(s.segments[index].end ?? date, date)
+        }
+        s.startedAt = s.segments.first?.start ?? min(s.startedAt, date)
+    }
+
     private func complete(_ s: inout SessionSnapshot, at endedAt: Date) {
         s.status = .completed
         let lastEnd = s.segments.compactMap(\.end).max() ?? s.startedAt
         s.endedAt = max(endedAt, lastEnd)
+    }
+
+    /// The end times `.endAt` accepts for `session` at `now`. Recovery UIs use it to bound their
+    /// time pickers. Normally from the running segment's start (or the moment a paused session
+    /// was paused) up to now. If the clock moved backwards and those times are in the future,
+    /// from the latest stored time that isn't. `nil` when the whole session lies in the future.
+    public static func endTimeRange(for session: SessionSnapshot, now: Date) -> ClosedRange<Date>? {
+        let upper = now.addingTimeInterval(futureTolerance)
+        let running = session.status == .active ? session.openSegment : nil
+        let earliest = running?.start ?? session.segments.compactMap(\.end).max() ?? session.startedAt
+        if earliest <= upper { return earliest...upper }
+        let pastTimes = ([session.startedAt] + session.segments.flatMap { [$0.start, $0.end] })
+            .compactMap { $0 }
+            .filter { $0 <= now }
+        guard let lower = pastTimes.max() else { return nil }
+        return lower...upper
     }
 
     static func newSegment(side: Side, at now: Instant) -> Segment {

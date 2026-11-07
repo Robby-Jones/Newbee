@@ -20,7 +20,8 @@ extension FeedingSession {
             timeZoneID: timeZoneID,
             source: source,
             needsReview: needsReview,
-            notes: notes
+            notes: notes,
+            recoveryAcknowledgedAt: recoveryAcknowledgedAt
         )
     }
 
@@ -35,6 +36,7 @@ extension FeedingSession {
         source = snapshot.source
         needsReview = snapshot.needsReview
         notes = snapshot.notes
+        recoveryAcknowledgedAt = snapshot.recoveryAcknowledgedAt
 
         var existing = Dictionary((segments ?? []).map { ($0.id, $0) }, uniquingKeysWith: { first, _ in first })
         var updated: [FeedingSegment] = []

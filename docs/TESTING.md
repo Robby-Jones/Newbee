@@ -58,6 +58,7 @@ Run each case on an **iPhone 14 Pro or later** (Dynamic Island). Where marked â€
 | D10 | Feed across midnight | Calendar dot on start day; durations correct |
 | D11 | Change time zone mid-feed | Durations unchanged; history times sensible |
 | D12 | Manually set clock +1 h mid-feed (same boot) | Recovery detects it and offers a correction |
+| D12b | Set clock âˆ’2 h mid-feed after a side switch, force-quit, relaunch | Still detected as a clock change (boot ID unchanged); "Fix start time" keeps both segments' lengths |
 | D13 | Leave a feed running 8 h+ | Activity ends by system; "still feeding?" notification fired earlier; on open, recovery sheet + activity re-requested |
 | D14 | Disable Live Activities in iOS Settings, start feed | App works; gentle hint shown; no crash |
 | D15 | Compact / minimal island with another app's activity (e.g. a timer) | Minimal presentation renders correctly |

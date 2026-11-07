@@ -54,6 +54,9 @@ public struct SessionSnapshot: Codable, Sendable, Hashable, Identifiable {
     public var source: EntrySource
     public var needsReview: Bool
     public var notes: String
+    /// When the parent last answered "Keep going" on the recovery sheet. Recovery doesn't ask
+    /// again about data older than this. Metadata only: it doesn't change the feed.
+    public var recoveryAcknowledgedAt: Date?
 
     public init(
         id: UUID = UUID(),
@@ -65,7 +68,8 @@ public struct SessionSnapshot: Codable, Sendable, Hashable, Identifiable {
         timeZoneID: String = TimeZone.current.identifier,
         source: EntrySource = .timer,
         needsReview: Bool = false,
-        notes: String = ""
+        notes: String = "",
+        recoveryAcknowledgedAt: Date? = nil
     ) {
         self.id = id
         self.status = status
@@ -77,6 +81,7 @@ public struct SessionSnapshot: Codable, Sendable, Hashable, Identifiable {
         self.source = source
         self.needsReview = needsReview
         self.notes = notes
+        self.recoveryAcknowledgedAt = recoveryAcknowledgedAt
     }
 
     /// The running segment, if any.

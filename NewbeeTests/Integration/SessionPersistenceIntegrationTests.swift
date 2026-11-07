@@ -31,6 +31,7 @@ struct SessionPersistenceIntegrationTests {
         clock.advance(by: 720)
         s = try engine.apply(.switchTo(.right), to: s, at: clock.instant()).snapshot
         s.notes = "sleepy"
+        s.recoveryAcknowledgedAt = clock.now
 
         try repository.save(s, modifiedAt: clock.now)
         #expect(try repository.session(id: s.id) == s)

@@ -34,10 +34,13 @@ public final class RecoveryCoordinator {
         }
         isReconciling = true
         defer { isReconciling = false }
+        // Bounded so a store that keeps changing underneath can't keep us looping.
+        var passes = 0
         repeat {
             needsAnotherPass = false
+            passes += 1
             await reconcileOnce()
-        } while needsAnotherPass
+        } while needsAnotherPass && passes < 3
     }
 
     private func reconcileOnce() async {
@@ -57,7 +60,19 @@ public final class RecoveryCoordinator {
             }
             lastError = nil
             await manager.reload()
-            manager.recoveryPrompt = plan.prompt
+            // A command may have landed while the Live Activity sync was awaited. Only publish a
+            // prompt that still describes the stored session; otherwise plan again.
+            if let prompt = plan.prompt {
+                if let active = manager.activeSession, active.id == prompt.session.id,
+                   active.revision == prompt.session.revision {
+                    manager.recoveryPrompt = prompt
+                } else {
+                    manager.recoveryPrompt = nil
+                    needsAnotherPass = true
+                }
+            } else {
+                manager.recoveryPrompt = nil
+            }
         } catch {
             lastError = (error as? FeedingSessionError) ?? .persistence(String(describing: error))
             await manager.reload()

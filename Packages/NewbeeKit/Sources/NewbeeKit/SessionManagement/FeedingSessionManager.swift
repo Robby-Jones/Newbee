@@ -113,10 +113,18 @@ public final class FeedingSessionManager {
         return before
     }
 
-    /// Moves the running segment's start, for example to the start time measured by the
-    /// continuous clock after a clock change.
+    /// Recovery's "Fix start time" (`RecoveryPrompt.correctedStart`): moves the running segment's
+    /// start, or the pause time of a paused session, to `date`. Every other timestamp moves by the
+    /// same offset, because a clock change puts *all* stored times in the old frame; segment
+    /// lengths and order are kept.
     public func adjustStart(to date: Date) throws {
-        try perform(.adjustOpenSegmentStart(date))
+        guard let session = try read({ try repository.activeSession() }) else {
+            throw SessionEngineError.noActiveSession
+        }
+        let reference = (session.status == .active ? session.openSegment?.start : nil)
+            ?? session.segments.compactMap(\.end).max()
+            ?? session.startedAt
+        try perform(.shiftTimestamps(by: date.timeIntervalSince(reference)))
     }
 
     /// Deletes the active session.
@@ -174,11 +182,17 @@ public final class FeedingSessionManager {
 
     /// "Keep going": the parent confirmed the current state. Recovery won't ask about the same
     /// data again, and the "still feeding?" count restarts from now.
+    /// The answer is saved on the session so it survives the app being terminated and relaunched.
     public func dismissRecovery() {
-        if let prompt = recoveryPrompt {
-            recoveryAcknowledgements[prompt.session.id] = clock.now
-        }
-        recoveryPrompt = nil
+        defer { recoveryPrompt = nil }
+        guard let prompt = recoveryPrompt else { return }
+        let now = clock.now
+        recoveryAcknowledgements[prompt.session.id] = now
+        // Metadata only: the feed itself doesn't change, so the revision and Live Activity stay as they are.
+        guard var session = try? repository.session(id: prompt.session.id), session.status != .completed else { return }
+        session.recoveryAcknowledgedAt = now
+        try? repository.save(session, modifiedAt: now)
+        if activeSession?.id == session.id { activeSession = session }
     }
 
     // MARK: - Commands from outside the app UI (Live Activity buttons)

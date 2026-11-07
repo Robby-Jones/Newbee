@@ -18,9 +18,9 @@ public enum SessionCommand: Sendable, Hashable {
     case end
     /// Finish the session at an earlier moment (recovery: "End at 2:41 AM").
     case endAt(Date)
-    /// Move the running segment's start (recovery: the wall clock changed, or the parent
-    /// started the timer late). Only the open segment can be adjusted.
-    case adjustOpenSegmentStart(Date)
+    /// Move every timestamp of the session by the same offset (recovery: the device clock
+    /// changed, so all stored times are in the old frame). Lengths and order are kept.
+    case shiftTimestamps(by: TimeInterval)
 }
 
 /// Work the caller must do after a command has been accepted, in this order:

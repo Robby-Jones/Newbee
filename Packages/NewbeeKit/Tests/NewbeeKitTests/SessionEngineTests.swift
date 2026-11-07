@@ -31,7 +31,7 @@ struct SessionEngineTests {
         #expect(SessionValidator.isValid(s, now: clock.now))
     }
 
-    @Test(arguments: [SessionCommand.switchTo(.left), .pause, .resume, .end, .endAt(Date()), .adjustOpenSegmentStart(Date())])
+    @Test(arguments: [SessionCommand.switchTo(.left), .pause, .resume, .end, .endAt(Date()), .shiftTimestamps(by: 60)])
     func commandsWithoutASessionAreRejected(command: SessionCommand) {
         #expect(throws: SessionEngineError.noActiveSession) {
             try engine.apply(command, to: nil, at: TestClock().instant())
@@ -299,29 +299,86 @@ struct SessionEngineTests {
         }
     }
 
-    @Test func adjustingTheFirstSegmentMovesTheSessionStart() throws {
-        let clock = TestClock()
-        var s = try run(.start(.left), nil, clock)
-        clock.advance(by: 600)
-        let earlier = s.startedAt.addingTimeInterval(-120)
-        s = try run(.adjustOpenSegmentStart(earlier), s, clock)
-        #expect(s.startedAt == earlier)
-        #expect(s.segments[0].start == earlier)
-        // The monotonic reading is shifted to match, so later clock checks stay consistent.
-        let i = clock.instant()
-        #expect(s.segments[0].startMonotonic == i.monotonic! - 720)
-        #expect(s.duration(on: .left, at: clock.now) == 720)
-    }
-
-    @Test func adjustingCannotOverlapThePreviousSegment() throws {
+    @Test func shiftingMovesEveryTimestampAndKeepsLengths() throws {
         let clock = TestClock()
         var s = try run(.start(.left), nil, clock)
         clock.advance(by: 600)
         s = try run(.switchTo(.right), s, clock)
+        clock.advance(by: 300)
+        let before = s
+        s = try run(.shiftTimestamps(by: -120), s, clock)
+        #expect(s.startedAt == before.startedAt.addingTimeInterval(-120))
+        #expect(s.segments.map(\.start) == before.segments.map { $0.start.addingTimeInterval(-120) })
+        #expect(approx(s.segments[0].duration(at: clock.now), 600))
+        #expect(approx(s.duration(on: .right, at: clock.now), 420))
+        #expect(s.revision == before.revision + 1)
+        #expect(SessionValidator.isValid(s, now: clock.now))
+    }
+
+    @Test func shiftingIntoTheFutureIsRejected() throws {
+        let clock = TestClock()
+        let s = try run(.start(.left), nil, clock)
         clock.advance(by: 60)
         #expect(throws: SessionEngineError.invalidTime) {
-            try engine.apply(.adjustOpenSegmentStart(s.segments[0].end!.addingTimeInterval(-1)), to: s, at: clock.instant())
+            try engine.apply(.shiftTimestamps(by: 3600), to: s, at: clock.instant())
         }
+        #expect(try engine.apply(.shiftTimestamps(by: 0), to: s, at: clock.instant()).isNoOp)
+    }
+
+    // MARK: Clock moved backwards (stored times in the future)
+
+    /// L 9:00–9:55, R from 10:00; at 10:30 the clock is set back 2 h (now reads 8:30).
+    func sessionAfterBackwardsClockChange(_ clock: TestClock) throws -> SessionSnapshot {
+        var s = try run(.start(.left), nil, clock)
+        clock.advance(by: 55 * 60)
+        s = try run(.pause, s, clock)
+        clock.advance(by: 5 * 60)
+        s = try run(.switchTo(.right), s, clock)
+        clock.advance(by: 30 * 60)
+        clock.jumpWall(by: -2 * 3600)
+        return s
+    }
+
+    @Test func endNowWithEverythingInTheFutureIsRefused() throws {
+        let clock = TestClock()
+        let s = try sessionAfterBackwardsClockChange(clock)
+        #expect(SessionEngine.endTimeRange(for: s, now: clock.now) == nil)
+        #expect(throws: SessionEngineError.invalidTime) { try engine.apply(.end, to: s, at: clock.instant()) }
+    }
+
+    @Test func endNowDropsOnlyTheFuturePartWhenSomeDataIsInThePast() throws {
+        let clock = TestClock()
+        var s = try run(.start(.left), nil, clock)
+        clock.advance(by: 20 * 60)
+        s = try run(.switchTo(.right), s, clock)
+        clock.advance(by: 5 * 60)
+        clock.jumpWall(by: -10 * 60)   // now is 15 min after start; R "started" at 20 min
+        let t = try engine.apply(.end, to: s, at: clock.instant())
+        #expect(t.snapshot.status == .completed)
+        #expect(t.snapshot.segments.map(\.side) == [.left])
+        #expect(t.snapshot.endedAt == clock.now)
+        #expect(SessionValidator.isValid(t.snapshot, now: clock.now))
+
+        let range = try #require(SessionEngine.endTimeRange(for: s, now: clock.now))
+        #expect(range.lowerBound == s.startedAt)
+        let atTen = try run(.endAt(s.startedAt.addingTimeInterval(600)), s, clock)
+        #expect(approx(atTen.feedingDuration(at: clock.now), 600))
+        #expect(SessionValidator.isValid(atTen, now: clock.now))
+    }
+
+    @Test func endAtUsesTheSameRangeTheRecoveryPickerShows() throws {
+        let clock = TestClock()
+        var s = try run(.start(.left), nil, clock)
+        clock.advance(by: 600)
+        s = try run(.switchTo(.right), s, clock)
+        clock.advance(by: 3600)
+        let range = try #require(SessionEngine.endTimeRange(for: s, now: clock.now))
+        #expect(range.lowerBound == s.openSegment?.start)
+        #expect(throws: SessionEngineError.invalidTime) {
+            // Between the session start and the running segment: before what the engine accepts.
+            try engine.apply(.endAt(s.startedAt.addingTimeInterval(300)), to: s, at: clock.instant())
+        }
+        #expect(try engine.apply(.endAt(range.lowerBound), to: s, at: clock.instant()).snapshot.status == .completed)
     }
 
     @Test func revisionIncrementsOnlyOnAcceptedChanges() throws {
@@ -365,14 +422,16 @@ struct SessionEngineTests {
         #expect(approx(s.feedingDuration(at: clock.now), 40 * 60))
     }
 
-    @Test func wallClockJumpBackwardsNeverProducesNegativeSegments() throws {
+    @Test func wallClockJumpBackwardsNeverProducesNegativeOrFutureData() throws {
         let clock = TestClock()
-        var s = try run(.start(.left), nil, clock)
+        let s = try run(.start(.left), nil, clock)
         clock.jumpWall(by: -3600)
-        s = try run(.end, s, clock)
-        #expect(approx(s.segments[0].duration(at: clock.now), 0))
-        #expect(s.endedAt! >= s.startedAt)
-        #expect(SessionValidator.violations(in: s, now: clock.now).allSatisfy { $0 != .endBeforeLastSegment })
+        #expect(s.segments[0].duration(at: clock.now) == 0)
+        // Ending would store a future timestamp, so it's refused until the times are fixed.
+        #expect(throws: SessionEngineError.invalidTime) { try engine.apply(.end, to: s, at: clock.instant()) }
+        let fixed = try run(.shiftTimestamps(by: -3600), s, clock)
+        let ended = try run(.end, fixed, clock)
+        #expect(SessionValidator.isValid(ended, now: clock.now))
     }
 
     @Test func corruptActiveSessionWithoutOpenSegmentStillRecovers() throws {

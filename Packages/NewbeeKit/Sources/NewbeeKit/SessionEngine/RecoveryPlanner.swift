@@ -95,7 +95,7 @@ public struct RecoveryPlanner: Sendable {
         // Duplicates should be impossible; close them defensively at the moment the newer feed began.
         var updates = open.dropFirst().map { closeDuplicate($0, supersededAt: survivor.startedAt, now: now.wall) }
 
-        let ack = acknowledged[survivor.id]
+        let ack = [acknowledged[survivor.id], survivor.recoveryAcknowledgedAt].compactMap { $0 }.max()
         var prompt: RecoveryPrompt?
         if let issue = clockIssue(in: survivor, now: now, acknowledgedAt: ack) {
             prompt = issue
@@ -159,14 +159,16 @@ public struct RecoveryPlanner: Sendable {
                 }
             }
             if open.start > now.wall.addingTimeInterval(policy.clockChangeTolerance) {
-                return RecoveryPrompt(session: s, reason: .futureStart, suggestedEnd: open.start)
+                // The real elapsed time is unknowable (different boot): offer to restart the
+                // running segment's count from now, keeping earlier segments' lengths.
+                return RecoveryPrompt(session: s, reason: .futureStart, suggestedEnd: now.wall, correctedStart: now.wall)
             }
             return nil
         }
         let latest = s.segments.compactMap(\.end).max() ?? s.startedAt
         if let ack = acknowledgedAt, latest <= ack { return nil }
         if latest > now.wall.addingTimeInterval(policy.clockChangeTolerance) {
-            return RecoveryPrompt(session: s, reason: .futureStart, suggestedEnd: latest)
+            return RecoveryPrompt(session: s, reason: .futureStart, suggestedEnd: now.wall, correctedStart: now.wall)
         }
         return nil
     }

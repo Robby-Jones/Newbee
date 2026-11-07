@@ -32,6 +32,20 @@ final class RecordingReminders: ReminderScheduling {
 
 struct DiskFull: Error {}
 
+/// Simulates a Lock Screen "End" landing while recovery awaits the Live Activity sync.
+@MainActor
+final class EndingDuringSync: LiveActivitySyncing {
+    weak var manager: FeedingSessionManager?
+    private var fired = false
+
+    func sync(_ snapshot: SessionSnapshot?) async {
+        await Task.yield()
+        guard !fired, let manager, snapshot?.status == .active else { return }
+        fired = true
+        _ = try? manager.end()
+    }
+}
+
 @MainActor
 @Suite("FeedingSessionManager")
 struct FeedingSessionManagerTests {
@@ -322,7 +336,87 @@ struct RecoveryCoordinatorTests {
         #expect(manager.recoveryPrompt == nil)
         await recovery.reconcile()
         #expect(manager.recoveryPrompt == nil)
-        #expect(manager.activeSession == s)   // never discarded automatically
+        // Never discarded automatically, and the feed itself is unchanged.
+        #expect(manager.activeSession?.segments == s.segments)
+        #expect(manager.activeSession?.revision == s.revision)
+
+        // The answer survives the app being terminated and relaunched.
+        clock.advance(by: 10 * 60)
+        let relaunched = FeedingSessionManager(repository: repository, clock: clock)
+        await RecoveryCoordinator(manager: relaunched).reconcile()
+        #expect(relaunched.recoveryPrompt == nil)
+        // …and "still feeding?" counts again from the answer.
+        clock.advance(by: 40 * 60)
+        await RecoveryCoordinator(manager: relaunched).reconcile()
+        #expect(relaunched.recoveryPrompt?.reason == .longRunning)
+    }
+
+    @Test func backwardsClockChangeOnAMultiSegmentFeedIsFixable() async throws {
+        // L 9:00–9:55, R from 10:00; at 10:30 the clock is set back 2 h.
+        let repository = InMemoryFeedingRepository()
+        let manager = FeedingSessionManager(repository: repository, clock: clock)
+        let recovery = RecoveryCoordinator(manager: manager)
+        try manager.start(side: .left)
+        clock.advance(by: 55 * 60)
+        try manager.pause()
+        clock.advance(by: 5 * 60)
+        try manager.switchSide(to: .right)
+        clock.advance(by: 30 * 60)
+        clock.jumpWall(by: -2 * 3600)
+
+        await recovery.reconcile()
+        let prompt = try #require(manager.recoveryPrompt)
+        #expect(prompt.reason == .clockChanged)
+        #expect(SessionEngine.endTimeRange(for: prompt.session, now: clock.now) == nil)
+
+        try manager.adjustStart(to: try #require(prompt.correctedStart))
+        let fixed = try #require(manager.activeSession)
+        #expect(approx(fixed.segments[0].duration(at: clock.now), 55 * 60))
+        #expect(approx(fixed.duration(on: .right, at: clock.now), 30 * 60))
+        #expect(SessionValidator.isValid(fixed, now: clock.now))
+        await recovery.reconcile()
+        #expect(manager.recoveryPrompt == nil)
+
+        try manager.end()
+        #expect(approx(manager.lastCompletedSession?.feedingDuration(at: clock.now), 85 * 60))
+    }
+
+    @Test func futureStartAfterARebootOffersAFixAndEndingWorksAfterIt() async throws {
+        let repository = InMemoryFeedingRepository()
+        let manager = FeedingSessionManager(repository: repository, clock: clock)
+        let recovery = RecoveryCoordinator(manager: manager)
+        try manager.start(side: .left)
+        clock.advance(by: 10 * 60)
+        try manager.switchSide(to: .right)
+        clock.advance(by: 5 * 60)
+        clock.reboot()
+        clock.jumpWall(by: -3600)
+
+        await recovery.reconcile()
+        let prompt = try #require(manager.recoveryPrompt)
+        #expect(prompt.reason == .futureStart)
+        #expect(prompt.correctedStart == clock.now)
+
+        try manager.adjustStart(to: prompt.correctedStart!)
+        #expect(manager.activeSession?.openSegment?.start == clock.now)
+        #expect(approx(manager.activeSession?.duration(on: .left, at: clock.now), 10 * 60))
+        clock.advance(by: 120)
+        try manager.end()
+        let done = try #require(manager.lastCompletedSession)
+        #expect(SessionValidator.isValid(done, now: clock.now))
+        #expect(approx(done.duration(on: .right, at: clock.now), 120))
+    }
+
+    @Test func promptIsNotPublishedForASessionThatChangedDuringTheActivitySync() async throws {
+        let s = try engine.apply(.start(.left), to: nil, at: clock.instant()).snapshot
+        let repository = InMemoryFeedingRepository(sessions: [s])
+        let activity = EndingDuringSync()
+        let manager = FeedingSessionManager(repository: repository, clock: clock, liveActivity: activity)
+        activity.manager = manager
+        clock.advance(by: 3 * 3600)
+        await RecoveryCoordinator(manager: manager).reconcile()
+        #expect(manager.activeSession == nil)
+        #expect(manager.recoveryPrompt == nil)
     }
 
     @Test func endingAtTheSuggestedTimeResolvesThePrompt() async throws {

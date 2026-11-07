@@ -14,8 +14,16 @@ struct RecoverySheet: View {
     init(prompt: RecoveryPrompt, model: FeedingSessionUIModel) {
         self.prompt = prompt
         self.model = model
-        let lower = prompt.session.startedAt
-        _endTime = State(initialValue: min(max(prompt.suggestedEnd, lower), max(Date(), lower)))
+        let bounds = Self.endTimeBounds(for: prompt.session, now: .now)
+        let initial = bounds.map { min(max(prompt.suggestedEnd, $0.lowerBound), $0.upperBound) } ?? .now
+        _endTime = State(initialValue: initial)
+    }
+
+    /// The same end times the session engine accepts, capped at now for the picker.
+    /// `nil` when the whole session lies in the future (only "Fix start time" or Discard apply).
+    static func endTimeBounds(for session: SessionSnapshot, now: Date) -> ClosedRange<Date>? {
+        guard let range = SessionEngine.endTimeRange(for: session, now: now) else { return nil }
+        return range.lowerBound...max(range.lowerBound, min(now, range.upperBound))
     }
 
     var body: some View {
@@ -32,7 +40,9 @@ struct RecoverySheet: View {
                 optionButton(String(localized: "Keep going"), systemImage: "play.fill", prominent: prompt.correctedStart == nil) {
                     model.recoveryKeepGoing()
                 }
-                endAtOption
+                if let bounds = Self.endTimeBounds(for: prompt.session, now: .now) {
+                    endAtOption(in: bounds)
+                }
                 optionButton(String(localized: "End now"), systemImage: "stop.fill") {
                     model.recoveryEnd(at: nil)
                 }
@@ -78,12 +88,10 @@ struct RecoverySheet: View {
         }
     }
 
-    private var endAtOption: some View {
-        let lower = prompt.session.startedAt
-        let upper = max(Date(), lower)
-        return Card {
+    private func endAtOption(in bounds: ClosedRange<Date>) -> some View {
+        Card {
             VStack(alignment: .leading, spacing: NBSpacing.m) {
-                DatePicker("Ended at", selection: $endTime, in: lower...upper, displayedComponents: [.hourAndMinute])
+                DatePicker("Ended at", selection: $endTime, in: bounds, displayedComponents: [.hourAndMinute])
                     .font(.headline)
                 Button {
                     model.recoveryEnd(at: endTime)

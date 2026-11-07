@@ -89,7 +89,7 @@ Writes are tiny, so saving on every command costs nothing and means a power loss
 2. **Duplicates (>1):** keep the newest by `startedAt`. Close the others at their last segment end, set `needsReview = true`. (This should be impossible; it's defense in depth.)
 3. **Sanity checks** on the survivor:
    - **Negative or absurd elapsed** (open segment `startedAt > now`, i.e. the clock moved backwards): flag for review, show recovery sheet.
-   - **Clock change within the same boot:** if `startBootID == clock.bootID` and `|wallElapsed − monotonicElapsed| > 60 s`, the wall clock changed. Trust monotonic elapsed for the *open* segment, offer to correct its `startedAt` to `now − monotonicElapsed`, and log `needsReview`.
+   - **Clock change within the same boot:** if `startBootID == clock.bootID` and `|wallElapsed − monotonicElapsed| > 60 s`, the wall clock changed. Trust monotonic elapsed for the *open* segment and offer "Fix start time" to `now − monotonicElapsed`. The fix shifts **every** timestamp of the session by the same offset (`SessionCommand.shiftTimestamps`), because all stored times are in the old clock frame; lengths and order are kept. Log `needsReview`.
    - **Different boot (device restarted):** monotonic data is unusable; trust wall timestamps (the normal case).
    - **Very long open segment** (> the "still feeding?" threshold, default 45 min, or > 3 h in any case): show the **recovery sheet**.
 4. **Live Activity reconcile** (see `LIVE_ACTIVITIES.md` §6).
