@@ -9,6 +9,8 @@ struct DashboardView: View {
     @Environment(FeedingSessionUIModel.self) private var sessionModel: FeedingSessionUIModel?
     /// Enough recent feeds for "today" and the rolling 24 hours, even on a very busy day.
     @Query(FeedingSession.completedFeeds(limit: 80)) private var recent: [FeedingSession]
+    @State private var showingSettings = false
+
     var body: some View {
         let entries = recent.compactMap(\.feedEntry)
         // Minute ticks keep "2 h 14 min ago" and the day boundary current without per-second work.
@@ -31,6 +33,26 @@ struct DashboardView: View {
             .navigationTitle(Self.greeting(at: context.date))
         }
         .background(NBColor.canvas)
+        .toolbar {
+            ToolbarItem(placement: .topBarTrailing) {
+                Button {
+                    showingSettings = true
+                } label: {
+                    Label("Settings", systemImage: "gearshape")
+                }
+                .accessibilityIdentifier("home.settings")
+            }
+        }
+        .sheet(isPresented: $showingSettings) {
+            NavigationStack {
+                SettingsView()
+                    .toolbar {
+                        ToolbarItem(placement: .confirmationAction) {
+                            Button("Done") { showingSettings = false }
+                        }
+                    }
+            }
+        }
     }
 
     static func greeting(at date: Date, calendar: Calendar = .current) -> String {

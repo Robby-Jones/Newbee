@@ -30,6 +30,8 @@ final class BottleLogUIModel {
 
     @ObservationIgnored let log: BottleLog
     let preferences: AppPreferences
+    /// Called after every save, delete or undo (reminders count from the last feed).
+    @ObservationIgnored private let onChange: @MainActor () -> Void
 
     var editor: EditorRequest?
     var toast: Toast?
@@ -42,9 +44,10 @@ final class BottleLogUIModel {
     /// How many recent bottles Home lists.
     static let recentLimit = 3
 
-    init(log: BottleLog, preferences: AppPreferences) {
+    init(log: BottleLog, preferences: AppPreferences, onChange: @escaping @MainActor () -> Void = {}) {
         self.log = log
         self.preferences = preferences
+        self.onChange = onChange
         refresh()
     }
 
@@ -96,6 +99,7 @@ final class BottleLogUIModel {
                 undo: .save(result)
             )
             refresh()
+            onChange()
             return true
         } catch let problem as BottleValidationError {
             feedback = FeedbackEvent(kind: .warning)
@@ -114,6 +118,7 @@ final class BottleLogUIModel {
             feedback = FeedbackEvent(kind: .light)
             toast = Toast(message: String(localized: "Bottle deleted"), undo: .delete(deleted))
             refresh()
+            onChange()
         } catch {
             fail(error)
         }
@@ -129,6 +134,7 @@ final class BottleLogUIModel {
             }
             feedback = FeedbackEvent(kind: .light)
             refresh()
+            onChange()
         } catch {
             fail(error)
         }

@@ -25,13 +25,17 @@ final class AppDependencies {
     let recoveryPolicy: RecoveryPolicy
     /// Bottle feeds: instant entries, separate from the breastfeeding session manager.
     let bottleLog: BottleLog
-    /// Units and presets (App Group `UserDefaults`).
+    /// Units, presets, reminders and appearance (App Group `UserDefaults`).
     let preferences: AppPreferences
+    /// Feed-due and "Still feeding?" local notifications.
+    let reminders: ReminderScheduler
 
     init(
         clock: any AppClock = SystemClock(),
         storage: PersistenceController.Storage? = nil,
-        liveActivity: (any LiveActivitySyncing)? = nil
+        liveActivity: (any LiveActivitySyncing)? = nil,
+        notifications: (any NotificationClient)? = nil,
+        defaults: UserDefaults? = nil
     ) {
         self.clock = clock
         let resolvedStorage = storage ?? (AppConfiguration.isUITesting ? .inMemory : .appGroup)
@@ -58,14 +62,30 @@ final class AppDependencies {
             bottleRepository = UnavailableBottleRepository(reason: reason)
         }
         bottleLog = BottleLog(repository: bottleRepository, clock: clock)
-        preferences = AppPreferences(defaults: AppPreferences.makeDefaults())
+        let preferences = AppPreferences(defaults: defaults ?? AppPreferences.makeDefaults())
+        self.preferences = preferences
 
-        // One policy for recovery and for the Live Activity's "Still feeding?" hint.
-        let policy = RecoveryPolicy()
+        let isInMemory: Bool
+        if case .inMemory = resolvedStorage { isInMemory = true } else { isInMemory = false }
+        let isAppStore: Bool
+        if case .appGroup = resolvedStorage { isAppStore = true } else { isAppStore = false }
+        let reminders = ReminderScheduler(
+            preferences: preferences,
+            feedingRepository: repository,
+            bottleRepository: bottleRepository,
+            // Only the real store notifies: UI tests, previews and test stores never prompt.
+            client: notifications ?? (isAppStore ? SystemNotificationClient() : NoNotificationClient()),
+            clock: clock
+        )
+        self.reminders = reminders
+
+        // One policy for recovery, the Live Activity's "Still feeding?" hint and the notification,
+        // at the threshold chosen in Settings (read at launch).
+        let policy = RecoveryPolicy(stillFeedingThreshold: preferences.reminders.stillFeedingThreshold)
         let activity: any LiveActivitySyncing
         if let liveActivity {
             activity = liveActivity
-        } else if case .inMemory = resolvedStorage {
+        } else if isInMemory {
             activity = NoLiveActivities()
         } else {
             // Same clock as the manager; stale hint at the same threshold as the recovery prompt.
@@ -75,7 +95,7 @@ final class AppDependencies {
                 planner: LiveActivityPlanner(staleAfter: policy.effectiveThreshold)
             )
         }
-        let manager = FeedingSessionManager(repository: repository, clock: clock, liveActivity: activity)
+        let manager = FeedingSessionManager(repository: repository, clock: clock, liveActivity: activity, reminders: reminders)
         recoveryPolicy = policy
         self.liveActivity = activity
         sessionManager = manager

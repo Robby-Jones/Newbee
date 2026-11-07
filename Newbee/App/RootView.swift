@@ -15,6 +15,8 @@ struct RootView: View {
     let bottleModel: BottleLogUIModel?
 
     @State private var selection: TabID = .home
+    /// Appearance (System / Light / Dark) from Settings.
+    @Environment(AppPreferences.self) private var preferences: AppPreferences?
 
     init(sessionModel: FeedingSessionUIModel? = nil, bottleModel: BottleLogUIModel? = nil) {
         self.sessionModel = sessionModel
@@ -46,6 +48,7 @@ struct RootView: View {
                 .tag(TabID.tools)
         }
         .tint(NBColor.accent)
+        .preferredColorScheme(preferences?.appearance.colorScheme)
         .environment(sessionModel)
         .environment(bottleModel)
         .modifier(FeedingPresentation(model: sessionModel))
