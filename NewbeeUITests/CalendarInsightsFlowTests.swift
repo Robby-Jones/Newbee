@@ -19,22 +19,32 @@ final class CalendarInsightsFlowTests: XCTestCase {
         XCTAssertTrue(preset.waitForExistence(timeout: 5))
         preset.tap()
         app.buttons["bottle.save"].firstMatch.tap()
+        // Wait for the sheet to close and the save to land before leaving Home.
+        let saved = NSPredicate(format: "label CONTAINS %@", "120 mL")
+        XCTAssertEqual(XCTWaiter().wait(for: [XCTNSPredicateExpectation(predicate: saved, object: logBottle)], timeout: 5), .completed, logBottle.label)
 
         // Calendar opens on today, selected, with the bottle in its summary.
-        app.tabBars.buttons["Calendar"].tap()
-        let openDay = app.buttons["calendar.openDay"].firstMatch
-        XCTAssertTrue(openDay.waitForExistence(timeout: 5))
-        XCTAssertTrue(element(in: app, containing: "120 mL").exists)
+        let calendarTab = app.tabBars.buttons["Calendar"]
+        XCTAssertTrue(calendarTab.waitForExistence(timeout: 5), "Calendar tab missing")
+        calendarTab.tap()
+        XCTAssertTrue(app.navigationBars["Calendar"].waitForExistence(timeout: 5), "Calendar didn't open")
+        let openDay = app.buttons.matching(NSPredicate(format: "identifier == %@ OR label == %@", "calendar.openDay", "Open day")).firstMatch
+        if !openDay.waitForExistence(timeout: 3) {
+            app.swipeUp()
+        }
+        XCTAssertTrue(openDay.waitForExistence(timeout: 5), "Open day missing:\n\(app.debugDescription)")
+        XCTAssertTrue(element(in: app, containing: "120 mL").exists, "Day summary has no 120 mL")
         openDay.tap()
         // Feed rows combine their texts into one element.
-        XCTAssertTrue(element(in: app, containing: "Bottle · 120 mL").waitForExistence(timeout: 5))
+        XCTAssertTrue(element(in: app, containing: "Bottle · 120 mL").waitForExistence(timeout: 5), "Day list has no bottle row")
 
         // Insights shows the bottle card and the one-day note.
         app.tabBars.buttons["Insights"].tap()
-        XCTAssertTrue(app.staticTexts["Bottles"].firstMatch.waitForExistence(timeout: 5))
-        XCTAssertTrue(app.staticTexts["Feeds per day"].firstMatch.exists)
+        XCTAssertTrue(app.staticTexts["Feeds per day"].firstMatch.waitForExistence(timeout: 5), "No feeds card")
+        XCTAssertTrue(app.staticTexts["Bottles"].firstMatch.exists, "No bottles card")
     }
 
+    @MainActor
     private func element(in app: XCUIApplication, containing text: String) -> XCUIElement {
         app.descendants(matching: .any).matching(NSPredicate(format: "label CONTAINS %@", text)).firstMatch
     }
