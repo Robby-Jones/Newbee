@@ -36,7 +36,7 @@ Legend: `[x]` done · `[ ]` pending · `[!]` blocked (reason noted). Updated by 
 - [ ] Domain types + SessionEngine + TestClock + unit tests
 - [ ] SwiftData schema V1 + repository + migration plan
 - [ ] FeedingSessionManager + integration tests
-- [ ] Breastfeeding timer UI + pill + undo
+- [x] Breastfeeding timer UI + pill + undo + recovery sheet (bound to `FeedingSessionControlling`; wired to the real manager at integration)
 - [ ] ActivityAttributes + LiveActivityCoordinator
 - [ ] Lock Screen presentation
 - [ ] Dynamic Island compact / minimal / expanded
