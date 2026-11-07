@@ -25,9 +25,17 @@ jobs:
         run: swift test --parallel
 
   ios:
-    name: iOS build and tests
+    name: iOS build and tests (${{ matrix.label }})
     runs-on: macos-15
-    timeout-minutes: 45
+    timeout-minutes: 60
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - label: latest iOS
+            ios_major: ""
+          - label: iOS 17 minimum
+            ios_major: "17"
     steps:
       - uses: actions/checkout@v4
       - name: Select Xcode
@@ -40,7 +48,7 @@ jobs:
         run: xcodegen generate
       - name: Pick simulator
         id: sim
-        run: echo "udid=$(scripts/pick-simulator.sh)" >> "$GITHUB_OUTPUT"
+        run: echo "udid=$(scripts/pick-simulator.sh ${{ matrix.ios_major }})" >> "$GITHUB_OUTPUT"
       - name: Build and test
         run: |
           set -o pipefail
@@ -55,5 +63,5 @@ jobs:
         if: failure()
         uses: actions/upload-artifact@v4
         with:
-          name: TestResults
+          name: TestResults-${{ matrix.ios_major || 'latest' }}
           path: TestResults.xcresult

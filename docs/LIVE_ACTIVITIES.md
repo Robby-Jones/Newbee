@@ -8,7 +8,7 @@ Re-verify each item against current Apple docs and on device in Phase 5.
 
 | Fact | Impact |
 |---|---|
-| ActivityKit Live Activities: iOS 16.1+. **Interactive buttons/toggles via App Intents: iOS 17+.** | Our iOS 18 floor gets full interactivity. |
+| ActivityKit Live Activities: iOS 16.1+. **Interactive buttons/toggles via App Intents: iOS 17+.** | Our iOS 17 floor gets full interactivity. |
 | Dynamic Island exists only on iPhone 14 Pro and later. | Others get the Lock Screen presentation and a banner on update with an alert. |
 | `Activity.request` generally must be called while the app is in the **foreground** (push-to-start is 17.2+ and needs a server). | Sessions started in-app are fine. Starting from Siri or a Control (future) needs checking: `LiveActivityIntent` should allow it. |
 | `LiveActivityIntent.perform()` runs **in the app's process** (launched in the background if needed), even when the button lives in the widget extension. | Intents can use the same `FeedingSessionManager` and SwiftData store. The intent type must be compiled into both the app and extension targets. |

@@ -34,7 +34,6 @@ enum NewbeeSchemaV1: VersionedSchema {
 
     @Model
     final class FeedingSession {
-        #Index<FeedingSession>([\.startedAt], [\.statusRaw])
 
         var id: UUID = UUID()
         var baby: Baby?
@@ -97,7 +96,6 @@ enum NewbeeSchemaV1: VersionedSchema {
 
     @Model
     final class FeedingSegment {
-        #Index<FeedingSegment>([\.startedAt])
 
         var id: UUID = UUID()
         var session: FeedingSession?
