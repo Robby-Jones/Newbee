@@ -16,7 +16,7 @@ TabView
 ```
 
 **Global elements**
-- **Active Session Pill**: when a breastfeeding session is active or paused, a compact pill floats above the tab bar on *every* tab ("● L 12:05 · total 18:42", side-tinted). Tap opens the timer sheet. Built with `safeAreaInset(edge: .bottom)` on iOS 18; adopt the system tab-bar accessory API on newer iOS via availability checks.
+- **Active Session Pill**: when a breastfeeding session is active or paused, a compact pill floats above the tab bar on *every* tab ("● L 12:05 · total 18:42", side-tinted). Tap opens the timer sheet. Built with `safeAreaInset(edge: .bottom)` on iOS 17; adopt the system tab-bar accessory API on newer iOS via availability checks.
 - **Settings** gear on Home (top-right) and a row in Tools.
 
 **Modal presentation choices** (keeps navigation depth at most 2)

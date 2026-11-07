@@ -19,27 +19,28 @@ struct RootView: View {
     }
 
     var body: some View {
+        // `.tabItem` + `.tag` rather than the iOS 18 `Tab` API, to support iOS 17.
         TabView(selection: $selection) {
-            Tab("Home", systemImage: "house", value: TabID.home) {
-                NavigationStack { DashboardView() }
-                    .activeSessionPillInset(sessionModel)
-            }
-            Tab("Calendar", systemImage: "calendar", value: TabID.calendar) {
-                NavigationStack { CalendarView() }
-                    .activeSessionPillInset(sessionModel)
-            }
-            Tab("History", systemImage: "list.bullet", value: TabID.history) {
-                NavigationStack { HistoryView() }
-                    .activeSessionPillInset(sessionModel)
-            }
-            Tab("Insights", systemImage: "chart.bar", value: TabID.insights) {
-                NavigationStack { InsightsView() }
-                    .activeSessionPillInset(sessionModel)
-            }
-            Tab("Tools", systemImage: "wrench.and.screwdriver", value: TabID.tools) {
-                NavigationStack { ToolsView() }
-                    .activeSessionPillInset(sessionModel)
-            }
+            NavigationStack { DashboardView() }
+                .activeSessionPillInset(sessionModel)
+                .tabItem { Label("Home", systemImage: "house") }
+                .tag(TabID.home)
+            NavigationStack { CalendarView() }
+                .activeSessionPillInset(sessionModel)
+                .tabItem { Label("Calendar", systemImage: "calendar") }
+                .tag(TabID.calendar)
+            NavigationStack { HistoryView() }
+                .activeSessionPillInset(sessionModel)
+                .tabItem { Label("History", systemImage: "list.bullet") }
+                .tag(TabID.history)
+            NavigationStack { InsightsView() }
+                .activeSessionPillInset(sessionModel)
+                .tabItem { Label("Insights", systemImage: "chart.bar") }
+                .tag(TabID.insights)
+            NavigationStack { ToolsView() }
+                .activeSessionPillInset(sessionModel)
+                .tabItem { Label("Tools", systemImage: "wrench.and.screwdriver") }
+                .tag(TabID.tools)
         }
         .tint(NBColor.accent)
         .environment(sessionModel)
