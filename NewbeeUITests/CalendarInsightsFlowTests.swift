@@ -26,8 +26,15 @@ final class CalendarInsightsFlowTests: XCTestCase {
         // Calendar opens on today, selected, with the bottle in its summary.
         let calendarTab = app.tabBars.buttons["Calendar"]
         XCTAssertTrue(calendarTab.waitForExistence(timeout: 5), "Calendar tab missing")
+        // The undo toast sits just above the tab bar and can catch the tap on iOS 17: let it go.
+        let undo = app.buttons["bottle.undo"].firstMatch
+        let gone = XCTNSPredicateExpectation(predicate: NSPredicate(format: "exists == false"), object: undo)
+        _ = XCTWaiter().wait(for: [gone], timeout: 10)
         calendarTab.tap()
-        XCTAssertTrue(app.navigationBars["Calendar"].waitForExistence(timeout: 5), "Calendar didn't open")
+        if !app.navigationBars["Calendar"].waitForExistence(timeout: 3) {
+            calendarTab.tap()
+        }
+        XCTAssertTrue(app.navigationBars["Calendar"].waitForExistence(timeout: 5), "Calendar didn't open:\n\(app.debugDescription)")
         let openDay = app.buttons.matching(NSPredicate(format: "identifier == %@ OR label == %@", "calendar.openDay", "Open day")).firstMatch
         if !openDay.waitForExistence(timeout: 3) {
             app.swipeUp()
