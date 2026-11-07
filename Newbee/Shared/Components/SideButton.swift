@@ -47,8 +47,8 @@ struct SideButton: View {
             .contentShape(.rect(cornerRadius: NBRadius.card))
         }
         .buttonStyle(PressableButtonStyle())
-        .accessibilityElement(children: .ignore)
         .accessibilityLabel(String(localized: "\(side.title) side"))
+        .accessibilityIdentifier("sideButton.\(side.rawValue)")
         .accessibilityValue(accessibilityValue)
         .accessibilityHint(accessibilityHint)
         .accessibilityAddTraits(mode == .active ? .isSelected : [])

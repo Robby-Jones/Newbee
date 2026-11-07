@@ -9,14 +9,30 @@ struct ActiveSessionPill: View {
     let action: () -> Void
 
     var body: some View {
-        Button(action: action) {
-            TimelineView(.periodic(from: .now, by: 1)) { context in
-                content(at: context.date)
-            }
+        TimelineView(.periodic(from: .now, by: 1)) { context in
+            button(at: context.date)
         }
-        .buttonStyle(PressableButtonStyle())
         .padding(.horizontal, NBSpacing.l)
         .padding(.bottom, NBSpacing.s)
+    }
+
+    private func button(at now: Date) -> some View {
+        let side = session.lastSide ?? .left
+        let isPaused = session.status == .paused
+        let sideTime = session.duration(on: side, at: now)
+        let total = session.feedingDuration(at: now)
+        return Button(action: action) {
+            content(at: now)
+        }
+        .buttonStyle(PressableButtonStyle())
+        .accessibilityIdentifier("activeSessionPill")
+        .accessibilityLabel(String(localized: "Feeding on the \(side.title.lowercased()) side"))
+        .accessibilityValue(
+            isPaused
+                ? String(localized: "Paused, total \(DurationText.spoken(total))")
+                : String(localized: "\(DurationText.spoken(sideTime)) on this side, total \(DurationText.spoken(total))")
+        )
+        .accessibilityHint(String(localized: "Opens the feeding timer"))
     }
 
     private func content(at now: Date) -> some View {
@@ -55,14 +71,6 @@ struct ActiveSessionPill: View {
         }
         .shadow(color: .black.opacity(0.1), radius: 8, y: 3)
         .saturation(isPaused ? 0.4 : 1)
-        .accessibilityElement(children: .ignore)
-        .accessibilityLabel(String(localized: "Feeding on the \(side.title.lowercased()) side"))
-        .accessibilityValue(
-            isPaused
-                ? String(localized: "Paused, total \(DurationText.spoken(total))")
-                : String(localized: "\(DurationText.spoken(sideTime)) on this side, total \(DurationText.spoken(total))")
-        )
-        .accessibilityHint(String(localized: "Opens the feeding timer"))
     }
 }
 
