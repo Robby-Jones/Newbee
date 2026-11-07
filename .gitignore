@@ -22,3 +22,4 @@ Package.resolved
 Config/Signing.local.xcconfig
 
 .DS_Store
+.superdesign/tmp/
