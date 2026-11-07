@@ -36,7 +36,7 @@ Legend: `[x]` done · `[ ]` pending · `[!]` blocked (reason noted). Updated by 
 - [x] Domain types + SessionEngine + TestClock + unit tests (state table, rapid taps, midnight/DST, clock jumps, reboot; Linux)
 - [x] SwiftData schema V1 + repository + migration plan (`SwiftDataFeedingRepository`, snapshot mapping)
 - [x] FeedingSessionManager + integration tests (save-before-effects, ordered effects, undo via restore, stale intents, termination/relaunch)
-- [ ] Breastfeeding timer UI + pill + undo
+- [x] Breastfeeding timer UI + pill + undo + recovery sheet (bound to `FeedingSessionControlling`; wired to the real `FeedingSessionManager`)
 - [ ] ActivityAttributes + LiveActivityCoordinator
 - [ ] Lock Screen presentation
 - [ ] Dynamic Island compact / minimal / expanded

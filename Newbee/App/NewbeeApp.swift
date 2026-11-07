@@ -6,16 +6,15 @@ import SwiftUI
 @main
 struct NewbeeApp: App {
     private let dependencies = AppDependencies.shared
+    @State private var sessionModel = NewbeeApp.makeSessionModel()
     @Environment(\.scenePhase) private var scenePhase
 
     var body: some Scene {
         WindowGroup {
             if let container = dependencies.modelContainer {
                 let recovery = dependencies.recovery
-                RootView()
+                RootView(sessionModel: sessionModel)
                     .modelContainer(container)
-                    .environment(dependencies.sessionManager)
-                    .environment(recovery)
                     // Restore any session interrupted by termination, reboot or a clock change
                     // (docs/TIMER_ENGINE.md §5). Reconciling is idempotent, so overlapping
                     // triggers are harmless.
@@ -32,5 +31,11 @@ struct NewbeeApp: App {
                 StoreErrorView(error: dependencies.storeError)
             }
         }
+    }
+
+    /// The timer UI drives the shared `FeedingSessionManager`, the same instance Live Activity
+    /// intents use. UI tests (`-uiTesting`) get it on an in-memory store.
+    private static func makeSessionModel() -> FeedingSessionUIModel? {
+        FeedingSessionUIModel(controller: AppDependencies.shared.sessionManager)
     }
 }
