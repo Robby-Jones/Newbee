@@ -104,10 +104,20 @@ struct FeedRow: View {
                     }
                 }
                 if !entry.notes.isEmpty {
-                    Text(entry.notes)
-                        .font(.footnote)
-                        .foregroundStyle(.secondary)
-                        .lineLimit(2)
+                    // Notes get their own soft block and room to read, not a 2-line preview.
+                    Label {
+                        Text(entry.notes)
+                            .lineLimit(6)
+                    } icon: {
+                        Image(systemName: "note.text")
+                            .accessibilityHidden(true)
+                    }
+                    .font(.footnote)
+                    .foregroundStyle(.secondary)
+                    .padding(.horizontal, NBSpacing.s)
+                    .padding(.vertical, 6)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .background(NBColor.accent.opacity(0.07), in: RoundedRectangle(cornerRadius: 10, style: .continuous))
                 }
                 if let gap = row.sincePrevious {
                     Label(String(localized: "\(DurationText.short(gap)) after the previous feed"), systemImage: "arrow.down")

@@ -12,7 +12,10 @@ struct BreastfeedingTimerView: View {
     var body: some View {
         Group {
             if let summary = model.completedSummary, model.activeSession == nil {
-                SessionSummaryView(session: summary) { model.closeTimer() }
+                SessionSummaryView(session: summary) { note in
+                    model.saveNote(note, sessionID: summary.id)
+                    model.closeTimer()
+                }
             } else {
                 TimelineView(.periodic(from: .now, by: 1)) { context in
                     TimerContent(model: model, display: model.display(at: context.date))
@@ -34,12 +37,20 @@ struct BreastfeedingTimerView: View {
     }
 }
 
+/// The timer, laid out like a nursing timer (docs/UX_SPEC.md §3.3): the total on top, two big
+/// round side buttons with each side's time inside, then Pause, End feed and Add note.
+///
+/// In dark mode the app's dark tokens give it a dim, low-glare night look for 3 a.m. feeds.
 private struct TimerContent: View {
     let model: FeedingSessionUIModel
     let display: BreastfeedingTimerDisplay
 
     @Environment(\.dynamicTypeSize) private var dynamicTypeSize
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @State private var editingStart = false
+    @State private var startDraft = Date.now
+    @State private var editingNote = false
+    @State private var noteDraft = ""
 
     var body: some View {
         GeometryReader { proxy in
@@ -51,6 +62,9 @@ private struct TimerContent: View {
                     Spacer(minLength: 0)
                     sideButtons
                     if display.phase != .notStarted {
+                        SegmentBar(left: display.left, right: display.right)
+                            .frame(maxWidth: 240)
+                        Spacer(minLength: 0)
                         controls
                     }
                 }
@@ -61,6 +75,8 @@ private struct TimerContent: View {
             .scrollBounceBehavior(.basedOnSize)
         }
         .animation(reduceMotion ? nil : .nbState, value: display.phase)
+        .sheet(isPresented: $editingStart) { editStartSheet }
+        .sheet(isPresented: $editingNote) { noteSheet }
     }
 
     // MARK: Top bar
@@ -77,6 +93,13 @@ private struct TimerContent: View {
             .accessibilityHint("The feed keeps running")
             Spacer()
             if display.phase != .notStarted {
+                Button("Edit start") {
+                    startDraft = display.startedAt ?? .now
+                    editingStart = true
+                }
+                .font(.body.weight(.semibold))
+                .frame(minHeight: NBLayout.minHitTarget)
+                .accessibilityHint("Change when this feed started")
                 Menu {
                     Button("Discard feed", systemImage: "trash", role: .destructive) {
                         model.discardSession()
@@ -119,9 +142,6 @@ private struct TimerContent: View {
                         .font(.subheadline)
                         .foregroundStyle(.secondary)
                 }
-                SegmentBar(left: display.left, right: display.right)
-                    .frame(maxWidth: 240)
-                    .padding(.top, NBSpacing.xs)
             }
             .saturation(display.isPaused ? 0.3 : 1)
             .opacity(display.isPaused ? 0.75 : 1)
@@ -177,7 +197,7 @@ private struct TimerContent: View {
     // MARK: Pause / End
 
     private var controls: some View {
-        HStack(spacing: NBSpacing.m) {
+        VStack(spacing: NBSpacing.m) {
             Button {
                 model.togglePause()
             } label: {
@@ -186,7 +206,7 @@ private struct TimerContent: View {
                     .frame(maxWidth: .infinity, minHeight: NBLayout.primaryControlHeight)
             }
             .buttonStyle(.borderedProminent)
-            .tint(display.isPaused ? NBColor.accent : Color.secondary.opacity(0.25))
+            .tint(display.isPaused ? NBColor.accent : Color.secondary.opacity(0.18))
             .foregroundStyle(display.isPaused ? Color.white : Color.primary)
 
             Button {
@@ -196,11 +216,81 @@ private struct TimerContent: View {
                     .font(.headline)
                     .frame(maxWidth: .infinity, minHeight: NBLayout.primaryControlHeight)
             }
-            .buttonStyle(.bordered)
-            .tint(NBColor.destructive)
+            .buttonStyle(.borderedProminent)
+            .tint(NBColor.destructive.opacity(0.16))
+            .foregroundStyle(NBColor.destructive)
             .accessibilityHint("Saves the feed. You can undo for a few seconds.")
+
+            Button {
+                noteDraft = model.activeSession?.notes ?? ""
+                editingNote = true
+            } label: {
+                Label(hasNote ? "Edit note" : "Add note", systemImage: "note.text")
+                    .font(.body.weight(.semibold))
+                    .frame(minHeight: NBLayout.minHitTarget)
+            }
+            .tint(NBColor.accent)
         }
         .buttonBorderShape(.roundedRectangle(radius: NBRadius.control))
+    }
+
+    private var hasNote: Bool {
+        !(model.activeSession?.notes.isEmpty ?? true)
+    }
+
+    // MARK: Sheets
+
+    private var editStartSheet: some View {
+        NavigationStack {
+            DatePicker(
+                "Started",
+                selection: $startDraft,
+                in: ...(model.latestStart(at: .now) ?? .now),
+                displayedComponents: [.date, .hourAndMinute]
+            )
+            .datePickerStyle(.wheel)
+            .labelsHidden()
+            .padding()
+            .navigationTitle("Feed started at")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button("Cancel") { editingStart = false }
+                }
+                ToolbarItem(placement: .confirmationAction) {
+                    Button("Save") {
+                        model.editStart(to: startDraft)
+                        editingStart = false
+                    }
+                }
+            }
+        }
+        .presentationDetents([.medium])
+    }
+
+    private var noteSheet: some View {
+        NavigationStack {
+            ScrollView {
+                NotesEditor(text: $noteDraft, minLines: 6, fieldIdentifier: "timer.note")
+                    .padding(NBSpacing.l)
+            }
+            .navigationTitle("Note")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button("Cancel") { editingNote = false }
+                }
+                ToolbarItem(placement: .confirmationAction) {
+                    Button("Save") {
+                        if let id = model.activeSession?.id {
+                            model.saveNote(noteDraft.trimmingCharacters(in: .whitespacesAndNewlines), sessionID: id)
+                        }
+                        editingNote = false
+                    }
+                }
+            }
+        }
+        .presentationDetents([.medium, .large])
     }
 }
 

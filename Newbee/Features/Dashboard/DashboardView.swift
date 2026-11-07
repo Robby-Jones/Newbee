@@ -3,9 +3,10 @@ import NewbeeShared
 import SwiftData
 import SwiftUI
 
-/// Home (docs/UX_SPEC.md §3.2): how long ago the last feed was, the Start buttons (or the
-/// running feed), Log bottle, and today's totals. Answers the 3 a.m. questions in one glance;
-/// everything older lives in History and Insights.
+/// Home (docs/UX_SPEC.md §3.2), laid out like the home screens of popular baby trackers: who
+/// the baby is, how long since the last feed, three big round buttons to start a feed on either
+/// side or log a bottle, today's totals and the latest entries. Answers the 3 a.m. questions in
+/// one glance; everything older lives in History and Insights.
 struct DashboardView: View {
     @Environment(FeedingSessionUIModel.self) private var sessionModel: FeedingSessionUIModel?
     /// Enough recent feeds for "today" and the rolling 24 hours, even on a very busy day.
@@ -21,38 +22,24 @@ struct DashboardView: View {
             let now = max(context.date, .now)
             let summary = DashboardSummary(entries: entries, now: now)
             ScrollView {
-                VStack(alignment: .leading, spacing: NBSpacing.l) {
-                    if let profile = profileLine(at: now) {
-                        Text(profile)
-                            .font(.subheadline.weight(.medium))
-                            .foregroundStyle(.secondary)
-                            .padding(.top, -NBSpacing.s)
-                    }
-                    if sessionModel?.activeSession == nil {
+                VStack(spacing: NBSpacing.xl) {
+                    ProfileHeader(baby: babies.first, now: now)
+                    if let sessionModel, sessionModel.activeSession != nil {
+                        ActiveFeedCard(model: sessionModel)
+                    } else {
                         LastFeedCard(summary: summary, now: now)
                     }
-                    VStack(alignment: .leading, spacing: NBSpacing.m) {
-                        if let sessionModel {
-                            BreastfeedingQuickStart(model: sessionModel)
-                        }
-                        BottleQuickLogCard()
-                    }
+                    QuickActions(entries: entries, now: now)
                     TodaySection(summary: summary)
+                    RecentSection(entries: Array(entries.filter { $0.start <= now }.prefix(3)))
                 }
-                .padding(NBSpacing.l)
+                .padding(.horizontal, NBSpacing.l)
+                .padding(.vertical, NBSpacing.m)
             }
-            .navigationTitle(Self.greeting(at: now))
         }
         .background(NBColor.canvas)
-    }
-
-    /// "Ava · 3 wk 2 d old" from the profile in Settings, when there is one.
-    private func profileLine(at now: Date) -> String? {
-        guard let baby = babies.first else { return nil }
-        let name = baby.name.trimmingCharacters(in: .whitespacesAndNewlines)
-        let age = baby.birthDate.map { BabyAge.text(from: $0, now: now) }
-        let parts = [name.isEmpty ? nil : name, age].compactMap { $0 }
-        return parts.isEmpty ? nil : parts.joined(separator: " · ")
+        .navigationTitle("Home")
+        .toolbar(.hidden, for: .navigationBar)
     }
 
     static func greeting(at date: Date, calendar: Calendar = .current) -> String {
@@ -63,41 +50,80 @@ struct DashboardView: View {
         default: String(localized: "Hello, night owl")
         }
     }
+
+    /// "2 h ago", "14 min ago", "just now": short enough to sit under a round button.
+    static func compactAgo(_ interval: TimeInterval) -> String {
+        if interval < 60 { return String(localized: "just now") }
+        if interval < 3_600 { return String(localized: "\(Int(interval / 60)) min ago") }
+        return String(localized: "\(Int(interval / 3_600)) h ago")
+    }
 }
 
-/// "Last feed: 2 h 14 min ago · 9:41 PM · Breast · L 12 min · R 9 min". The side to start on
-/// next is shown on the Start buttons below, not repeated here.
+/// The baby's name and age from Settings, or a greeting when there's no profile yet.
+private struct ProfileHeader: View {
+    let baby: Baby?
+    let now: Date
+
+    var body: some View {
+        let name = baby?.name.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+        VStack(spacing: NBSpacing.s) {
+            Image(systemName: "heart.fill")
+                .font(.title2)
+                .foregroundStyle(NBColor.accent)
+                .frame(width: 64, height: 64)
+                .background(NBColor.accent.opacity(0.12), in: .circle)
+                .accessibilityHidden(true)
+            Text(name.isEmpty ? DashboardView.greeting(at: now) : name)
+                .font(.title2.weight(.bold))
+                .accessibilityAddTraits(.isHeader)
+            if let birthDate = baby?.birthDate {
+                Text(BabyAge.text(from: birthDate, now: now))
+                    .font(.subheadline)
+                    .foregroundStyle(.secondary)
+            }
+        }
+        .frame(maxWidth: .infinity)
+        .padding(.top, NBSpacing.s)
+        .accessibilityElement(children: .combine)
+    }
+}
+
+/// "Last fed · 2 h 14 min · Breast · L 12 min · R 9 min · 9:41 PM", centered and large.
+/// The side to start on next is marked on the round buttons below, not repeated here.
 private struct LastFeedCard: View {
     let summary: DashboardSummary
     let now: Date
 
     var body: some View {
         Card {
-            VStack(alignment: .leading, spacing: NBSpacing.s) {
+            VStack(spacing: NBSpacing.s) {
                 if let last = summary.lastFeed, let since = summary.timeSinceLastFeed(at: now) {
-                    Label {
-                        Text("Last feed")
-                    } icon: {
-                        Image(systemName: last.symbolName)
-                            .foregroundStyle(last.tint)
-                    }
-                    .font(.subheadline.weight(.semibold))
-                    .foregroundStyle(.secondary)
-                    Text(FeedText.ago(since))
-                        .font(.system(.largeTitle, design: .rounded, weight: .bold))
+                    Text("Last fed")
+                        .font(.caption.weight(.semibold))
+                        .textCase(.uppercase)
+                        .foregroundStyle(.secondary)
+                    Text(since < 60 ? String(localized: "Just now") : DurationText.short(since))
+                        .font(.system(size: 44, weight: .bold, design: .rounded))
                         .monospacedDigit()
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.6)
                         .contentTransition(.numericText())
+                        .accessibilityLabel(FeedText.ago(since))
                     Text(detail(last))
                         .font(.subheadline)
                         .foregroundStyle(.secondary)
+                        .multilineTextAlignment(.center)
                 } else {
                     Text("No feeds yet")
                         .font(.title2.weight(.bold))
-                    Text("Tap a side to start timing, or log a bottle.")
+                    Text("Tap Left, Right or Bottle below to log the first one.")
                         .font(.subheadline)
                         .foregroundStyle(.secondary)
+                        .multilineTextAlignment(.center)
                 }
             }
+            .frame(maxWidth: .infinity)
+            .padding(.vertical, NBSpacing.s)
         }
         .accessibilityElement(children: .combine)
     }
@@ -105,37 +131,244 @@ private struct LastFeedCard: View {
     private func detail(_ entry: FeedEntry) -> String {
         let time = entry.start.formatted(.dateTime.hour().minute())
         if let sides = FeedText.sides(entry) {
-            return String(localized: "\(time) · Breast · \(sides)")
+            return String(localized: "Breast · \(sides) · \(time)")
         }
-        return "\(time) · \(FeedText.title(entry))"
+        return "\(FeedText.title(entry)) · \(time)"
     }
 }
 
-/// Today's tiles and the rolling 24-hour line.
+/// The running feed in place of the Last fed card. Tapping it opens the timer.
+private struct ActiveFeedCard: View {
+    let model: FeedingSessionUIModel
+
+    var body: some View {
+        TimelineView(.periodic(from: .now, by: 1)) { context in
+            let display = model.display(at: context.date)
+            Button {
+                model.openTimer()
+            } label: {
+                Card {
+                    VStack(spacing: NBSpacing.s) {
+                        HStack(spacing: NBSpacing.xs) {
+                            if let side = display.activeSide {
+                                LiveDot(color: NBColor.side(side))
+                            } else {
+                                Image(systemName: "pause.fill")
+                            }
+                            Text(display.isPaused ? "Feed paused" : "Feeding now")
+                        }
+                        .font(.caption.weight(.semibold))
+                        .textCase(.uppercase)
+                        .foregroundStyle(.secondary)
+                        TimerText(display.total, size: 44, relativeTo: .largeTitle)
+                        Text("L \(DurationText.clock(display.left)) · R \(DurationText.clock(display.right))")
+                            .font(.subheadline.monospacedDigit())
+                            .foregroundStyle(.secondary)
+                    }
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, NBSpacing.s)
+                }
+            }
+            .buttonStyle(PressableButtonStyle())
+            .foregroundStyle(Color.primary)
+            .accessibilityHint("Opens the feeding timer")
+        }
+    }
+}
+
+/// Left, Right and Bottle as big round buttons with when each was last used.
+///
+/// With no feed running, Left and Right start one on that side (the suggested side is filled
+/// and tagged) and open the timer. While a feed runs they just open the timer, so a tap on Home
+/// never switches sides by accident.
+private struct QuickActions: View {
+    let entries: [FeedEntry]
+    let now: Date
+
+    @Environment(FeedingSessionUIModel.self) private var sessionModel: FeedingSessionUIModel?
+    @Environment(BottleLogUIModel.self) private var bottleModel: BottleLogUIModel?
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
+
+    var body: some View {
+        let layout = dynamicTypeSize.isAccessibilitySize
+            ? AnyLayout(VStackLayout(spacing: NBSpacing.l))
+            : AnyLayout(HStackLayout(alignment: .top, spacing: NBSpacing.m))
+        layout {
+            if let sessionModel {
+                ForEach(Side.allCases, id: \.self) { side in
+                    sideAction(side, model: sessionModel)
+                }
+            }
+            if let bottleModel {
+                bottleAction(bottleModel)
+            }
+        }
+        .frame(maxWidth: .infinity)
+        .padding(.top, NBSpacing.s)
+        .onAppear { bottleModel?.refresh() }
+    }
+
+    private func sideAction(_ side: Side, model: FeedingSessionUIModel) -> some View {
+        let active = model.activeSession
+        let running = active?.status == .active && active?.openSegment?.side == side
+        let suggested = active == nil && model.controller.suggestedNextSide == side
+        let caption: String = if active != nil {
+            running ? String(localized: "Feeding") : String(localized: "Open timer")
+        } else {
+            lastUsed(side).map { DashboardView.compactAgo(now.timeIntervalSince($0)) } ?? String(localized: "Not yet")
+        }
+        return QuickActionCircle(
+            title: side.title,
+            systemImage: active == nil ? "play.fill" : "timer",
+            tint: NBColor.side(side),
+            filled: suggested || running,
+            badge: suggested ? String(localized: "Suggested") : nil,
+            caption: caption
+        ) {
+            if active == nil {
+                model.startFromHome(side: side)
+            } else {
+                model.openTimer()
+            }
+        }
+        .accessibilityLabel(String(localized: "\(side.title) side"))
+        .accessibilityValue(suggested ? "\(String(localized: "suggested")), \(caption)" : caption)
+        .accessibilityHint(active == nil
+            ? String(localized: "Starts a feed on the \(side.title.lowercased()) side")
+            : String(localized: "Opens the feeding timer"))
+        .accessibilityIdentifier("sideButton.\(side.rawValue)")
+    }
+
+    private func bottleAction(_ model: BottleLogUIModel) -> some View {
+        let caption = model.recent.first.map { DashboardView.compactAgo(now.timeIntervalSince($0.startedAt)) }
+            ?? String(localized: "Not yet")
+        return QuickActionCircle(
+            title: String(localized: "Bottle"),
+            systemImage: "waterbottle.fill",
+            tint: NBColor.bottleBreastMilk,
+            filled: false,
+            badge: nil,
+            caption: caption
+        ) {
+            model.presentNew()
+        }
+        // Today's bottles stay in the label for VoiceOver (and the UI tests).
+        .accessibilityLabel(String(localized: "Log bottle, \(model.todayLine)"))
+        .accessibilityIdentifier("logBottleButton")
+    }
+
+    /// When `side` was last fed from, from finished feeds.
+    private func lastUsed(_ side: Side) -> Date? {
+        entries
+            .filter { $0.start <= now && $0.duration(on: side) > 0 }
+            .map(\.start)
+            .max()
+    }
+}
+
+/// A big round action with a caption underneath ("2 h ago").
+private struct QuickActionCircle: View {
+    let title: String
+    let systemImage: String
+    let tint: Color
+    let filled: Bool
+    let badge: String?
+    let caption: String
+    let action: () -> Void
+
+    @ScaledMetric(relativeTo: .title) private var diameter: CGFloat = 92
+
+    var body: some View {
+        Button(action: action) {
+            VStack(spacing: NBSpacing.s) {
+                VStack(spacing: NBSpacing.xs) {
+                    Image(systemName: systemImage)
+                        .font(.title2.weight(.semibold))
+                        .foregroundStyle(filled ? NBColor.onSide : tint)
+                    Text(title)
+                        .font(.subheadline.weight(.semibold))
+                        .foregroundStyle(filled ? NBColor.onSide : Color.primary)
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.8)
+                }
+                .frame(width: diameter, height: diameter)
+                .background {
+                    if filled {
+                        Circle().fill(tint)
+                    } else {
+                        Circle().fill(NBColor.card)
+                            .overlay { Circle().strokeBorder(tint.opacity(0.6), lineWidth: 2) }
+                    }
+                }
+                .overlay(alignment: .top) {
+                    if let badge {
+                        Text(badge)
+                            .font(.caption2.weight(.bold))
+                            .textCase(.uppercase)
+                            .padding(.horizontal, 6)
+                            .padding(.vertical, 2)
+                            .background(Capsule().fill(Color.primary))
+                            .foregroundStyle(NBColor.canvas)
+                            .offset(y: -9)
+                    }
+                }
+                Text(caption)
+                    .font(.footnote)
+                    .foregroundStyle(.secondary)
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.8)
+            }
+            .frame(maxWidth: .infinity)
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(PressableButtonStyle())
+    }
+}
+
+/// Today's totals in one compact card, and the rolling 24-hour line.
 private struct TodaySection: View {
     let summary: DashboardSummary
-
-    private let columns = [GridItem(.flexible(), spacing: NBSpacing.m), GridItem(.flexible(), spacing: NBSpacing.m)]
 
     var body: some View {
         VStack(alignment: .leading, spacing: NBSpacing.m) {
             Text("Today")
                 .font(.title3.weight(.semibold))
                 .accessibilityAddTraits(.isHeader)
-            LazyVGrid(columns: columns, spacing: NBSpacing.m) {
-                StatTile(title: String(localized: "Feeds"), systemImage: "drop.fill", tint: NBColor.accent,
-                         value: "\(summary.today.feedCount)")
-                StatTile(title: String(localized: "Breastfeeding"), systemImage: "heart.fill", tint: NBColor.left,
-                         value: DurationText.short(summary.today.breastDuration))
-                StatTile(title: String(localized: "Bottles"), systemImage: "waterbottle.fill", tint: NBColor.bottleBreastMilk,
-                         value: FeedText.volume(ml: summary.today.bottleML))
-                StatTile(title: String(localized: "Average gap"), systemImage: "clock.fill", tint: NBColor.right,
-                         value: summary.today.averageInterval.map(DurationText.short) ?? "–")
+            Card(padding: NBSpacing.m) {
+                HStack(alignment: .top, spacing: NBSpacing.s) {
+                    stat(String(localized: "Feeds"), "drop.fill", NBColor.accent, "\(summary.today.feedCount)")
+                    stat(String(localized: "Breast"), "heart.fill", NBColor.left, DurationText.short(summary.today.breastDuration))
+                    stat(String(localized: "Bottles"), "waterbottle.fill", NBColor.bottleBreastMilk, FeedText.volume(ml: summary.today.bottleML))
+                    stat(String(localized: "Avg gap"), "clock.fill", NBColor.right, summary.today.averageInterval.map(DurationText.short) ?? "–")
+                }
             }
             Text(last24Line)
                 .font(.footnote)
                 .foregroundStyle(.secondary)
         }
+    }
+
+    /// Tinted symbol, value, label. The tint is on the symbol only, so the text keeps full contrast.
+    private func stat(_ label: String, _ systemImage: String, _ tint: Color, _ value: String) -> some View {
+        VStack(spacing: NBSpacing.xs) {
+            Image(systemName: systemImage)
+                .font(.subheadline)
+                .foregroundStyle(tint)
+                .accessibilityHidden(true)
+            Text(value)
+                .font(.system(.headline, design: .rounded, weight: .bold))
+                .monospacedDigit()
+                .lineLimit(1)
+                .minimumScaleFactor(0.6)
+                .contentTransition(.numericText())
+            Text(label)
+                .font(.caption)
+                .foregroundStyle(.secondary)
+                .lineLimit(1)
+                .minimumScaleFactor(0.8)
+        }
+        .frame(maxWidth: .infinity)
+        .accessibilityElement(children: .combine)
     }
 
     private var last24Line: String {
@@ -147,99 +380,29 @@ private struct TodaySection: View {
     }
 }
 
-/// Apple Health-style summary tile: a tinted symbol and label, then the value.
-/// The tint is on the symbol only, so the text keeps full contrast.
-private struct StatTile: View {
-    let title: String
-    let systemImage: String
-    let tint: Color
-    let value: String
+/// The latest few entries, with their notes. Everything older is in History.
+private struct RecentSection: View {
+    let entries: [FeedEntry]
 
     var body: some View {
-        Card(padding: NBSpacing.m) {
-            VStack(alignment: .leading, spacing: NBSpacing.s) {
-                Label {
-                    Text(title)
-                        .foregroundStyle(.secondary)
-                        .lineLimit(1)
-                        .minimumScaleFactor(0.8)
-                } icon: {
-                    Image(systemName: systemImage)
-                        .foregroundStyle(tint)
-                        .accessibilityHidden(true)
-                }
-                .font(.footnote.weight(.semibold))
-                Text(value)
-                    .font(.system(.title2, design: .rounded, weight: .bold))
-                    .monospacedDigit()
-                    .lineLimit(1)
-                    .minimumScaleFactor(0.7)
-                    .contentTransition(.numericText())
-            }
-        }
-        .accessibilityElement(children: .combine)
-    }
-}
-
-/// Start buttons with the suggested side emphasised, or a live card while a feed is running.
-struct BreastfeedingQuickStart: View {
-    let model: FeedingSessionUIModel
-    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
-
-    var body: some View {
-        TimelineView(.periodic(from: .now, by: 1)) { context in
-            let display = model.display(at: context.date)
+        let rows = FeedTimeline.days(from: entries).flatMap(\.rows)
+        if !rows.isEmpty {
             VStack(alignment: .leading, spacing: NBSpacing.m) {
-                switch display.phase {
-                case .notStarted:
-                    Text("Start a feed")
-                        .font(.title3.weight(.semibold))
-                        .accessibilityAddTraits(.isHeader)
-                    let layout = dynamicTypeSize.isAccessibilitySize
-                        ? AnyLayout(VStackLayout(spacing: NBSpacing.m))
-                        : AnyLayout(HStackLayout(spacing: NBSpacing.m))
-                    layout {
-                        ForEach(Side.allCases, id: \.self) { side in
-                            SideButton(side: side, mode: display.mode(for: side), elapsed: nil) {
-                                model.startFromHome(side: side)
-                            }
+                Text("Recent")
+                    .font(.title3.weight(.semibold))
+                    .accessibilityAddTraits(.isHeader)
+                Card(padding: 0) {
+                    VStack(spacing: 0) {
+                        ForEach(Array(rows.enumerated()), id: \.element.id) { index, row in
+                            if index > 0 { Divider().padding(.leading, NBSpacing.l) }
+                            FeedRow(row: row)
+                                .padding(.horizontal, NBSpacing.l)
+                                .padding(.vertical, NBSpacing.s)
                         }
                     }
-                case .active, .paused:
-                    activeCard(display)
                 }
             }
         }
-    }
-
-    private func activeCard(_ display: BreastfeedingTimerDisplay) -> some View {
-        Button {
-            model.openTimer()
-        } label: {
-            Card {
-                HStack(spacing: NBSpacing.m) {
-                    if let side = display.activeSide {
-                        SideBadge(side: side)
-                    } else {
-                        Image(systemName: "pause.circle.fill")
-                            .font(.title)
-                            .foregroundStyle(.secondary)
-                    }
-                    VStack(alignment: .leading, spacing: NBSpacing.xs) {
-                        Text(display.isPaused ? "Feed paused" : "Feeding now")
-                            .font(.headline)
-                        Text("L \(DurationText.clock(display.left)) · R \(DurationText.clock(display.right))")
-                            .font(.subheadline.monospacedDigit())
-                            .foregroundStyle(.secondary)
-                    }
-                    Spacer()
-                    TimerText(display.total, size: 28, relativeTo: .title2)
-                }
-            }
-        }
-        .buttonStyle(PressableButtonStyle())
-        .foregroundStyle(Color.primary)
-        .accessibilityHint("Opens the feeding timer")
     }
 }
 

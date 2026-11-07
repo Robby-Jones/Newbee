@@ -33,7 +33,7 @@ Entry: `Newbee/Features/BottleFeeding/LogBottleSheet.swift`
 
 ## Home
 Entry: `Newbee/Features/Dashboard/DashboardView.swift`
-- `Newbee/Features/BottleFeeding/BottleQuickLogCard.swift`
+- `Newbee/Features/BottleFeeding/BottleLogPresentation.swift`
 - `Newbee/Shared/Components/SideButton.swift`, `SideBadge.swift`, `TimerText.swift`, `Card.swift`
 
 ## Breastfeeding timer

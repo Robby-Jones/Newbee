@@ -3,28 +3,74 @@ import NewbeeShared
 import SwiftData
 import SwiftUI
 
-/// Monthly feeding calendar (docs/UX_SPEC.md §3.5): a month grid with side and bottle dots,
-/// shaded by how busy each day was, and the selected day's summary underneath.
+/// Feeding calendar (docs/UX_SPEC.md §3.5), History's Calendar mode.
 ///
-/// Shown as History's Calendar mode; `HistoryView` owns the title and the `DayRoute` destination.
+/// **Week** (the default) lays the week out as seven day columns on a 24-hour axis, each feed a
+/// block at its time, like the calendars in popular baby trackers: rhythms and gaps show at a
+/// glance. **Month** is the grid with side and bottle dots, shaded by how busy each day was.
+/// Either way the selected day's summary sits underneath.
+///
+/// `HistoryView` owns the title and the `DayRoute` destination.
 struct CalendarView: View {
+    enum Scope: Hashable {
+        case week, month
+    }
+
+    @State private var scope: Scope = .week
     @State private var month: Date = FeedCalendar.startOfMonth(.now)
+    @State private var weekStart: Date = CalendarView.startOfWeek(containing: .now)
     @State private var selectedDay: Date? = Calendar.current.startOfDay(for: .now)
 
     var body: some View {
-        // The month's query lives in a child view so it's rebuilt for each month.
-        CalendarMonthView(month: month, selectedDay: $selectedDay, changeMonth: changeMonth(by:), showDay: show(day:))
-            .id(month)
-            .background(NBColor.canvas)
-            .toolbar {
-                ToolbarItem(placement: .topBarLeading) {
-                    Button("Today") {
-                        month = FeedCalendar.startOfMonth(.now)
-                        selectedDay = Calendar.current.startOfDay(for: .now)
-                    }
-                    .disabled(month == FeedCalendar.startOfMonth(.now) && selectedDay == Calendar.current.startOfDay(for: .now))
-                }
+        // Each period's query lives in a child view so it's rebuilt when the period changes.
+        Group {
+            switch scope {
+            case .week:
+                CalendarWeekView(weekStart: weekStart, selectedDay: $selectedDay, scope: $scope, changeWeek: changeWeek(by:))
+                    .id(weekStart)
+            case .month:
+                CalendarMonthView(month: month, selectedDay: $selectedDay, scope: $scope, changeMonth: changeMonth(by:), showDay: show(day:))
+                    .id(month)
             }
+        }
+        .background(NBColor.canvas)
+        .onChange(of: scope) { _, _ in
+            // Keep the same period in view when switching between week and month.
+            let anchor = selectedDay ?? (scope == .month ? weekStart : month)
+            month = FeedCalendar.startOfMonth(anchor)
+            weekStart = Self.startOfWeek(containing: anchor)
+        }
+        .toolbar {
+            ToolbarItem(placement: .topBarLeading) {
+                Button("Today") {
+                    month = FeedCalendar.startOfMonth(.now)
+                    weekStart = Self.startOfWeek(containing: .now)
+                    selectedDay = Calendar.current.startOfDay(for: .now)
+                }
+                .disabled(isShowingToday)
+            }
+        }
+    }
+
+    private var isShowingToday: Bool {
+        let today = Calendar.current.startOfDay(for: .now)
+        let periodIsCurrent = scope == .week
+            ? weekStart == Self.startOfWeek(containing: .now)
+            : month == FeedCalendar.startOfMonth(.now)
+        return periodIsCurrent && selectedDay == today
+    }
+
+    /// The first day of the locale's week containing `date`.
+    static func startOfWeek(containing date: Date, calendar: Calendar = .current) -> Date {
+        calendar.dateInterval(of: .weekOfYear, for: date)?.start ?? calendar.startOfDay(for: date)
+    }
+
+    private func changeWeek(by offset: Int) {
+        guard let next = Calendar.current.date(byAdding: .day, value: 7 * offset, to: weekStart) else { return }
+        // Never page past the current week: there's nothing to show there.
+        guard next <= Self.startOfWeek(containing: .now) else { return }
+        weekStart = next
+        selectedDay = nil
     }
 
     private func changeMonth(by offset: Int) {
@@ -43,6 +89,331 @@ struct CalendarView: View {
     }
 }
 
+/// Week | Month.
+private struct ScopePicker: View {
+    @Binding var scope: CalendarView.Scope
+
+    var body: some View {
+        Picker("Calendar view", selection: $scope) {
+            Text("Week").tag(CalendarView.Scope.week)
+            Text("Month").tag(CalendarView.Scope.month)
+        }
+        .pickerStyle(.segmented)
+        .fixedSize()
+    }
+}
+
+/// Left, Right, Bottle color key.
+private struct CalendarLegend: View {
+    var body: some View {
+        HStack(spacing: NBSpacing.l) {
+            LegendDot(color: NBColor.left, label: "Left")
+            LegendDot(color: NBColor.right, label: "Right")
+            LegendDot(color: NBColor.bottleBreastMilk, label: "Bottle")
+        }
+        .font(.caption)
+        .foregroundStyle(.secondary)
+        .frame(maxWidth: .infinity)
+        .accessibilityElement(children: .combine)
+    }
+}
+
+// MARK: - Week
+
+private struct CalendarWeekView: View {
+    let weekStart: Date
+    @Binding var selectedDay: Date?
+    @Binding var scope: CalendarView.Scope
+    let changeWeek: (Int) -> Void
+
+    @Query private var sessions: [FeedingSession]
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @Environment(BottleLogUIModel.self) private var bottleModel: BottleLogUIModel?
+
+    init(weekStart: Date, selectedDay: Binding<Date?>, scope: Binding<CalendarView.Scope>, changeWeek: @escaping (Int) -> Void) {
+        self.weekStart = weekStart
+        _selectedDay = selectedDay
+        _scope = scope
+        self.changeWeek = changeWeek
+        let end = Calendar.current.date(byAdding: .day, value: 7, to: weekStart) ?? weekStart.addingTimeInterval(7 * 86_400)
+        _sessions = Query(FeedingSession.completedFeeds(from: weekStart, to: end))
+    }
+
+    var body: some View {
+        let calendar = Calendar.current
+        let entries = sessions.compactMap(\.feedEntry)
+        let now = Date.now
+        let days = (0..<7).compactMap { calendar.date(byAdding: .day, value: $0, to: weekStart) }
+        let isCurrentWeek = weekStart == CalendarView.startOfWeek(containing: now)
+        let unit = bottleModel?.unit ?? .milliliters
+
+        ScrollView {
+            VStack(alignment: .leading, spacing: NBSpacing.l) {
+                Card(padding: NBSpacing.m) {
+                    VStack(spacing: NBSpacing.m) {
+                        header(days: days, isCurrentWeek: isCurrentWeek)
+                        WeekTimeline(days: days, entries: entries, selectedDay: selectedDay, now: now, onSelect: select)
+                            .gesture(swipe(isCurrentWeek: isCurrentWeek))
+                        CalendarLegend()
+                    }
+                }
+
+                if let selectedDay, days.contains(selectedDay) {
+                    let summary = FeedCalendar.daySummary(selectedDay, entries: entries)
+                    DaySummaryCard(day: selectedDay, entries: summary.entries, totals: summary.totals, unit: unit)
+                } else if entries.isEmpty {
+                    Text("No feeds this week")
+                        .font(.headline)
+                        .foregroundStyle(.secondary)
+                        .frame(maxWidth: .infinity)
+                        .padding(.top, NBSpacing.l)
+                } else {
+                    PeriodSummary(title: "This week", totals: FeedTotals(entries), unit: unit)
+                }
+            }
+            .padding(NBSpacing.l)
+        }
+    }
+
+    private func header(days: [Date], isCurrentWeek: Bool) -> some View {
+        HStack(spacing: NBSpacing.xs) {
+            Button {
+                changeWeek(-1)
+            } label: {
+                Image(systemName: "chevron.left")
+                    .frame(width: NBLayout.minHitTarget, height: NBLayout.minHitTarget)
+            }
+            .accessibilityLabel("Previous week")
+            Text(Self.title(days))
+                .font(.headline)
+                .lineLimit(1)
+                .minimumScaleFactor(0.8)
+                .accessibilityAddTraits(.isHeader)
+            Button {
+                changeWeek(1)
+            } label: {
+                Image(systemName: "chevron.right")
+                    .frame(width: NBLayout.minHitTarget, height: NBLayout.minHitTarget)
+            }
+            .disabled(isCurrentWeek)
+            .accessibilityLabel("Next week")
+            Spacer(minLength: NBSpacing.s)
+            ScopePicker(scope: $scope)
+        }
+        .font(.body.weight(.semibold))
+    }
+
+    /// "Nov 2 – 8", or "Oct 26 – Nov 1" across a month boundary.
+    static func title(_ days: [Date], calendar: Calendar = .current) -> String {
+        guard let first = days.first, let last = days.last else { return "" }
+        let sameMonth = calendar.isDate(first, equalTo: last, toGranularity: .month)
+        let start = first.formatted(.dateTime.month(.abbreviated).day())
+        let end = last.formatted(sameMonth ? .dateTime.day() : .dateTime.month(.abbreviated).day())
+        return "\(start) – \(end)"
+    }
+
+    private func select(_ day: Date) {
+        guard day <= .now else { return }
+        withAnimation(reduceMotion ? nil : .nbState) {
+            selectedDay = selectedDay == day ? nil : day
+        }
+    }
+
+    private func swipe(isCurrentWeek: Bool) -> some Gesture {
+        DragGesture(minimumDistance: 30)
+            .onEnded { value in
+                let dx = value.translation.width
+                guard abs(dx) > abs(value.translation.height), abs(dx) > 60 else { return }
+                if dx < 0, !isCurrentWeek { changeWeek(1) }
+                if dx > 0 { changeWeek(-1) }
+            }
+    }
+}
+
+/// Seven day columns on a 24-hour axis. Each feed is a block at its start time, as tall as it
+/// lasted: breastfeeds split lavender / teal by side, bottles a small capsule in the bottle's
+/// color. Tap a day's header (or its column) to see that day's feeds.
+private struct WeekTimeline: View {
+    let days: [Date]
+    let entries: [FeedEntry]
+    let selectedDay: Date?
+    let now: Date
+    let onSelect: (Date) -> Void
+
+    @ScaledMetric(relativeTo: .body) private var chartHeight: CGFloat = 420
+    private let axisWidth: CGFloat = 30
+    private static let axisHours = Array(stride(from: 0, to: 24, by: 3))
+
+    var body: some View {
+        let calendar = Calendar.current
+        VStack(spacing: NBSpacing.s) {
+            HStack(spacing: 0) {
+                Color.clear.frame(width: axisWidth, height: 1)
+                ForEach(days, id: \.self) { day in
+                    dayHeader(day, feedCount: feeds(on: day, calendar: calendar).count, calendar: calendar)
+                }
+            }
+
+            HStack(alignment: .top, spacing: 0) {
+                axis
+                ForEach(days, id: \.self) { day in
+                    DayColumn(
+                        day: day,
+                        entries: feeds(on: day, calendar: calendar),
+                        isSelected: day == selectedDay,
+                        height: chartHeight
+                    )
+                    .contentShape(Rectangle())
+                    .onTapGesture { onSelect(day) }
+                    .accessibilityHidden(true)
+                }
+            }
+            .frame(height: chartHeight)
+            .background { gridLines }
+        }
+    }
+
+    private func feeds(on day: Date, calendar: Calendar) -> [FeedEntry] {
+        guard let end = calendar.date(byAdding: .day, value: 1, to: day) else { return [] }
+        return entries.filter { $0.start >= day && $0.start < end }
+    }
+
+    private func dayHeader(_ day: Date, feedCount: Int, calendar: Calendar) -> some View {
+        let isToday = calendar.isDateInToday(day)
+        let isSelected = day == selectedDay
+        let isFuture = day > now
+        return Button {
+            onSelect(day)
+        } label: {
+            VStack(spacing: 2) {
+                Text(day.formatted(.dateTime.weekday(.narrow)))
+                    .font(.caption2.weight(.semibold))
+                    .foregroundStyle(.secondary)
+                Text(day.formatted(.dateTime.day()))
+                    .font(.subheadline.weight(isToday || isSelected ? .bold : .regular).monospacedDigit())
+                    .foregroundStyle(isSelected ? Color.white : (isToday ? NBColor.accent : Color.primary))
+                    .frame(width: 30, height: 30)
+                    .background(Circle().fill(isSelected ? NBColor.accent : Color.clear))
+            }
+            .frame(maxWidth: .infinity, minHeight: NBLayout.minHitTarget)
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .disabled(isFuture)
+        .opacity(isFuture ? 0.35 : 1)
+        .accessibilityLabel(Self.accessibilityText(day, feedCount: feedCount, isToday: isToday))
+        .accessibilityAddTraits(isSelected ? [.isSelected] : [])
+    }
+
+    /// Hour labels every 3 hours down the left edge.
+    private var axis: some View {
+        ZStack(alignment: .topLeading) {
+            ForEach(Self.axisHours, id: \.self) { hour in
+                Text(Self.hourLabel(hour))
+                    .font(.caption2.monospacedDigit())
+                    .foregroundStyle(.secondary)
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.7)
+                    .offset(y: chartHeight * CGFloat(hour) / 24 - 1)
+            }
+        }
+        .frame(width: axisWidth, height: chartHeight, alignment: .topLeading)
+        .accessibilityHidden(true)
+    }
+
+    /// Faint lines across the columns every 3 hours.
+    private var gridLines: some View {
+        Canvas { context, size in
+            for hour in Self.axisHours + [24] {
+                let y = size.height * CGFloat(hour) / 24
+                var line = Path()
+                line.move(to: CGPoint(x: axisWidth, y: y))
+                line.addLine(to: CGPoint(x: size.width, y: y))
+                context.stroke(line, with: .color(Color.secondary.opacity(0.18)), lineWidth: 0.5)
+            }
+        }
+        .accessibilityHidden(true)
+    }
+
+    /// "12a", "3p" (or "00", "15" in 24-hour locales).
+    static func hourLabel(_ hour: Int, calendar: Calendar = .current) -> String {
+        let date = calendar.date(bySettingHour: hour, minute: 0, second: 0, of: .now) ?? .now
+        return date.formatted(.dateTime.hour(.defaultDigits(amPM: .narrow)))
+    }
+
+    static func accessibilityText(_ day: Date, feedCount: Int, isToday: Bool) -> String {
+        var parts = [day.formatted(.dateTime.weekday(.wide).day().month(.wide))]
+        if isToday { parts.append(String(localized: "today")) }
+        switch feedCount {
+        case 0: parts.append(String(localized: "no feeds"))
+        case 1: parts.append(String(localized: "1 feed"))
+        default: parts.append(String(localized: "\(feedCount) feeds"))
+        }
+        return parts.joined(separator: ", ")
+    }
+}
+
+/// One day's feeds as blocks positioned by time of day.
+private struct DayColumn: View {
+    let day: Date
+    let entries: [FeedEntry]
+    let isSelected: Bool
+    let height: CGFloat
+
+    private static let dayLength: TimeInterval = 24 * 3_600
+
+    var body: some View {
+        ZStack(alignment: .top) {
+            RoundedRectangle(cornerRadius: 8, style: .continuous)
+                .fill(isSelected ? NBColor.accent.opacity(0.08) : Color.clear)
+            ForEach(entries) { entry in
+                let top = height * CGFloat(max(0, entry.start.timeIntervalSince(day)) / Self.dayLength)
+                FeedBlock(entry: entry, height: blockHeight(entry, top: top))
+                    .padding(.horizontal, 3)
+                    .offset(y: top)
+            }
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
+    }
+
+    /// As tall as the feed lasted (at least 6 pt so short feeds stay visible), clipped at midnight.
+    private func blockHeight(_ entry: FeedEntry, top: CGFloat) -> CGFloat {
+        let span = (entry.end ?? entry.start).timeIntervalSince(entry.start)
+        let natural = height * CGFloat(span / Self.dayLength)
+        return max(6, min(natural, height - top))
+    }
+}
+
+/// A breastfeed as stacked side segments (first side on top), or a bottle as a capsule.
+private struct FeedBlock: View {
+    let entry: FeedEntry
+    let height: CGFloat
+
+    var body: some View {
+        switch entry.details {
+        case .breast(let left, let right, let firstSide, _):
+            let first = firstSide ?? .left
+            let firstTime = first == .left ? left : right
+            let secondTime = first == .left ? right : left
+            let total = max(firstTime + secondTime, 1)
+            VStack(spacing: 0) {
+                Rectangle()
+                    .fill(NBColor.side(first))
+                    .frame(height: height * CGFloat(firstTime / total))
+                Rectangle()
+                    .fill(NBColor.side(first.opposite))
+                    .frame(height: height * CGFloat(secondTime / total))
+            }
+            .frame(height: height)
+            .clipShape(RoundedRectangle(cornerRadius: 4, style: .continuous))
+        case .bottle(let bottle):
+            Capsule()
+                .fill(bottle.contents == .formula ? NBColor.bottleFormula : bottle.contents == .breastMilk ? NBColor.bottleBreastMilk : Color.gray.opacity(0.6))
+                .frame(height: max(6, min(height, 8)))
+        }
+    }
+}
+
 /// Pushes the full day timeline.
 struct DayRoute: Hashable {
     let day: Date
@@ -51,6 +422,7 @@ struct DayRoute: Hashable {
 private struct CalendarMonthView: View {
     let month: Date
     @Binding var selectedDay: Date?
+    @Binding var scope: CalendarView.Scope
     let changeMonth: (Int) -> Void
     let showDay: (Date) -> Void
 
@@ -58,9 +430,16 @@ private struct CalendarMonthView: View {
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @Environment(BottleLogUIModel.self) private var bottleModel: BottleLogUIModel?
 
-    init(month: Date, selectedDay: Binding<Date?>, changeMonth: @escaping (Int) -> Void, showDay: @escaping (Date) -> Void) {
+    init(
+        month: Date,
+        selectedDay: Binding<Date?>,
+        scope: Binding<CalendarView.Scope>,
+        changeMonth: @escaping (Int) -> Void,
+        showDay: @escaping (Date) -> Void
+    ) {
         self.month = month
         _selectedDay = selectedDay
+        _scope = scope
         self.changeMonth = changeMonth
         self.showDay = showDay
         // The month plus a week either side, for the padding days in the grid.
@@ -79,6 +458,10 @@ private struct CalendarMonthView: View {
 
         ScrollView {
             VStack(alignment: .leading, spacing: NBSpacing.l) {
+                HStack {
+                    Spacer()
+                    ScopePicker(scope: $scope)
+                }
                 Card(padding: NBSpacing.m) {
                     VStack(spacing: NBSpacing.m) {
                         monthHeader(isCurrentMonth: isCurrentMonth)
@@ -87,7 +470,7 @@ private struct CalendarMonthView: View {
                         }
                         .opacity(grid.isEmpty ? 0.6 : 1)
                         .gesture(swipe(isCurrentMonth: isCurrentMonth))
-                        legend
+                        CalendarLegend()
                     }
                 }
 
@@ -101,7 +484,7 @@ private struct CalendarMonthView: View {
                         .frame(maxWidth: .infinity)
                         .padding(.top, NBSpacing.l)
                 } else {
-                    MonthSummary(totals: grid.totals, unit: bottleModel?.unit ?? .milliliters)
+                    PeriodSummary(title: "This month", totals: grid.totals, unit: bottleModel?.unit ?? .milliliters)
                 }
             }
             .padding(NBSpacing.l)
@@ -132,18 +515,6 @@ private struct CalendarMonthView: View {
             .accessibilityLabel("Next month")
         }
         .font(.body.weight(.semibold))
-    }
-
-    private var legend: some View {
-        HStack(spacing: NBSpacing.l) {
-            LegendDot(color: NBColor.left, label: "Left")
-            LegendDot(color: NBColor.right, label: "Right")
-            LegendDot(color: NBColor.bottleBreastMilk, label: "Bottle")
-        }
-        .font(.caption)
-        .foregroundStyle(.secondary)
-        .frame(maxWidth: .infinity)
-        .accessibilityElement(children: .combine)
     }
 
     private func select(_ cell: CalendarDayCell) {
@@ -368,15 +739,16 @@ struct MiniStat: View {
     }
 }
 
-/// Shown when no day is selected: the month's totals.
-private struct MonthSummary: View {
+/// Shown when no day is selected: the week's or month's totals.
+private struct PeriodSummary: View {
+    let title: LocalizedStringKey
     let totals: FeedTotals
     let unit: VolumeUnit
 
     var body: some View {
         Card {
             VStack(alignment: .leading, spacing: NBSpacing.m) {
-                Text("This month")
+                Text(title)
                     .font(.title3.weight(.semibold))
                 DayTotalsRow(totals: totals, unit: unit)
                 Text("Tap a day to see its feeds.")

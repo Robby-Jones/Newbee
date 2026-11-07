@@ -11,7 +11,6 @@ struct LogBottleSheet: View {
     @State private var amountText: String
     @State private var hasDuration: Bool
     @State private var durationMinutes: Int
-    @State private var showsNotes: Bool
     @State private var confirmingDelete = false
     @FocusState private var amountFocused: Bool
     @Environment(\.dismiss) private var dismiss
@@ -22,7 +21,6 @@ struct LogBottleSheet: View {
         _amountText = State(initialValue: draft.amount.value > 0 ? draft.amount.formattedValue : "")
         _hasDuration = State(initialValue: draft.durationSeconds != nil)
         _durationMinutes = State(initialValue: max(1, Int(((draft.durationSeconds ?? 600) / 60).rounded())))
-        _showsNotes = State(initialValue: !draft.notes.isEmpty)
     }
 
     /// The draft as it would be saved, including the duration controls.
@@ -166,13 +164,19 @@ struct LogBottleSheet: View {
         }
     }
 
+    /// Always visible and roomy, with one-tap tags (docs/UX_SPEC.md §3.4).
     private var notesCard: some View {
         Card {
-            DisclosureGroup("Notes", isExpanded: $showsNotes) {
-                TextField("Optional", text: $draft.notes, axis: .vertical)
-                    .lineLimit(1...4)
-                    .padding(.top, NBSpacing.s)
-                    .accessibilityIdentifier("bottle.notes")
+            VStack(alignment: .leading, spacing: NBSpacing.s) {
+                Text("Notes")
+                    .font(.headline)
+                NotesEditor(
+                    text: $draft.notes,
+                    placeholder: "Anything to remember? How much was left, spit-up…",
+                    tags: NotesEditor.bottleTags,
+                    minLines: 3,
+                    fieldIdentifier: "bottle.notes"
+                )
             }
         }
     }

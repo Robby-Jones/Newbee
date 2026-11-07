@@ -92,6 +92,15 @@ Each screen covers: purpose · layout · states (empty / loading / error / activ
 3. **Stay in the loop**: explains Live Activities (illustration of the Lock Screen) and asks for notification permission *only if* the parent turns on reminders here. "Not medical advice" footnote.
 
 ### 3.2 Home / Dashboard
+
+*Revised 2026-11-07 (Superdesign round, Huckleberry-style layout, Newbee colors):* baby avatar,
+name and age at the top; a centered **Last fed** card ("2 h 14 min", "Breast · L 12 min · R 9 min ·
+9:41 PM"); three big round buttons **Left / Right / Bottle**, each captioned with when it was last
+used ("2 h ago"), the suggested side filled and tagged "Suggested"; Today's totals in one compact
+card; and the three most recent entries with their notes. While a feed runs, the Last fed card
+becomes the live feed card and Left/Right open the timer instead of switching sides. The sketch
+below is the earlier layout.
+
 ```
 Good evening                                   ⚙︎
 ┌ Last feed ─────────────────────────────────┐
@@ -117,6 +126,14 @@ Last 24 h: 9 feeds · avg interval 2 h 40 m  (rolling)
 - **Error state:** store failed to load → full-screen message with Retry and "Export data" (never silently reset).
 
 ### 3.3 Breastfeeding Timer (full-screen cover)
+
+*Revised 2026-11-07:* two big **round** L / R buttons (up to 168 pt) with each side's time inside,
+the running side filled with a soft halo; the total and start time above; the L/R bar under the
+circles; full-width **Pause** and **End feed**, then **Add note** (writes the note to the running
+feed). **Edit start** in the top bar moves the whole feed's start (the running side gains the
+difference). In dark mode the dark tokens give a dim night look. The sketch below is the earlier
+layout.
+
 ```
  ⌄ Minimise                         ⋯ (Edit start time, Add note, Discard)
             Total
@@ -144,6 +161,13 @@ Last 24 h: 9 feeds · avg interval 2 h 40 m  (rolling)
 - Two-tap path: open sheet → tap preset → Save (preset tap can auto-focus Save).
 
 ### 3.5 Calendar (History → Calendar)
+
+*Revised 2026-11-07:* a **Week | Month** switch, Week by default. Week shows seven day columns on a
+24-hour axis (labels every 3 hours) with each feed drawn as a block at its time, as tall as it
+lasted: breastfeeds split lavender/teal by side (first side on top), bottles as small peach/butter
+capsules. Tap a day's header or column to see its summary below, with "Open day". Month is the
+grid described here.
+
 - Month grid (custom SwiftUI `LazyVGrid`), swipe or chevrons to change month, "Today" button.
 - Each day: up to 3 dots (lavender/teal for breast sides used, peach for bottle). Background intensity scales with feed count (5 steps, subtle). Today has a ring.
 - Selecting a day shows an inline **Day Summary** card below the grid: feeds, breast time (L/R `SegmentBar`), bottle volume, avg interval. Then the day's `FeedRow`s, then "Open day" pushes the full day timeline.
@@ -160,6 +184,15 @@ Last 24 h: 9 feeds · avg interval 2 h 40 m  (rolling)
 - **Empty:** illustration + "Your feeds will appear here".
 
 ### 3.7 Edit / Manual Entry (sheet)
+
+*Revised 2026-11-07 — notes get real space:* the sheet opens with a header (feed type icon, "Breastfeed",
+"Today · 2:15 – 2:36 AM") and Save is a prominent button pinned at the bottom. Notes use a shared
+`NotesEditor`: a multi-line box showing several lines before anything is typed, with one-tap tags
+(Sleepy, Fussy, Good latch, Spit up, Hiccups; bottle sheet: Finished it, Left some, Spit up…). The
+same editor appears on the **Feed saved** summary ("Add a note…", saved on Done) and from the timer's
+**Add note**. History rows show notes in a soft tinted block of up to 6 lines instead of a 2-line
+preview.
+
 - Type picker (Breast / Bottle). Start date-time, end date-time.
 - Breast: **Simple mode** (Left minutes, Right minutes, which side first) or **Segments mode** (list of side/start/end rows, add/remove). Live validation messages inline.
 - Notes. Delete button at the bottom for existing entries.

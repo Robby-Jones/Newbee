@@ -75,6 +75,11 @@ struct BreastFeedEditSheet: View {
     var body: some View {
         NavigationStack {
             Form {
+                Section {
+                    header
+                }
+                .listRowBackground(Color.clear)
+
                 if simpleAvailable {
                     Section {
                         Picker("Mode", selection: $mode) {
@@ -92,8 +97,8 @@ struct BreastFeedEditSheet: View {
                 }
 
                 Section("Notes") {
-                    TextField("Add a note", text: $notes, axis: .vertical)
-                        .lineLimit(1...4)
+                    NotesEditor(text: $notes)
+                        .padding(.vertical, NBSpacing.xs)
                 }
 
                 if !problems.isEmpty || saveError != nil {
@@ -130,12 +135,48 @@ struct BreastFeedEditSheet: View {
                 ToolbarItem(placement: .cancellationAction) {
                     Button("Cancel") { dismiss() }
                 }
-                ToolbarItem(placement: .confirmationAction) {
-                    Button("Save", action: save)
-                        .disabled(!problems.isEmpty || !hasChanges)
-                }
             }
+            .scrollDismissesKeyboard(.interactively)
+            .safeAreaInset(edge: .bottom) { saveButton }
         }
+    }
+
+    /// Feed type and times at the top of the sheet, so it reads like the feed's own page.
+    private var header: some View {
+        let session = candidate
+        let end = session.endedAt ?? session.segments.compactMap(\.end).max() ?? session.startedAt
+        return VStack(spacing: NBSpacing.s) {
+            Image(systemName: "heart.fill")
+                .font(.title)
+                .foregroundStyle(NBColor.left)
+                .frame(width: 64, height: 64)
+                .background(NBColor.left.opacity(0.18), in: .circle)
+                .accessibilityHidden(true)
+            Text("Breastfeed")
+                .font(.title2.weight(.bold))
+            Text("\(FeedText.dayTitle(session.startedAt)) · \(session.startedAt, format: .dateTime.hour().minute()) – \(end, format: .dateTime.hour().minute())")
+                .font(.subheadline)
+                .foregroundStyle(.secondary)
+        }
+        .frame(maxWidth: .infinity)
+        .accessibilityElement(children: .combine)
+    }
+
+    /// Primary action at the bottom, in reach of a thumb (like Log Bottle).
+    private var saveButton: some View {
+        Button(action: save) {
+            Text(isNew ? "Add feed" : "Save")
+                .font(.headline)
+                .frame(maxWidth: .infinity, minHeight: NBLayout.primaryControlHeight)
+        }
+        .buttonStyle(.borderedProminent)
+        .buttonBorderShape(.roundedRectangle(radius: NBRadius.control))
+        .tint(NBColor.accent)
+        .disabled(!problems.isEmpty || !hasChanges)
+        .padding(.horizontal, NBSpacing.l)
+        .padding(.vertical, NBSpacing.s)
+        .background(.bar)
+        .accessibilityIdentifier("breastEdit.save")
     }
 
     // MARK: - Simple mode

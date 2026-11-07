@@ -79,25 +79,104 @@ struct SideTimerText: View {
     }
 }
 
-/// "L 12:05" with the running side emphasised.
-struct SideRow: View {
+/// Dark text on a filled side color: white would fall below WCAG AA on the light side tints.
+private let textOnSide = Color(light: 0x1B1B20, dark: 0x0F0F12)
+
+/// "Feeding", "Paused" or "Feed complete" with a small glyph: one quiet line instead of a badge
+/// and a status label.
+struct ActivityStatusLabel: View {
     let state: FeedingState
-    let side: Side
-    var fontSize: CGFloat = 17
+    let isStale: Bool
 
     var body: some View {
-        let running = state.isRunning(side)
-        HStack(spacing: NBSpacing.s) {
-            SideBadge(side: side, size: fontSize + 5, filled: running || state.currentSide == side)
-            SideTimerText(state: state, side: side)
-                .font(.system(size: fontSize, weight: running ? .bold : .regular, design: .rounded))
-                .foregroundStyle(running ? Color.primary : Color.secondary)
-                .multilineTextAlignment(.trailing)
-                .frame(minWidth: fontSize * 3.2, alignment: .trailing)
+        HStack(spacing: NBSpacing.xs) {
+            Text(text)
+                .lineLimit(1)
+            Image(systemName: symbol)
+                .imageScale(.small)
+                .foregroundStyle(symbolColor)
         }
+        .font(.subheadline.weight(.medium))
+        .foregroundStyle(.secondary)
         .accessibilityElement(children: .ignore)
-        .accessibilityLabel(side.displayName + (running ? ", running" : ""))
-        .accessibilityValue(accessibilityValue)
+        .accessibilityLabel(state.statusLine(isStale: isStale))
+    }
+
+    private var showsStale: Bool { isStale && state.status != .ended }
+
+    private var text: String {
+        if showsStale { return "Still feeding?" }
+        switch state.status {
+        case .active: return "Feeding"
+        case .paused: return "Paused"
+        case .ended: return "Feed complete"
+        }
+    }
+
+    private var symbol: String {
+        if showsStale { return "questionmark.circle" }
+        switch state.status {
+        case .active: return "drop.fill"
+        case .paused: return "pause.fill"
+        case .ended: return "checkmark"
+        }
+    }
+
+    private var symbolColor: Color {
+        state.status == .active && !showsStale ? NBColor.side(state.currentSide) : Color.secondary
+    }
+}
+
+/// One side's time as a pill: "L 12:05". The running side is filled with its color.
+///
+/// While a feed is open, the pill is the side-switch control: tapping the other side switches to
+/// it, or resumes on it when paused. Tapping the running side changes nothing, because the
+/// intent targets a state rather than toggling. After the feed ends the pills only show times.
+struct SidePill: View {
+    let sessionID: UUID
+    let state: FeedingState
+    let side: Side
+
+    var body: some View {
+        if state.status == .ended {
+            label
+                .accessibilityElement(children: .ignore)
+                .accessibilityLabel("\(side.displayName) side")
+                .accessibilityValue(LiveActivityFormat.spoken(state.accumulated(on: side)))
+        } else {
+            Button(intent: SwitchFeedingSideIntent(sessionID: sessionID, side: side)) {
+                label
+            }
+            .buttonStyle(.plain)
+            .accessibilityLabel(accessibilityLabel)
+            .accessibilityValue(accessibilityValue)
+        }
+    }
+
+    private var label: some View {
+        let running = state.isRunning(side)
+        let pausedHere = state.status == .paused && state.currentSide == side
+        let tint = NBColor.side(side)
+        return HStack(spacing: NBSpacing.s) {
+            Text(side.shortLabel)
+                .font(.system(.subheadline, design: .rounded, weight: .bold))
+            SideTimerText(state: state, side: side)
+                .font(.system(.body, design: .rounded, weight: .semibold))
+                .multilineTextAlignment(.center)
+                // Timer text otherwise claims all available width.
+                .frame(maxWidth: 72)
+        }
+        .foregroundStyle(running ? textOnSide : tint)
+        .padding(.horizontal, NBSpacing.m)
+        .frame(maxWidth: .infinity, minHeight: 44)
+        .background(Capsule().fill(running ? tint : tint.opacity(pausedHere ? 0.3 : 0.16)))
+        .contentShape(Capsule())
+    }
+
+    private var accessibilityLabel: String {
+        if state.isRunning(side) { return "Feeding on \(side.displayName.lowercased())" }
+        if state.status == .paused { return "Resume on \(side.displayName.lowercased())" }
+        return "Switch to \(side.displayName.lowercased())"
     }
 
     private var accessibilityValue: Text {
@@ -108,12 +187,11 @@ struct SideRow: View {
     }
 }
 
-/// A capsule-backed control for Live Activity buttons. At least 44 pt tall for one-handed use.
+/// A capsule-backed control with a label, used for "Undo". At least 44 pt tall.
 struct ActivityControlLabel: View {
     let title: String
     let systemImage: String?
     let tint: Color
-    var prominent = false
 
     var body: some View {
         HStack(spacing: NBSpacing.xs) {
@@ -125,51 +203,44 @@ struct ActivityControlLabel: View {
             }
         }
         .font(.subheadline.weight(.semibold))
-        .foregroundStyle(prominent ? Color.white : tint)
+        .foregroundStyle(tint)
         .padding(.horizontal, NBSpacing.m)
         .frame(minWidth: 44, minHeight: 44)
-        .background(
-            Capsule().fill(prominent ? tint : tint.opacity(0.18))
-        )
+        .background(Capsule().fill(tint.opacity(0.18)))
         .contentShape(Capsule())
     }
 }
 
-/// End is deliberately a different shape (rounded square) and sits apart from the other
-/// controls, so it isn't hit by accident.
-struct EndControlLabel: View {
+/// A round 44 pt icon control on a soft tint of its color.
+struct ActivityCircleLabel: View {
+    let systemImage: String
+    let tint: Color
+
     var body: some View {
-        Image(systemName: "stop.fill")
+        Image(systemName: systemImage)
             .font(.subheadline.weight(.bold))
-            .foregroundStyle(NBColor.destructive)
+            .foregroundStyle(tint)
             .frame(width: 44, height: 44)
-            .background(
-                RoundedRectangle(cornerRadius: 10, style: .continuous)
-                    .strokeBorder(NBColor.destructive, lineWidth: 2)
-            )
-            .contentShape(Rectangle())
+            .background(Circle().fill(tint.opacity(0.18)))
+            .contentShape(Circle())
     }
 }
 
-/// Pause or resume, whichever applies.
+/// Pause or resume, whichever applies. Resume continues on the side that was running.
 struct PauseResumeButton: View {
     let sessionID: UUID
     let state: FeedingState
-    var compact = false
 
     var body: some View {
         if state.status == .paused {
             Button(intent: ResumeFeedingIntent(sessionID: sessionID)) {
-                ActivityControlLabel(
-                    title: compact ? "" : "Resume", systemImage: "play.fill",
-                    tint: NBColor.side(state.currentSide)
-                )
+                ActivityCircleLabel(systemImage: "play.fill", tint: NBColor.side(state.currentSide))
             }
             .buttonStyle(.plain)
             .accessibilityLabel("Resume on \(state.currentSide.displayName.lowercased())")
         } else {
             Button(intent: PauseFeedingIntent(sessionID: sessionID)) {
-                ActivityControlLabel(title: compact ? "" : "Pause", systemImage: "pause.fill", tint: NBColor.accent)
+                ActivityCircleLabel(systemImage: "pause.fill", tint: NBColor.accent)
             }
             .buttonStyle(.plain)
             .accessibilityLabel("Pause feeding")
@@ -177,82 +248,40 @@ struct PauseResumeButton: View {
     }
 }
 
+/// End is the only control in the destructive color, and sits last with extra space before it
+/// so it isn't hit by accident.
 struct EndButton: View {
     let sessionID: UUID
 
     var body: some View {
         Button(intent: EndFeedingIntent(sessionID: sessionID)) {
-            EndControlLabel()
+            ActivityCircleLabel(systemImage: "stop.fill", tint: NBColor.destructive)
         }
         .buttonStyle(.plain)
         .accessibilityLabel("End feeding")
     }
 }
 
-/// "L" or "R" switch control. Tapping the running side is harmless (target-state intent).
-struct SideSwitchButton: View {
-    let sessionID: UUID
-    let state: FeedingState
-    let side: Side
-    var title: String? = nil
-
-    var body: some View {
-        let selected = state.isRunning(side)
-        Button(intent: SwitchFeedingSideIntent(sessionID: sessionID, side: side)) {
-            ActivityControlLabel(
-                title: title ?? side.shortLabel,
-                systemImage: nil,
-                tint: NBColor.side(side),
-                prominent: !selected
-            )
-            .overlay {
-                if selected {
-                    Capsule().strokeBorder(NBColor.side(side), lineWidth: 2)
-                }
-            }
-        }
-        .buttonStyle(.plain)
-        .accessibilityLabel(
-            selected ? "Feeding on \(side.displayName.lowercased())"
-                : state.status == .paused ? "Resume on \(side.displayName.lowercased())"
-                : "Switch to \(side.displayName.lowercased())"
-        )
-    }
-}
-
-/// Per-side times and the one-tap controls. Shared by the Lock Screen and the expanded
-/// Dynamic Island so both read the same way.
+/// The side pills and the controls, shared by the Lock Screen and the expanded Dynamic Island so
+/// both read the same way.
 ///
 /// ```
-///  L  12:05                        R   6:37
-///  [     Switch to R     ]   [⏸]   [■]
+///  [ L 12:05 ] [ R 6:37 ]  (⏸)  (■)
 /// ```
 struct ActivitySidesAndControls: View {
     let attributes: FeedingActivityAttributes
     let state: FeedingState
-    var sideFontSize: CGFloat = 15
 
     var body: some View {
-        VStack(spacing: NBSpacing.s) {
-            HStack {
-                SideRow(state: state, side: .left, fontSize: sideFontSize)
-                Spacer()
-                SideRow(state: state, side: .right, fontSize: sideFontSize)
-            }
-            if state.status != .ended {
-                HStack(spacing: NBSpacing.s) {
-                    // Only the other side is offered: one big, obvious action.
-                    let other = state.status == .active ? state.currentSide.opposite : state.currentSide
-                    SideSwitchButton(
-                        sessionID: attributes.sessionID, state: state, side: other,
-                        title: state.status == .active ? "Switch to \(other.shortLabel)" : "Resume \(other.shortLabel)"
-                    )
-                    .frame(maxWidth: .infinity)
-                    PauseResumeButton(sessionID: attributes.sessionID, state: state, compact: true)
-                    EndButton(sessionID: attributes.sessionID)
-                }
-            } else {
+        HStack(spacing: NBSpacing.s) {
+            SidePill(sessionID: attributes.sessionID, state: state, side: .left)
+            SidePill(sessionID: attributes.sessionID, state: state, side: .right)
+            if state.status == .ended {
                 UndoEndButton(sessionID: attributes.sessionID)
+            } else {
+                PauseResumeButton(sessionID: attributes.sessionID, state: state)
+                EndButton(sessionID: attributes.sessionID)
+                    .padding(.leading, NBSpacing.xs)
             }
         }
     }
@@ -264,8 +293,7 @@ struct UndoEndButton: View {
 
     var body: some View {
         Button(intent: UndoEndFeedingIntent(sessionID: sessionID)) {
-            ActivityControlLabel(title: "Undo end", systemImage: "arrow.uturn.backward", tint: NBColor.accent)
-                .frame(maxWidth: .infinity)
+            ActivityControlLabel(title: "Undo", systemImage: "arrow.uturn.backward", tint: NBColor.accent)
         }
         .buttonStyle(.plain)
         .accessibilityLabel("Undo end feeding")

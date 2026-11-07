@@ -3,60 +3,6 @@ import NewbeeShared
 import SwiftUI
 import UIKit
 
-/// Home card: "Log bottle" with today's bottle count and total. Past bottles are in History.
-struct BottleQuickLogCard: View {
-    @Environment(BottleLogUIModel.self) private var model: BottleLogUIModel?
-
-    var body: some View {
-        if let model {
-            button(model)
-                .onAppear { model.refresh() }
-        }
-    }
-
-    private func button(_ model: BottleLogUIModel) -> some View {
-        Button {
-            model.presentNew()
-        } label: {
-            Card {
-                HStack(spacing: NBSpacing.m) {
-                    Image(systemName: "waterbottle.fill")
-                        .font(.title2)
-                        .foregroundStyle(NBColor.bottleBreastMilk)
-                        .frame(width: NBLayout.minHitTarget, height: NBLayout.minHitTarget)
-                        .background(NBColor.bottleBreastMilk.opacity(0.18), in: .circle)
-                        .accessibilityHidden(true)
-                    VStack(alignment: .leading, spacing: NBSpacing.xs) {
-                        Text("Log bottle")
-                            .font(.headline)
-                        Text(todayLine(model))
-                            .font(.subheadline)
-                            .foregroundStyle(.secondary)
-                    }
-                    Spacer()
-                    Image(systemName: "plus.circle.fill")
-                        .font(.title)
-                        .foregroundStyle(NBColor.accent)
-                        .accessibilityHidden(true)
-                }
-            }
-        }
-        .buttonStyle(PressableButtonStyle())
-        .foregroundStyle(Color.primary)
-        .accessibilityElement(children: .combine)
-        .accessibilityIdentifier("logBottleButton")
-    }
-
-    private func todayLine(_ model: BottleLogUIModel) -> String {
-        let today = model.today
-        if today.isEmpty { return String(localized: "None today") }
-        let total = model.formatted(ml: today.totalML)
-        return today.count == 1
-            ? String(localized: "Today: 1 bottle · \(total)")
-            : String(localized: "Today: \(today.count) bottles · \(total)")
-    }
-}
-
 // MARK: - Presentation
 
 extension View {
@@ -167,11 +113,8 @@ extension BottleLogUIModel {
 
 #Preview {
     let model = BottleLogUIModel.preview()
-    return ScrollView {
-        BottleQuickLogCard().padding()
-    }
-    .background(NBColor.canvas)
-    .environment(model)
-    .bottleLogPresentation(model)
-    .bottleToastHost(model)
+    return Button("Log bottle") { model.presentNew() }
+        .environment(model)
+        .bottleLogPresentation(model)
+        .bottleToastHost(model)
 }

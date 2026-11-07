@@ -54,31 +54,31 @@ Colors and typography come from the shared design tokens so the Live Activity ma
 
 ### 3.1 Lock Screen / banner
 Mirrors the expanded Dynamic Island (§3.2) so the activity reads and works the same everywhere. The
-per-side times and controls are one shared view (`ActivitySidesAndControls`).
+side pills and controls are one shared view (`ActivitySidesAndControls`). Minimal by design
+(revised 2026-11-07): one line of information, then the controls.
 ```
 ┌──────────────────────────────────────────────────────────┐
-│ (L) Left                                         18:42   │
-│     Feeding on left                                      │
+│ 18:42                                       Feeding 💧   │
 │                                                          │
-│  L  12:05                                    R   6:37    │
-│                                                          │
-│  [          Switch to R          ]     [⏸]      [■]     │
+│  [   L 12:05   ]  [   R 6:37   ]      (⏸)      (■)      │
 └──────────────────────────────────────────────────────────┘
 ```
-- Header: current side badge + name with the status line under it; big total on the right.
-- Per-side row: running side bold, both sides tinted.
-- Buttons: one large `SwitchSideIntent` for the *other* side ("Resume L" when paused), a compact
-  `PauseIntent` / `ResumeIntent` slot that flips, and `EndIntent`. **End** uses a distinct shape so
-  it isn't hit by accident.
-- Ended: an **Undo end** button (`UndoEndFeedingIntent`, also in the island) and a footnote with
-  start and end times. See §3.5.
+- Header: the total on the left (dimmed when paused) and a quiet status with a glyph on the right
+  ("Feeding", "Paused", "Feed complete", or "Still feeding?" when stale).
+- Side pills: each shows its own time. The running side is filled with its color; the other is a
+  tint. Each pill is a `SwitchSideIntent` for its side: tapping the other side switches (or resumes
+  on it when paused); tapping the running side changes nothing, because the intent targets a state.
+- `PauseIntent` / `ResumeIntent` in one round slot that flips, then `EndIntent`. **End** is the only
+  control in the destructive color and sits last with extra space before it, so it isn't hit by
+  accident.
+- Ended: the pills show the final side times and an **Undo** button (`UndoEndFeedingIntent`, also in
+  the island) replaces pause and end, with a footnote of start and end times. See §3.5.
 - `activityBackgroundTint` is a soft neutral that works in light and dark. `activitySystemActionForegroundColor` uses the accent color.
 
 ### 3.2 Dynamic Island: expanded
-- **Leading:** side badge ("L" in a lavender circle) + "Left".
-- **Trailing:** total timer (live).
-- **Center:** status line ("Feeding · 12:05 on left").
-- **Bottom:** `[ Switch to R ]` (primary, large), `[⏸]`, `[■ End]`. Only the *other* side is offered, to reduce choice in a small space.
+- **Leading:** total timer (live).
+- **Trailing:** status with glyph.
+- **Bottom:** the same side pills, pause/resume and end as the Lock Screen.
 
 ### 3.3 Dynamic Island: compact
 - **Leading:** side badge "L" (tinted circle).

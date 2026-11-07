@@ -162,6 +162,15 @@ final class BottleLogUIModel {
         "\(entry.enteredAmount.formatted) \(entry.contents.title.lowercased())"
     }
 
+    /// "None today", "Today: 1 bottle · 120 mL" or "Today: 3 bottles · 270 mL".
+    var todayLine: String {
+        if today.isEmpty { return String(localized: "None today") }
+        let total = formatted(ml: today.totalML)
+        return today.count == 1
+            ? String(localized: "Today: 1 bottle · \(total)")
+            : String(localized: "Today: \(today.count) bottles · \(total)")
+    }
+
     /// A total in the parent's unit: "180 mL", "6 oz".
     func formatted(ml: Double) -> String {
         BottleAmount(milliliters: ml).converted(to: unit).formatted

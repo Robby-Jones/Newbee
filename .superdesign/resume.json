@@ -5,7 +5,7 @@
       "targetKind": "existing-ui",
       "projectId": "e0e944d2-a1fc-45ef-9a3b-9aac553b0a6e",
       "baselineDraftId": "eed7f620-8d75-4436-adf1-a8b7d2086135",
-      "activeDraftId": "eed7f620-8d75-4436-adf1-a8b7d2086135",
+      "activeDraftId": "8c5ac57b-7d7c-4698-bb0d-d1ac28f4dba1",
       "designSystemPath": ".superdesign/design-system.md",
       "referenceIds": [
         "8247362d-525e-4d82-a2c5-f57ec05d2d06"
@@ -21,10 +21,10 @@
       "fingerprints": {
         ".superdesign/design-system.md": "28a0f06a048d88bba0f92eedca78b50a799e77781a25dfa8ad8c365b4de7118a",
         ".superdesign/init/theme.md": "7a13f0ed06912c6489fa7a13167f8ec68754dcf74cae59a2e28c0c593271907e",
-        "NewbeeWidgets/LiveActivity/LockScreenFeedingView.swift": "d7851cc4486cd293a85860dc35f56f2ff2892f71c6f762debdf268197fc84d49",
-        "NewbeeWidgets/LiveActivity/LiveActivityComponents.swift": "356652258018e6c5a49fb88ace0037e4542a981e0298783f8435eb9b305b0a5c",
-        "NewbeeWidgets/LiveActivity/DynamicIslandViews.swift": "12ed3951f3b8bbce3bd4fea84e8d71725b01274c42f78f2aa8a245ec54ac3459",
-        "NewbeeWidgets/LiveActivity/FeedingLiveActivity.swift": "3e8f7dc70550b7e391cffdd1f5f0dce84ed29c6d4b57788f84124485a9efe764"
+        "NewbeeWidgets/LiveActivity/LockScreenFeedingView.swift": "29a5c552f528acd3eac87ffca5cfda19fb04d2354e8d7d6f30a19e26a3dfd935",
+        "NewbeeWidgets/LiveActivity/LiveActivityComponents.swift": "e2720f75df12469cc496d77c07f05896adb9b009d8c3cea3e9318daf8c22d036",
+        "NewbeeWidgets/LiveActivity/DynamicIslandViews.swift": "16f9949cd955b6ca8d3367afbad3b3e3e3d7c9190d517d040bbc26276128ae3f",
+        "NewbeeWidgets/LiveActivity/FeedingLiveActivity.swift": "a26e35156bbeb7f7c75c6ef58b892d0c48bd11a658f2458eef38df5d745a8b6f"
       },
       "components": [],
       "drafts": {
@@ -46,13 +46,13 @@
           "currentVersion": 1
         }
       },
-      "updatedAt": "2026-11-07T20:11:15.718431+00:00"
+      "updatedAt": "2026-11-07T20:25:23.048444+00:00"
     },
     "history-calendar": {
       "targetKind": "existing-ui",
       "projectId": "e0e944d2-a1fc-45ef-9a3b-9aac553b0a6e",
       "baselineDraftId": "40c5c3d5-8b47-41cb-a2f5-ddf4a8363c4a",
-      "activeDraftId": "40c5c3d5-8b47-41cb-a2f5-ddf4a8363c4a",
+      "activeDraftId": "32091f36-4399-431b-8f8c-c34a91c43645",
       "designSystemPath": ".superdesign/design-system.md",
       "referenceIds": [],
       "contextFiles": [
@@ -69,8 +69,8 @@
         ".superdesign/design-system.md": "28a0f06a048d88bba0f92eedca78b50a799e77781a25dfa8ad8c365b4de7118a",
         ".superdesign/init/theme.md": "7a13f0ed06912c6489fa7a13167f8ec68754dcf74cae59a2e28c0c593271907e",
         "Newbee/Features/History/HistoryView.swift": "7791ef7dfa644ef86491591cedfde5378246a0433b45f3789dc03c29dbaec0c2",
-        "Newbee/Features/Calendar/CalendarView.swift": "7f6578a8d30b485ab80abca9ae73c8c98283597cb593031b05e238262151cbca",
-        "Newbee/Features/History/FeedFormatting.swift": "0356da71306ec5d147dedd1c1d6de96f96701092b247cf028f566b6166b5281e",
+        "Newbee/Features/Calendar/CalendarView.swift": "5dd3e88d999129cfbfa4b6b17dd31c650e437d1e0ad6345a2dc8748db65219c2",
+        "Newbee/Features/History/FeedFormatting.swift": "9634ca8cd96414ea2aeee87762a265bd2fc558db058d775c8adabc7c35cd778c",
         "Newbee/Shared/Components/Card.swift": "4709e3e41b77d2812952bc14d60181f0cffe62f34574e5187d48a8957b93c1cc",
         "Newbee/Shared/Components/SegmentBar.swift": "c1d676bfa651a6641db90a8771b001b203b7502d8f2b3637cf663a411f1cd10c",
         "Newbee/App/RootView.swift": "1436bb0bd5d115b158cb66273b61c9a4fceb66e7b3a12920013bf15d31e20d8d"
@@ -95,13 +95,13 @@
           "currentVersion": 1
         }
       },
-      "updatedAt": "2026-11-07T20:11:15.718431+00:00"
+      "updatedAt": "2026-11-07T20:25:23.048634+00:00"
     },
     "feed-notes": {
       "targetKind": "existing-ui",
       "projectId": "e0e944d2-a1fc-45ef-9a3b-9aac553b0a6e",
       "baselineDraftId": "5ff9ee9c-2511-42b6-ad07-592689fdef13",
-      "activeDraftId": "5ff9ee9c-2511-42b6-ad07-592689fdef13",
+      "activeDraftId": "827ac488-d8bf-4db0-b820-4bd8d9579df1",
       "designSystemPath": ".superdesign/design-system.md",
       "referenceIds": [],
       "contextFiles": [
@@ -115,10 +115,10 @@
       "fingerprints": {
         ".superdesign/design-system.md": "28a0f06a048d88bba0f92eedca78b50a799e77781a25dfa8ad8c365b4de7118a",
         ".superdesign/init/theme.md": "7a13f0ed06912c6489fa7a13167f8ec68754dcf74cae59a2e28c0c593271907e",
-        "Newbee/Features/History/BreastFeedEditSheet.swift": "cb5d152172cf015f2d9d49ec6226cfaf9c8e63b8df32fbe0cbab083e1dff1321",
+        "Newbee/Features/History/BreastFeedEditSheet.swift": "ee2e9962b67010078d6ce4ccc15b1ad07dbdd0eefabdefb8192fb3ab1cb0d8b1",
         "Newbee/Shared/Components/SideBadge.swift": "3181efdbe888bbe331bf99a421e5b67370271b759dbdc728bb6e7d12f8df5bd7",
-        "Newbee/Features/History/FeedFormatting.swift": "0356da71306ec5d147dedd1c1d6de96f96701092b247cf028f566b6166b5281e",
-        "Newbee/Features/Breastfeeding/SessionSummaryView.swift": "6a1b8dc819c2428ffe2d99840b8f51990c94cbda1e45fba137cee93112d3698b"
+        "Newbee/Features/History/FeedFormatting.swift": "9634ca8cd96414ea2aeee87762a265bd2fc558db058d775c8adabc7c35cd778c",
+        "Newbee/Features/Breastfeeding/SessionSummaryView.swift": "99d045bf18efc9c82fd0eb5cd6f6ed85d74b02856e2767b59c6211e5e6b8392a"
       },
       "components": [],
       "drafts": {
@@ -140,20 +140,20 @@
           "currentVersion": 1
         }
       },
-      "updatedAt": "2026-11-07T20:11:15.718431+00:00"
+      "updatedAt": "2026-11-07T20:25:23.048829+00:00",
+      "selectionNote": "Notes A detail sheet, plus the 'Add a note' box and quick tags from Notes B (4966aa7d-9856-47bf-ad68-ebc15ce86d79) on the Feed saved summary"
     },
     "home": {
       "targetKind": "existing-ui",
       "projectId": "e0e944d2-a1fc-45ef-9a3b-9aac553b0a6e",
       "baselineDraftId": "2c8a7846-8429-4af2-a48e-942de675d229",
-      "activeDraftId": "2c8a7846-8429-4af2-a48e-942de675d229",
+      "activeDraftId": "15512310-a0d5-4e4c-9bf9-5566509574e2",
       "designSystemPath": ".superdesign/design-system.md",
       "referenceIds": [],
       "contextFiles": [
         ".superdesign/design-system.md",
         ".superdesign/init/theme.md",
         "Newbee/Features/Dashboard/DashboardView.swift",
-        "Newbee/Features/BottleFeeding/BottleQuickLogCard.swift:1:60",
         "Newbee/Shared/Components/SideButton.swift",
         "Newbee/Shared/Components/Card.swift",
         "Newbee/Shared/Components/SideBadge.swift"
@@ -161,9 +161,8 @@
       "fingerprints": {
         ".superdesign/design-system.md": "28a0f06a048d88bba0f92eedca78b50a799e77781a25dfa8ad8c365b4de7118a",
         ".superdesign/init/theme.md": "7a13f0ed06912c6489fa7a13167f8ec68754dcf74cae59a2e28c0c593271907e",
-        "Newbee/Features/Dashboard/DashboardView.swift": "e1affcf64e40ad10c95bb1506fea04f1055089955a71dce0b34d72881f80914b",
-        "Newbee/Features/BottleFeeding/BottleQuickLogCard.swift": "9f558d6e82b10cd49665558d7cc75ca9a6630ef4ef704a7531de13052a6a9262",
-        "Newbee/Shared/Components/SideButton.swift": "d40a6efebceb2d2795ee3a5f01866b3165ac7c84785eccf5c78adc7e21e76769",
+        "Newbee/Features/Dashboard/DashboardView.swift": "5acf90e4a1c85409cfe5c5a2efc0fc38aefc84286acfd4d135b51887b20591b9",
+        "Newbee/Shared/Components/SideButton.swift": "67032847574a3ed7ded0266c2e9cfbb02b303d9ad539e6b92d5ae287521e3c2d",
         "Newbee/Shared/Components/Card.swift": "4709e3e41b77d2812952bc14d60181f0cffe62f34574e5187d48a8957b93c1cc",
         "Newbee/Shared/Components/SideBadge.swift": "3181efdbe888bbe331bf99a421e5b67370271b759dbdc728bb6e7d12f8df5bd7"
       },
@@ -187,13 +186,13 @@
           "currentVersion": 1
         }
       },
-      "updatedAt": "2026-11-07T20:11:15.718431+00:00"
+      "updatedAt": "2026-11-07T20:25:23.048936+00:00"
     },
     "breastfeeding-timer": {
       "targetKind": "existing-ui",
       "projectId": "e0e944d2-a1fc-45ef-9a3b-9aac553b0a6e",
       "baselineDraftId": "689297db-fc9d-4a7a-917f-5758f95dfe63",
-      "activeDraftId": "689297db-fc9d-4a7a-917f-5758f95dfe63",
+      "activeDraftId": "db2dcdc4-7e39-4ecc-8340-31ca043e2ffb",
       "designSystemPath": ".superdesign/design-system.md",
       "referenceIds": [],
       "contextFiles": [
@@ -207,8 +206,8 @@
       "fingerprints": {
         ".superdesign/design-system.md": "28a0f06a048d88bba0f92eedca78b50a799e77781a25dfa8ad8c365b4de7118a",
         ".superdesign/init/theme.md": "7a13f0ed06912c6489fa7a13167f8ec68754dcf74cae59a2e28c0c593271907e",
-        "Newbee/Features/Breastfeeding/BreastfeedingTimerView.swift": "93a43720a3f940d481d87d7ba1d9268e308c2b677ab8f686efaaf316ddea98e6",
-        "Newbee/Shared/Components/SideButton.swift": "d40a6efebceb2d2795ee3a5f01866b3165ac7c84785eccf5c78adc7e21e76769",
+        "Newbee/Features/Breastfeeding/BreastfeedingTimerView.swift": "691640be1b959e397a6131e792031f0bb6d4fd02516239cf6bce5a17c11b1eb6",
+        "Newbee/Shared/Components/SideButton.swift": "67032847574a3ed7ded0266c2e9cfbb02b303d9ad539e6b92d5ae287521e3c2d",
         "Newbee/Shared/Components/TimerText.swift": "7e858e697668a923d7c0220ff827b74b53a1459e214d11babc4d0c10d32bade9",
         "Newbee/Shared/Components/SegmentBar.swift": "c1d676bfa651a6641db90a8771b001b203b7502d8f2b3637cf663a411f1cd10c"
       },
@@ -232,7 +231,8 @@
           "currentVersion": 1
         }
       },
-      "updatedAt": "2026-11-07T20:11:15.718431+00:00"
+      "updatedAt": "2026-11-07T20:25:23.049034+00:00",
+      "selectionNote": "Timer A layout; in dark mode use Timer B's night look (8df0e8ae-4eb7-44c4-8a0e-941c2dd12e7f)"
     }
   }
 }
