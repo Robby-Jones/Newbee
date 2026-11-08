@@ -55,6 +55,7 @@ private struct TimerContent: View {
     @State private var startDraft = Date.now
     @State private var editingNote = false
     @State private var noteDraft = ""
+    @State private var addingPastFeed = false
     /// How far the screen has been dragged down toward minimizing.
     @State private var dragOffset: CGFloat = 0
     /// True while a minimize drag is moving, so a drag that starts and ends on a side button
@@ -77,6 +78,9 @@ private struct TimerContent: View {
                         header
                         Spacer(minLength: 0)
                         sideButtons
+                        if display.phase == .notStarted {
+                            addPastFeedButton
+                        }
                         if display.phase != .notStarted {
                             SegmentBar(left: display.left, right: display.right)
                                 .frame(maxWidth: 240)
@@ -109,6 +113,10 @@ private struct TimerContent: View {
         .animation(reduceMotion ? nil : .nbState, value: display.phase)
         .sheet(isPresented: $editingStart) { editStartSheet }
         .sheet(isPresented: $editingNote) { noteSheet }
+        .sheet(isPresented: $addingPastFeed) {
+            // The same sheet as History's Add feed > Breastfeed.
+            BreastFeedEditSheet(model: model, original: nil, suggestedSide: display.suggestedSide ?? .left, now: .now)
+        }
     }
 
     // MARK: Minimize
@@ -263,6 +271,31 @@ private struct TimerContent: View {
                 }
             }
         }
+    }
+
+    /// A third, smaller round button under Left and Right: log a feed that already happened.
+    private var addPastFeedButton: some View {
+        Button {
+            guard !isDragging else { return }
+            addingPastFeed = true
+        } label: {
+            VStack(spacing: NBSpacing.xs) {
+                Image(systemName: "plus")
+                    .font(.title2.weight(.semibold))
+                    .foregroundStyle(NBColor.accent)
+                    .frame(width: 64, height: 64)
+                    .background(Circle().fill(NBColor.card))
+                    .overlay { Circle().strokeBorder(NBColor.accent.opacity(0.35), lineWidth: 1.5) }
+                Text("Add past feed")
+                    .font(.footnote.weight(.semibold))
+                    .foregroundStyle(NBColor.secondaryText)
+            }
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(PressableButtonStyle())
+        .accessibilityLabel("Add past feed")
+        .accessibilityHint("Log a breastfeed that already happened")
+        .accessibilityIdentifier("timer.addPastFeed")
     }
 
     // MARK: Pause / End

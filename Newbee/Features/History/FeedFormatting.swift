@@ -30,10 +30,18 @@ enum FeedText {
         }
     }
 
-    /// "L 12 min · R 9 min", for breastfeeds only.
+    /// "L 12 min · R 9 min" (an unused side shows "0 min"), for breastfeeds only.
     static func sides(_ entry: FeedEntry) -> String? {
         guard case let .breast(left, right, _, _) = entry.details else { return nil }
         return "L \(DurationText.short(left)) · R \(DurationText.short(right))"
+    }
+
+    /// "L 12 min · R 9 min", leaving out a side with no time ("L 20 min"). For the calendar.
+    static func usedSides(left: TimeInterval, right: TimeInterval) -> String {
+        var parts: [String] = []
+        if left >= 1 { parts.append("L \(DurationText.short(left))") }
+        if right >= 1 { parts.append("R \(DurationText.short(right))") }
+        return parts.isEmpty ? "L \(DurationText.short(0)) · R \(DurationText.short(0))" : parts.joined(separator: " · ")
     }
 
     /// "Today", "Yesterday" or "Tue 4 Nov".

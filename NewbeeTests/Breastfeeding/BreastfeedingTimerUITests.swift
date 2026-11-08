@@ -170,4 +170,18 @@ struct DurationTextTests {
         #expect(DurationText.clock(3_723) == "1:02:03")
         #expect(DurationText.clock(-5) == "0:00")
     }
+
+    @Test func shortFormatShowsZeroForAnUnusedSide() {
+        #expect(DurationText.short(0) == "0 min")
+        #expect(DurationText.short(-3) == "0 min")
+        #expect(DurationText.short(30) == "<1 min")
+        #expect(DurationText.short(21 * 60) == "21 min")
+        #expect(DurationText.short(65 * 60) == "1 h 5 min")
+    }
+
+    @Test func calendarSidesLeaveOutAnUnusedSide() {
+        #expect(FeedText.usedSides(left: 20 * 60, right: 0) == "L 20 min")
+        #expect(FeedText.usedSides(left: 0, right: 9 * 60) == "R 9 min")
+        #expect(FeedText.usedSides(left: 12 * 60, right: 9 * 60) == "L 12 min · R 9 min")
+    }
 }

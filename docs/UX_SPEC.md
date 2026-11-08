@@ -106,10 +106,10 @@ Each screen covers: purpose · layout · states (empty / loading / error / activ
 ### 3.2 Home / Dashboard
 
 *Revised 2026-11-07 (Superdesign round, Huckleberry-style layout, Newbee colors):* baby avatar,
-name and age at the top; a centered **Last fed** card ("2 h 14 min", "Breast · L 12 min · R 9 min ·
+name and age at the top; a centered **Time since last feed** card ("2 h 14 min", "Breast · L 12 min · R 9 min ·
 9:41 PM"); three big round buttons **Left / Right / Bottle**, each captioned with when it was last
 used ("2 h ago"), the suggested side filled and tagged "Suggested"; Today's totals in one compact
-card; and the three most recent entries with their notes. While a feed runs, the Last fed card
+card; and the three most recent entries with their notes. While a feed runs, the Time since last feed card
 becomes the live feed card and Left/Right open the timer instead of switching sides. The sketch
 below is the earlier layout.
 

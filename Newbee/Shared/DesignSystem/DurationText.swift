@@ -14,9 +14,11 @@ enum DurationText {
         return String(format: "%ld:%02ld", minutes, seconds)
     }
 
-    /// Compact summary: "<1 min", "21 min", "1 h", "1 h 5 min".
+    /// Compact summary: "0 min" (nothing at all, such as an unused side), "<1 min", "21 min",
+    /// "1 h", "1 h 5 min".
     static func short(_ interval: TimeInterval) -> String {
-        let minutes = Int(max(0, interval) / 60)
+        if interval < 1 { return String(localized: "0 min") }
+        let minutes = Int(interval / 60)
         if minutes < 1 { return String(localized: "<1 min") }
         let hours = minutes / 60
         let rest = minutes % 60
@@ -27,7 +29,8 @@ enum DurationText {
 
     /// VoiceOver, minute granularity so it isn't re-announced every second: "12 minutes".
     static func spoken(_ interval: TimeInterval) -> String {
-        let minutes = Int(max(0, interval) / 60)
+        if interval < 1 { return String(localized: "0 minutes") }
+        let minutes = Int(interval / 60)
         if minutes < 1 { return String(localized: "less than a minute") }
         return Duration.seconds(minutes * 60)
             .formatted(.units(allowed: [.hours, .minutes], width: .wide))
