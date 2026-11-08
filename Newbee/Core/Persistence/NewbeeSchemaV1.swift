@@ -2,7 +2,8 @@ import Foundation
 import NewbeeKit
 import SwiftData
 
-/// Schema version 1. See docs/DATA_MODEL.md.
+/// Schema version 1 (bottles and breastfeeds). Frozen: the app uses `NewbeeSchemaV2`, and V1
+/// stays only so stores created by earlier builds can migrate. Never edit it. See docs/DATA_MODEL.md.
 ///
 /// CloudKit-ready rules (ADR-005): every property has a default or is optional, every relationship
 /// is optional, and there are no unique constraints. Enums are stored as raw strings so predicates
@@ -154,32 +155,4 @@ enum NewbeeSchemaV1: VersionedSchema {
             set { enteredUnitRaw = newValue.rawValue }
         }
     }
-}
-
-extension NewbeeSchemaV1.FeedingSession {
-    /// Deletes this session together with its segments and bottle details.
-    ///
-    /// The `.cascade` delete rule is unreliable on iOS 17 (CI shows children surviving a parent
-    /// delete), so children are deleted explicitly. Always delete sessions through this method.
-    func deleteWithChildren(from context: ModelContext) {
-        for segment in segments ?? [] {
-            context.delete(segment)
-        }
-        if let bottle {
-            context.delete(bottle)
-        }
-        context.delete(self)
-    }
-}
-
-// The app always works with the latest schema through these aliases.
-typealias Baby = NewbeeSchemaV1.Baby
-typealias FeedingSession = NewbeeSchemaV1.FeedingSession
-typealias FeedingSegment = NewbeeSchemaV1.FeedingSegment
-typealias BottleDetails = NewbeeSchemaV1.BottleDetails
-
-/// Every schema change adds a version and a migration stage here.
-enum NewbeeMigrationPlan: SchemaMigrationPlan {
-    static var schemas: [any VersionedSchema.Type] { [NewbeeSchemaV1.self] }
-    static var stages: [MigrationStage] { [] }
 }

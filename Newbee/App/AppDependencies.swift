@@ -25,6 +25,8 @@ final class AppDependencies {
     let recoveryPolicy: RecoveryPolicy
     /// Bottle feeds: instant entries, separate from the breastfeeding session manager.
     let bottleLog: BottleLog
+    /// Pumping sessions: entered by hand like bottles, never counted as feeds.
+    let pumpLog: PumpLog
     /// Units, presets, reminders and appearance (App Group `UserDefaults`).
     let preferences: AppPreferences
     /// Feed-due and "Still feeding?" local notifications.
@@ -53,15 +55,19 @@ final class AppDependencies {
 
         let repository: any FeedingRepository
         let bottleRepository: any BottleRepository
+        let pumpRepository: any PumpRepository
         if let container {
             repository = SwiftDataFeedingRepository(container: container)
             bottleRepository = SwiftDataBottleRepository(container: container)
+            pumpRepository = SwiftDataPumpRepository(container: container)
         } else {
             let reason = error?.localizedDescription ?? "unknown error"
             repository = UnavailableFeedingRepository(reason: reason)
             bottleRepository = UnavailableBottleRepository(reason: reason)
+            pumpRepository = UnavailablePumpRepository(reason: reason)
         }
         bottleLog = BottleLog(repository: bottleRepository, clock: clock)
+        pumpLog = PumpLog(repository: pumpRepository, clock: clock)
         let preferences = AppPreferences(defaults: defaults ?? AppPreferences.makeDefaults())
         self.preferences = preferences
 

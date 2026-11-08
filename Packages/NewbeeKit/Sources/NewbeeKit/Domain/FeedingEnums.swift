@@ -18,7 +18,7 @@ public enum SessionStatus: String, Codable, Sendable, CaseIterable, Hashable {
     case completed
 }
 
-/// The kind of feeding a session records. `pump` and `combo` are reserved for later releases.
+/// The kind of session recorded. `pump` is a pumping session (not a feed); `combo` is reserved.
 public enum FeedingKind: String, Codable, Sendable, CaseIterable, Hashable {
     case breast
     case bottle

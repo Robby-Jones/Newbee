@@ -8,6 +8,9 @@ extension NBColor {
     /// enough that white text would fall below WCAG AA.
     static let onSide = Color(light: 0x1B1B20, dark: 0x0F0F12)
 
+    /// Pumping sessions: a soft rose, distinct from the side and bottle colors.
+    static let pump = Color(light: 0xE58FAE, dark: 0xF0A8C2)
+
     /// Hairline border for cards in dark mode.
     static let hairline = Color.primary.opacity(0.08)
 }

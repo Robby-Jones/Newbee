@@ -300,6 +300,7 @@ private struct DataSection: View {
     @Environment(\.dataManagement) private var actions
     @Environment(FeedingSessionUIModel.self) private var sessionModel: FeedingSessionUIModel?
     @Environment(BottleLogUIModel.self) private var bottleModel: BottleLogUIModel?
+    @Environment(PumpLogUIModel.self) private var pumpModel: PumpLogUIModel?
     @State private var sharing: SharedFile?
     @State private var confirmingDelete = false
     @State private var errorMessage: String?
@@ -357,6 +358,8 @@ private struct DataSection: View {
         sessionModel?.toast = nil
         bottleModel?.toast = nil
         bottleModel?.refresh()
+        pumpModel?.toast = nil
+        pumpModel?.refresh()
     }
 }
 

@@ -14,33 +14,36 @@ struct RootView: View {
     let sessionModel: FeedingSessionUIModel?
     /// Log Bottle sheet and its undo toast; `nil` in previews that don't need it.
     let bottleModel: BottleLogUIModel?
+    /// Log Pumping sheet and its undo toast; `nil` in previews that don't need it.
+    let pumpModel: PumpLogUIModel?
 
     @State private var selection: TabID = .home
     /// Appearance (System / Light / Dark) from Settings.
     @Environment(AppPreferences.self) private var preferences: AppPreferences?
 
-    init(sessionModel: FeedingSessionUIModel? = nil, bottleModel: BottleLogUIModel? = nil) {
+    init(sessionModel: FeedingSessionUIModel? = nil, bottleModel: BottleLogUIModel? = nil, pumpModel: PumpLogUIModel? = nil) {
         self.sessionModel = sessionModel
         self.bottleModel = bottleModel
+        self.pumpModel = pumpModel
     }
 
     var body: some View {
         // `.tabItem` + `.tag` rather than the iOS 18 `Tab` API, to support iOS 17.
         TabView(selection: $selection) {
             NavigationStack { DashboardView() }
-                .tabChrome(sessionModel, bottleModel)
+                .tabChrome(sessionModel, bottleModel, pumpModel)
                 .tabItem { Label("Home", systemImage: "house") }
                 .tag(TabID.home)
             NavigationStack { HistoryView() }
-                .tabChrome(sessionModel, bottleModel)
+                .tabChrome(sessionModel, bottleModel, pumpModel)
                 .tabItem { Label("History", systemImage: "clock.arrow.circlepath") }
                 .tag(TabID.history)
             NavigationStack { InsightsView() }
-                .tabChrome(sessionModel, bottleModel)
+                .tabChrome(sessionModel, bottleModel, pumpModel)
                 .tabItem { Label("Insights", systemImage: "chart.bar") }
                 .tag(TabID.insights)
             NavigationStack { SettingsView() }
-                .tabChrome(sessionModel, bottleModel)
+                .tabChrome(sessionModel, bottleModel, pumpModel)
                 .tabItem { Label("Settings", systemImage: "gearshape") }
                 .tag(TabID.settings)
         }
@@ -48,8 +51,10 @@ struct RootView: View {
         .preferredColorScheme(preferences?.appearance.colorScheme)
         .environment(sessionModel)
         .environment(bottleModel)
+        .environment(pumpModel)
         .modifier(FeedingPresentation(model: sessionModel))
         .bottleLogPresentation(bottleModel)
+        .pumpLogPresentation(pumpModel)
     }
 }
 
@@ -57,9 +62,10 @@ private extension View {
     /// Per-tab bottom chrome: the undo toasts float just above the Active Session Pill, which
     /// sits just above the tab bar. Hosting the toasts inside each tab (not over the whole
     /// TabView) keeps them from covering the tab bar for their 6 seconds.
-    func tabChrome(_ sessionModel: FeedingSessionUIModel?, _ bottleModel: BottleLogUIModel?) -> some View {
+    func tabChrome(_ sessionModel: FeedingSessionUIModel?, _ bottleModel: BottleLogUIModel?, _ pumpModel: PumpLogUIModel?) -> some View {
         modifier(FeedingToastHost(model: sessionModel))
             .bottleToastHost(bottleModel)
+            .pumpToastHost(pumpModel)
             .activeSessionPillInset(sessionModel)
     }
 }
@@ -119,7 +125,8 @@ struct StoreErrorView: View {
 #Preview("Idle") {
     RootView(
         sessionModel: FeedingSessionUIModel(controller: PreviewSessionController.idleFixture()),
-        bottleModel: .preview()
+        bottleModel: .preview(),
+        pumpModel: .preview()
     )
         .modelContainer(try! PersistenceController.makeContainer(.inMemory))
 }

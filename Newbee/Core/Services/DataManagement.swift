@@ -45,6 +45,9 @@ extension AppDependencies {
             for bottle in try context.fetch(FetchDescriptor<BottleDetails>()) {
                 context.delete(bottle)
             }
+            for pump in try context.fetch(FetchDescriptor<PumpDetails>()) {
+                context.delete(pump)
+            }
             for baby in try context.fetch(FetchDescriptor<Baby>()) {
                 context.delete(baby)
             }
