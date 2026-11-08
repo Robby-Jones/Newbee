@@ -19,7 +19,7 @@ import WidgetKit
 ///
 /// ```
 ///  Since last feed 🕒
-///  02:15                                     (+)
+///  2:15:03                                   (+)
 ///  Last feed L 12:05 · R 9:00 · ended 3:40 PM
 /// ```
 ///
@@ -60,9 +60,12 @@ struct LockScreenFeedingView: View {
             HStack(alignment: .center, spacing: NBSpacing.m) {
                 VStack(alignment: .leading, spacing: 0) {
                     ActivityStatusLabel(state: state, isStale: isStale)
-                    SinceLastFeedText(lastFeedEnded: ended, isStale: isStale)
-                        .font(NBFont.timer(size: 52))
+                    SinceLastFeedText(lastFeedEnded: ended)
+                        .font(NBFont.timer(size: 44))
                         .foregroundStyle(ActivityColor.primaryText)
+                        .multilineTextAlignment(.leading)
+                        // Timer text otherwise claims all available width; "12:05:00" fits.
+                        .frame(maxWidth: 220, alignment: .leading)
                 }
                 Spacer(minLength: NBSpacing.s)
                 NewFeedButton()

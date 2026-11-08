@@ -24,9 +24,11 @@ struct IslandExpandedLeading: View {
         if let ended = state.lastFeedEndedAt {
             VStack(alignment: .leading, spacing: 0) {
                 ActivityStatusLabel(state: state, isStale: isStale, textColor: IslandColor.secondaryText)
-                SinceLastFeedText(lastFeedEnded: ended, isStale: isStale)
-                    .font(NBFont.timer(size: 34))
+                SinceLastFeedText(lastFeedEnded: ended)
+                    .font(NBFont.timer(size: 30))
                     .foregroundStyle(IslandColor.primaryText)
+                    .multilineTextAlignment(.leading)
+                    .frame(maxWidth: 150, alignment: .leading)
             }
             .padding(.leading, NBSpacing.xs)
         } else {
@@ -117,10 +119,10 @@ struct IslandCompactTrailing: View {
         }
     }
 
-    /// "02:15" since last feed fits the narrow width (it sizes itself); a feed over an hour
-    /// needs "1:02:03".
+    /// "45:12" fits 50 pt; past an hour ("1:02:03") needs 60. The time since the last feed is
+    /// usually past an hour.
     private var maxWidth: CGFloat {
-        state.status != .ended && state.totalAccumulated >= 3600 ? 60 : 50
+        state.status == .ended || state.totalAccumulated >= 3600 ? 60 : 50
     }
 }
 

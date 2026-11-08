@@ -159,7 +159,7 @@ struct HeadlineTimerText: View {
 
     var body: some View {
         if let ended = state.lastFeedEndedAt {
-            SinceLastFeedText(lastFeedEnded: ended, isStale: isStale)
+            SinceLastFeedText(lastFeedEnded: ended)
         } else {
             TotalTimerText(state: state)
         }
