@@ -140,7 +140,7 @@ private struct UnitsSection: View {
                             Spacer()
                             Text(amount.formatted)
                                 .monospacedDigit()
-                                .foregroundStyle(.secondary)
+                                .foregroundStyle(NBColor.secondaryText)
                         }
                     }
                 }
@@ -306,7 +306,7 @@ private struct LiveActivitiesSection: View {
         } header: {
             Text("Live Activities")
         } footer: {
-            Text("While a breastfeed runs, the timer and side buttons stay on the Lock Screen and in the Dynamic Island. After you end a feed, it counts the time since the last feed, with buttons to start the next one.")
+            Text("While a breastfeed runs, the timer and side buttons stay on the Lock Screen and in the Dynamic Island. After you end a feed, it counts the time since the last feed, with a + to open Newbee for the next one.")
         }
         .onReceive(NotificationCenter.default.publisher(for: UIApplication.didBecomeActiveNotification)) { _ in
             enabled = ActivityAuthorizationInfo().areActivitiesEnabled

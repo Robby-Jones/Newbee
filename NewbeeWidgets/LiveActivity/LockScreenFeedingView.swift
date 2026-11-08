@@ -6,35 +6,44 @@ import WidgetKit
 /// Lock Screen and banner presentation (docs/LIVE_ACTIVITIES.md §3.1).
 ///
 /// Mirrors the expanded Dynamic Island so the activity looks and works the same wherever the
-/// parent sees it. Minimal: the total and a quiet status on one line, then the two side pills
-/// (each shows its own time and switches to that side) with pause and end.
+/// parent sees it. While a feed is open: the total and a quiet status on one line, then the two
+/// side pills (each shows its own time and switches to that side) with pause and end.
 ///
 /// ```
 ///  18:42                                Feeding 💧
 ///  [  L 12:05  ] [  R 6:37  ]   (⏸)   (■)
 /// ```
 ///
-/// After the feed ends, the same activity counts the time since, with Start buttons and a line
-/// about the feed that ended:
+/// After the feed ends, the same activity counts the time since it, large, with one "+" that
+/// opens the app on Home, and a line about that feed:
 ///
 /// ```
-///  2:15                          Since last feed 🕒
-///  [   ▶ Left   ] [   ▶ Right   ]
+///  Since last feed 🕒
+///  02:15                                     (+)
 ///  Last feed L 12:05 · R 9:00 · ended 3:40 PM
 /// ```
 ///
-/// When the latest feed is a bottle, the last line is "Last feed bottle 90 mL · ended 3:40 PM".
+/// Colors come from `ActivityColor` and follow the app's Light / Dark / System setting
+/// (`ContentState.appearance`), applied by `FeedingLiveActivity`.
 struct LockScreenFeedingView: View {
     let attributes: FeedingActivityAttributes
     let state: FeedingState
     let isStale: Bool
 
     var body: some View {
+        if let ended = state.lastFeedEndedAt {
+            sinceLastFeed(ended)
+        } else {
+            feeding
+        }
+    }
+
+    private var feeding: some View {
         VStack(spacing: NBSpacing.m) {
             HStack(alignment: .firstTextBaseline, spacing: NBSpacing.s) {
-                HeadlineTimerText(state: state, isStale: isStale)
+                TotalTimerText(state: state)
                     .font(NBFont.timer(size: 30))
-                    .foregroundStyle(state.status == .paused ? Color.secondary : Color.primary)
+                    .foregroundStyle(state.status == .paused ? ActivityColor.secondaryText : ActivityColor.primaryText)
                     .multilineTextAlignment(.leading)
                     // Timer text otherwise claims all available width.
                     .frame(maxWidth: 150, alignment: .leading)
@@ -42,39 +51,25 @@ struct LockScreenFeedingView: View {
                 ActivityStatusLabel(state: state, isStale: isStale)
             }
             ActivitySidesAndControls(attributes: attributes, state: state)
-            if state.status == .ended {
-                endedFooter
-            }
         }
         .padding(NBSpacing.l)
     }
 
-    @ViewBuilder
-    private var endedFooter: some View {
-        if let endedAt = state.lastFeedEndedAt, let bottle = state.lastBottle {
-            // A bottle with no duration ended when it started.
-            let when = endedAt > state.sessionStart ? "ended" : "at"
-            Text("Last feed bottle \(bottle.formatted) · \(when) \(endedAt, style: .time)")
-                .font(.footnote)
-                .foregroundStyle(.secondary)
-                .lineLimit(1)
-                .minimumScaleFactor(0.8)
-                .frame(maxWidth: .infinity, alignment: .leading)
-                .accessibilityLabel(
-                    "Last feed: bottle, \(bottle.formatted), \(when) \(endedAt.formatted(date: .omitted, time: .shortened))"
-                )
-        } else if let endedAt = state.lastFeedEndedAt {
-            let left = LiveActivityFormat.clock(state.leftAccumulated)
-            let right = LiveActivityFormat.clock(state.rightAccumulated)
-            Text("Last feed L \(left) · R \(right) · ended \(endedAt, style: .time)")
-                .font(.footnote)
-                .foregroundStyle(.secondary)
-                .lineLimit(1)
-                .minimumScaleFactor(0.8)
-                .frame(maxWidth: .infinity, alignment: .leading)
-                .accessibilityLabel(
-                    "Last feed: left \(LiveActivityFormat.spoken(state.leftAccumulated)), right \(LiveActivityFormat.spoken(state.rightAccumulated)), ended \(endedAt.formatted(date: .omitted, time: .shortened))"
-                )
+    private func sinceLastFeed(_ ended: Date) -> some View {
+        VStack(alignment: .leading, spacing: NBSpacing.s) {
+            HStack(alignment: .center, spacing: NBSpacing.m) {
+                VStack(alignment: .leading, spacing: 0) {
+                    ActivityStatusLabel(state: state, isStale: isStale)
+                    SinceLastFeedText(lastFeedEnded: ended, isStale: isStale)
+                        .font(NBFont.timer(size: 52))
+                        .foregroundStyle(ActivityColor.primaryText)
+                }
+                Spacer(minLength: NBSpacing.s)
+                NewFeedButton()
+            }
+            LastFeedLine(state: state)
+                .foregroundStyle(ActivityColor.secondaryText)
         }
+        .padding(NBSpacing.l)
     }
 }

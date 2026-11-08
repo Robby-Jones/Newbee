@@ -17,29 +17,39 @@ struct FeedingLiveActivity: Widget {
                 state: context.state,
                 isStale: context.isStale
             )
-            .activityBackgroundTint(NBColor.card)
+            // The app's Light / Dark / System setting: text and background change together.
+            .activityAppearance(context.state.appearance)
+            .activityBackgroundTint(ActivityColor.background(context.state.appearance))
             .activitySystemActionForegroundColor(NBColor.accent)
+            // Tapping anywhere once a feed has ended opens Home, like the "+".
+            .widgetURL(context.state.status == .ended ? NewbeeLink.home : nil)
         } dynamicIsland: { context in
             let state = context.state
             let attributes = context.attributes
             return DynamicIsland {
                 DynamicIslandExpandedRegion(.leading) {
                     IslandExpandedLeading(state: state, isStale: context.isStale)
+                        .environment(\.colorScheme, .dark)
                 }
                 DynamicIslandExpandedRegion(.trailing) {
                     IslandExpandedTrailing(state: state, isStale: context.isStale)
+                        .environment(\.colorScheme, .dark)
                 }
                 DynamicIslandExpandedRegion(.bottom) {
-                    ActivitySidesAndControls(attributes: attributes, state: state)
-                        .padding(.horizontal, NBSpacing.xs)
+                    IslandExpandedBottom(attributes: attributes, state: state)
+                        .environment(\.colorScheme, .dark)
                 }
             } compactLeading: {
                 IslandCompactLeading(state: state)
+                    .environment(\.colorScheme, .dark)
             } compactTrailing: {
                 IslandCompactTrailing(state: state, isStale: context.isStale)
+                    .environment(\.colorScheme, .dark)
             } minimal: {
                 IslandMinimal(state: state)
+                    .environment(\.colorScheme, .dark)
             }
+            .widgetURL(state.status == .ended ? NewbeeLink.home : nil)
             .keylineTint(state.status == .ended ? NBColor.side(state.suggestedNextSide) : NBColor.side(state.currentSide))
         }
     }

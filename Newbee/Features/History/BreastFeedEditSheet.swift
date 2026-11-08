@@ -148,7 +148,7 @@ struct BreastFeedEditSheet: View {
         return VStack(spacing: NBSpacing.s) {
             Image(systemName: "heart.fill")
                 .font(.title)
-                .foregroundStyle(NBColor.left)
+                .foregroundStyle(NBColor.leftInk)
                 .frame(width: 64, height: 64)
                 .background(NBColor.left.opacity(0.18), in: .circle)
                 .accessibilityHidden(true)
@@ -156,7 +156,7 @@ struct BreastFeedEditSheet: View {
                 .font(.title2.weight(.bold))
             Text("\(FeedText.dayTitle(session.startedAt)) · \(session.startedAt, format: .dateTime.hour().minute()) – \(end, format: .dateTime.hour().minute())")
                 .font(.subheadline)
-                .foregroundStyle(.secondary)
+                .foregroundStyle(NBColor.secondaryText)
         }
         .frame(maxWidth: .infinity)
         .accessibilityElement(children: .combine)
@@ -202,7 +202,7 @@ struct BreastFeedEditSheet: View {
                         Spacer()
                         Text(DurationText.short(binding.wrappedValue))
                             .monospacedDigit()
-                            .foregroundStyle(.secondary)
+                            .foregroundStyle(NBColor.secondaryText)
                     }
                 }
                 .accessibilityValue(DurationText.spoken(binding.wrappedValue))
@@ -232,7 +232,7 @@ struct BreastFeedEditSheet: View {
                     ), in: ...Date.now)
                     Text(DurationText.short(segment.duration(at: segment.end ?? segment.start)))
                         .font(.footnote.monospacedDigit())
-                        .foregroundStyle(.secondary)
+                        .foregroundStyle(NBColor.secondaryText)
                 }
                 .padding(.vertical, NBSpacing.xs)
             }

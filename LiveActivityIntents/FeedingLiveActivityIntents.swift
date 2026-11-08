@@ -118,31 +118,6 @@ struct EndFeedingIntent: LiveActivityIntent {
     }
 }
 
-/// "Start" on the since-last-feed state: begins a new feed on `side`. A no-op if a feed is
-/// already running, or if `sessionID` (the finished feed the activity was showing) is no longer the
-/// latest feed, so an out-of-date activity can't start one.
-struct StartFeedingIntent: LiveActivityIntent {
-    static var title: LocalizedStringResource { "Start Feeding" }
-    static var isDiscoverable: Bool { false }
-    /// Runs from a locked Lock Screen without asking for Face ID or the passcode.
-    static var authenticationPolicy: IntentAuthenticationPolicy { .alwaysAllowed }
-
-    @Parameter(title: "Session") var sessionID: String
-    @Parameter(title: "Side") var side: IntentSide
-
-    init() {}
-
-    init(sessionID: UUID, side: Side) {
-        self.sessionID = sessionID.uuidString
-        self.side = IntentSide(side)
-    }
-
-    func perform() async throws -> some IntentResult {
-        await LiveActivityIntentRunner.run(.start(side.side), sessionID: sessionID)
-        return .result()
-    }
-}
-
 enum LiveActivityIntentRunner {
     private static let logger = Logger(subsystem: "Newbee", category: "LiveActivityIntent")
 

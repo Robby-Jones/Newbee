@@ -49,6 +49,10 @@ struct RootView: View {
         }
         .tint(NBColor.accent)
         .preferredColorScheme(preferences?.appearance.colorScheme)
+        // The "+" on the Live Activity's since-last-feed count.
+        .onOpenURL { url in
+            if url == NewbeeLink.home { selection = .home }
+        }
         .environment(sessionModel)
         .environment(bottleModel)
         .environment(pumpModel)

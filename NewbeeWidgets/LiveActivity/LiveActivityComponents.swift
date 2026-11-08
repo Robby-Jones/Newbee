@@ -25,6 +25,59 @@ extension FeedingState {
     var suggestedNextSide: Side { currentSide.opposite }
 }
 
+/// Text colors for the Live Activity.
+///
+/// Never the system's `.primary` / `.secondary` here: on the Lock Screen those were drawn for
+/// a different appearance from the activity's background (white text on the white card in light
+/// mode, black on the dark card at night), which hid the big number. These adapt the same way as
+/// `NBColor.card`, so text and background always match. Values meet WCAG AA on the card.
+enum ActivityColor {
+    static let primaryText = Color(light: 0x1B1B20, dark: 0xF5F5F7)
+    static let secondaryText = Color(light: 0x66666C, dark: 0xA1A1AA)
+
+    /// A side's color for text and icons on a light tint of it (the side colors themselves are
+    /// too pale for text on white).
+    static func sideInk(_ side: Side) -> Color {
+        side == .left ? Color(light: 0x5B4BB8, dark: 0xC3B8F5) : Color(light: 0x1F7A70, dark: 0x7FD8CD)
+    }
+
+    static let accentInk = Color(light: 0x4A4EC2, dark: 0xA5A8F5)
+    static let destructiveInk = Color(light: 0xB43A50, dark: 0xF0A0AE)
+
+    /// The Lock Screen background for the app's appearance setting. A fixed color when the app
+    /// forces light or dark (the view also gets that color scheme), else the adaptive card.
+    static func background(_ appearance: LiveActivityAppearance?) -> Color {
+        switch appearance {
+        case .some(.light): Color(red: 1, green: 1, blue: 1)
+        case .some(.dark): Color(red: 0x1B / 255, green: 0x1B / 255, blue: 0x20 / 255)
+        case .some(.system), .none: NBColor.card
+        }
+    }
+}
+
+extension LiveActivityAppearance {
+    /// The color scheme to force, or `nil` to follow the system.
+    var colorScheme: ColorScheme? {
+        switch self {
+        case .system: nil
+        case .light: .light
+        case .dark: .dark
+        }
+    }
+}
+
+extension View {
+    /// Draws the view in the app's chosen appearance (`nil` or `.system` follows the system).
+    @ViewBuilder
+    func activityAppearance(_ appearance: LiveActivityAppearance?) -> some View {
+        if let scheme = appearance?.colorScheme {
+            environment(\.colorScheme, scheme)
+        } else {
+            self
+        }
+    }
+}
+
 /// "L" / "R" in a side-colored circle. Color is never the only signal.
 struct SideBadge: View {
     let side: Side
@@ -67,31 +120,35 @@ struct TotalTimerText: View {
     }
 }
 
-/// Time since the last feed ended, ticking as `hh:mm` ("00:45", "02:15").
-///
-/// The system's clock formats can't leave out seconds, so a clock with seconds is drawn and
-/// clipped to the width of "00:00", which hides the trailing ":ss" (see `SinceLastFeedFormat`).
-struct SinceLastFeedText: View {
-    let lastFeedEnded: Date
-    /// Past the hour mark (the content's stale date) when the system last drew the activity.
-    let isStale: Bool
+/// The line about the feed the count runs from: "Last feed L 12:05 · R 9:00 · ended 3:40 PM",
+/// or "Last feed bottle 90 mL · ended 3:40 PM" ("at" for a bottle with no duration).
+struct LastFeedLine: View {
+    let state: FeedingState
 
     var body: some View {
-        let showsHours = SinceLastFeedFormat.showsHours(since: lastFeedEnded, isStale: isStale)
-        Text(verbatim: SinceLastFeedFormat.visibleTemplate)
-            .hidden()
-            .overlay(alignment: .leading) {
-                (Text(verbatim: SinceLastFeedFormat.prefix(showsHours: showsHours))
-                    + Text(.currentDate, format: SinceLastFeedFormat.clock(since: lastFeedEnded, showsHours: showsHours)))
-                    .multilineTextAlignment(.leading)
-                    .lineLimit(1)
-                    .fixedSize()
-            }
-            .clipped()
-            .monospacedDigit()
-            .accessibilityElement(children: .ignore)
-            .accessibilityLabel(Text("Time since last feed"))
-            .accessibilityValue(Text(lastFeedEnded, style: .relative))
+        if let endedAt = state.lastFeedEndedAt, let bottle = state.lastBottle {
+            // A bottle with no duration ended when it started.
+            let when = endedAt > state.sessionStart ? "ended" : "at"
+            line(Text("Last feed bottle \(bottle.formatted) · \(when) \(endedAt, style: .time)"))
+                .accessibilityLabel(
+                    "Last feed: bottle, \(bottle.formatted), \(when) \(endedAt.formatted(date: .omitted, time: .shortened))"
+                )
+        } else if let endedAt = state.lastFeedEndedAt {
+            let left = LiveActivityFormat.clock(state.leftAccumulated)
+            let right = LiveActivityFormat.clock(state.rightAccumulated)
+            line(Text("Last feed L \(left) · R \(right) · ended \(endedAt, style: .time)"))
+                .accessibilityLabel(
+                    "Last feed: left \(LiveActivityFormat.spoken(state.leftAccumulated)), right \(LiveActivityFormat.spoken(state.rightAccumulated)), ended \(endedAt.formatted(date: .omitted, time: .shortened))"
+                )
+        }
+    }
+
+    private func line(_ text: Text) -> some View {
+        text
+            .font(.footnote)
+            .lineLimit(1)
+            .minimumScaleFactor(0.8)
+            .frame(maxWidth: .infinity, alignment: .leading)
     }
 }
 
@@ -133,6 +190,7 @@ private let textOnSide = Color(light: 0x1B1B20, dark: 0x0F0F12)
 struct ActivityStatusLabel: View {
     let state: FeedingState
     let isStale: Bool
+    var textColor: Color = ActivityColor.secondaryText
 
     var body: some View {
         HStack(spacing: NBSpacing.xs) {
@@ -143,7 +201,7 @@ struct ActivityStatusLabel: View {
                 .foregroundStyle(symbolColor)
         }
         .font(.subheadline.weight(.medium))
-        .foregroundStyle(.secondary)
+        .foregroundStyle(textColor)
         .accessibilityElement(children: .ignore)
         .accessibilityLabel(state.statusLine(isStale: isStale))
     }
@@ -169,7 +227,7 @@ struct ActivityStatusLabel: View {
     }
 
     private var symbolColor: Color {
-        state.status == .active && !showsStale ? NBColor.side(state.currentSide) : Color.secondary
+        state.status == .active && !showsStale ? NBColor.side(state.currentSide) : textColor
     }
 }
 
@@ -205,7 +263,7 @@ struct SidePill: View {
                 // Timer text otherwise claims all available width.
                 .frame(maxWidth: 72)
         }
-        .foregroundStyle(running ? textOnSide : tint)
+        .foregroundStyle(running ? textOnSide : ActivityColor.sideInk(side))
         .padding(.horizontal, NBSpacing.m)
         .frame(maxWidth: .infinity, minHeight: 44)
         .background(Capsule().fill(running ? tint : tint.opacity(pausedHere ? 0.3 : 0.16)))
@@ -226,33 +284,21 @@ struct SidePill: View {
     }
 }
 
-/// "▶ Left" / "▶ Right" in the since-last-feed state: starts a new feed on that side. The side
-/// the app would suggest next (the other one from the last feed) gets the stronger tint.
-struct StartSidePill: View {
-    let sessionID: UUID
-    let state: FeedingState
-    let side: Side
+/// The round "+" shown once a feed has ended: opens the app on Home to log the next feed. One
+/// quiet control, so the time since the last feed stays the focus.
+struct NewFeedButton: View {
+    var size: CGFloat = 52
 
     var body: some View {
-        let suggested = state.suggestedNextSide == side
-        let tint = NBColor.side(side)
-        Button(intent: StartFeedingIntent(sessionID: sessionID, side: side)) {
-            HStack(spacing: NBSpacing.s) {
-                Image(systemName: "play.fill")
-                    .font(.caption.weight(.bold))
-                Text(side.displayName)
-                    .font(.system(.body, design: .rounded, weight: .semibold))
-                    .lineLimit(1)
-            }
-            .foregroundStyle(tint)
-            .padding(.horizontal, NBSpacing.m)
-            .frame(maxWidth: .infinity, minHeight: 44)
-            .background(Capsule().fill(tint.opacity(suggested ? 0.3 : 0.16)))
-            .contentShape(Capsule())
+        Link(destination: NewbeeLink.home) {
+            Image(systemName: "plus")
+                .font(.system(size: size * 0.42, weight: .bold))
+                .foregroundStyle(.white)
+                .frame(width: size, height: size)
+                .background(Circle().fill(ActivityColor.accentInk))
+                .contentShape(Circle())
         }
-        .buttonStyle(.plain)
-        .accessibilityLabel("Start feeding on \(side.displayName.lowercased())")
-        .accessibilityHint(suggested ? "Suggested next side" : "")
+        .accessibilityLabel("Open Newbee to start a feed")
     }
 }
 
@@ -279,13 +325,13 @@ struct PauseResumeButton: View {
     var body: some View {
         if state.status == .paused {
             Button(intent: ResumeFeedingIntent(sessionID: sessionID)) {
-                ActivityCircleLabel(systemImage: "play.fill", tint: NBColor.side(state.currentSide))
+                ActivityCircleLabel(systemImage: "play.fill", tint: ActivityColor.sideInk(state.currentSide))
             }
             .buttonStyle(.plain)
             .accessibilityLabel("Resume on \(state.currentSide.displayName.lowercased())")
         } else {
             Button(intent: PauseFeedingIntent(sessionID: sessionID)) {
-                ActivityCircleLabel(systemImage: "pause.fill", tint: NBColor.accent)
+                ActivityCircleLabel(systemImage: "pause.fill", tint: ActivityColor.accentInk)
             }
             .buttonStyle(.plain)
             .accessibilityLabel("Pause feeding")
@@ -300,19 +346,18 @@ struct EndButton: View {
 
     var body: some View {
         Button(intent: EndFeedingIntent(sessionID: sessionID)) {
-            ActivityCircleLabel(systemImage: "stop.fill", tint: NBColor.destructive)
+            ActivityCircleLabel(systemImage: "stop.fill", tint: ActivityColor.destructiveInk)
         }
         .buttonStyle(.plain)
         .accessibilityLabel("End feeding")
     }
 }
 
-/// The side pills and the controls, shared by the Lock Screen and the expanded Dynamic Island so
-/// both read the same way.
+/// The side pills and the controls while a feed is open, shared by the Lock Screen and the
+/// expanded Dynamic Island so both read the same way.
 ///
 /// ```
-///  [ L 12:05 ] [ R 6:37 ]  (⏸)  (■)      while feeding
-///  [ ▶ Left  ] [ ▶ Right ]                since last feed
+///  [ L 12:05 ] [ R 6:37 ]  (⏸)  (■)
 /// ```
 struct ActivitySidesAndControls: View {
     let attributes: FeedingActivityAttributes
@@ -323,16 +368,11 @@ struct ActivitySidesAndControls: View {
         // over to another feed.
         let sessionID = LiveActivityRecord.sessionID(attributes: attributes, state: state)
         HStack(spacing: NBSpacing.s) {
-            if state.status == .ended {
-                StartSidePill(sessionID: sessionID, state: state, side: .left)
-                StartSidePill(sessionID: sessionID, state: state, side: .right)
-            } else {
-                SidePill(sessionID: sessionID, state: state, side: .left)
-                SidePill(sessionID: sessionID, state: state, side: .right)
-                PauseResumeButton(sessionID: sessionID, state: state)
-                EndButton(sessionID: sessionID)
-                    .padding(.leading, NBSpacing.xs)
-            }
+            SidePill(sessionID: sessionID, state: state, side: .left)
+            SidePill(sessionID: sessionID, state: state, side: .right)
+            PauseResumeButton(sessionID: sessionID, state: state)
+            EndButton(sessionID: sessionID)
+                .padding(.leading, NBSpacing.xs)
         }
     }
 }

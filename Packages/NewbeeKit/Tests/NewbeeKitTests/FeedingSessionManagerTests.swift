@@ -318,7 +318,7 @@ struct FeedingSessionManagerTests {
         #expect(activity.synced.last == .some(manager.lastCompletedSession))
     }
 
-    // MARK: Since last feed and Start from the Live Activity
+    // MARK: Since last feed
 
     @Test func endingKeepsSyncingTheFinishedFeedForTheSinceLastFeedCount() async throws {
         let manager = makeManager()
@@ -363,47 +363,6 @@ struct FeedingSessionManagerTests {
         #expect(activity.synced.last == .some(earlier))
     }
 
-    @Test func remoteStartBeginsAFeedOnThatSide() async throws {
-        let manager = makeManager()
-        try manager.start(side: .left)
-        clock.advance(by: 60)
-        try manager.end()
-        let finished = try #require(manager.lastCompletedSession)
-        clock.advance(by: 2 * 3600)
-        await manager.applyRemoteStart(side: .right, sessionID: finished.id)
-        let started = try #require(manager.activeSession)
-        #expect(started.openSegment?.side == .right)
-        #expect(activity.synced.last == .some(started))
-    }
-
-    @Test func remoteStartWhileAFeedIsRunningChangesNothingButResyncs() async throws {
-        let manager = makeManager()
-        try manager.start(side: .left)
-        let running = manager.activeSession
-        await manager.applyRemoteStart(side: .right, sessionID: UUID())
-        #expect(manager.activeSession == running)
-        #expect(repository.sessions.count == 1)
-        #expect(activity.synced.last == .some(running))
-    }
-
-    @Test func remoteStartFromAnOutOfDateActivityIsIgnoredButResyncs() async throws {
-        let manager = makeManager()
-        try manager.start(side: .left)
-        clock.advance(by: 60)
-        try manager.end()
-        let older = try #require(manager.lastCompletedSession)
-        clock.advance(by: 3600)
-        try manager.start(side: .right)
-        clock.advance(by: 60)
-        try manager.end()
-        let latest = try #require(manager.lastCompletedSession)
-        // A Start drawn for the older feed.
-        await manager.applyRemoteStart(side: .left, sessionID: older.id)
-        #expect(manager.activeSession == nil)
-        #expect(repository.sessions.count == 2)
-        #expect(activity.synced.last == .some(latest))
-    }
-
     // MARK: Bottles in the since-last-feed count
 
     @Test func everyIdleSyncCarriesTheLatestBottle() async throws {
@@ -443,25 +402,6 @@ struct FeedingSessionManagerTests {
         _ = try logBottle(startingIn: -600)
         await manager.bottlesDidChange()
         #expect(activity.synced.count == syncs)
-    }
-
-    @Test func remoteStartFromACountSinceABottleBeginsAFeed() async throws {
-        let manager = makeManager()
-        try manager.start(side: .left)
-        clock.advance(by: 60)
-        try manager.end()
-        let breastfeed = try #require(manager.lastCompletedSession)
-        clock.advance(by: 3600)
-        let bottle = try logBottle()
-        clock.advance(by: 3600)
-
-        // The breastfeed is no longer the latest feed, so a Start drawn for it is out of date.
-        await manager.applyRemoteStart(side: .right, sessionID: breastfeed.id)
-        #expect(manager.activeSession == nil)
-        #expect(activity.syncedBottles.last == .some(bottle))
-
-        await manager.applyRemoteStart(side: .right, sessionID: bottle.id)
-        #expect(manager.activeSession?.openSegment?.side == .right)
     }
 }
 

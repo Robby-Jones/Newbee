@@ -63,7 +63,7 @@ struct LiveActivityCoordinatorTests {
         #expect(client.activities.filter { $0.phase != .dismissed }.map(\.id) == ["activity-2"])
     }
 
-    @Test func startFromTheLockScreenReusesTheActivityWhenARequestIsRefused() async {
+    @Test func theNextFeedReusesTheActivityWhenARequestIsRefused() async {
         let coordinator = makeCoordinator()
         let start = clock.now
         await coordinator.sync(active(on: .left, revision: 1, since: start))
@@ -74,7 +74,7 @@ struct LiveActivityCoordinatorTests {
         )
         await coordinator.sync(completed)
 
-        // Start tapped on the Lock Screen: the app runs in the background and can't request one.
+        // The app is in the background (e.g. relaunched by an intent) and can't request one.
         client.refuseRequests = true
         clock.advance(by: 3600)
         let nextID = UUID()
@@ -86,7 +86,7 @@ struct LiveActivityCoordinatorTests {
         #expect(visible.first?.state.sessionID == nextID)
         #expect(visible.first?.sessionID == nextID)
 
-        // Still refused (another Lock Screen tap): it keeps updating the carried activity.
+        // Still refused (a Lock Screen tap): it keeps updating the carried activity.
         client.clearCalls()
         clock.advance(by: 60)
         var paused = next
@@ -232,4 +232,24 @@ struct LiveActivityCoordinatorTests {
         await coordinator.sync(snapshot) // next foreground
         #expect(client.calls == [.request(sessionID: id, revision: 1)])
     }
+
+    @Test func carriesTheAppsAppearanceAndRedrawsWhenItChanges() async {
+        let coordinator = makeCoordinator()
+        let setting = AppearanceSetting()
+        coordinator.appearance = { setting.value }
+        let snapshot = active(on: .left, revision: 1, since: clock.now)
+        await coordinator.sync(snapshot)
+        #expect(client.activities[0].state.appearance == .dark)
+
+        // Changed in Settings: the same snapshot syncs again and the activity is redrawn.
+        setting.value = .light
+        await coordinator.sync(snapshot)
+        #expect(client.calls.last == .update(id: "activity-1", revision: 1))
+        #expect(client.activities[0].state.appearance == .light)
+    }
+}
+
+@MainActor
+private final class AppearanceSetting {
+    var value = LiveActivityAppearance.dark
 }

@@ -44,7 +44,7 @@ struct ActiveSessionPill: View {
             if isPaused {
                 Image(systemName: "pause.fill")
                     .font(.caption.weight(.bold))
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(NBColor.secondaryText)
             } else {
                 LiveDot(color: NBColor.side(side))
             }
@@ -53,14 +53,14 @@ struct ActiveSessionPill: View {
                 .font(.system(.headline, design: .rounded).monospacedDigit())
             Text(isPaused ? "Paused" : "Total")
                 .font(.subheadline)
-                .foregroundStyle(.secondary)
+                .foregroundStyle(NBColor.secondaryText)
             Text(DurationText.clock(total))
                 .font(.system(.subheadline, design: .rounded).monospacedDigit())
-                .foregroundStyle(.secondary)
+                .foregroundStyle(NBColor.secondaryText)
             Spacer(minLength: 0)
             Image(systemName: "chevron.up")
                 .font(.caption.weight(.semibold))
-                .foregroundStyle(.tertiary)
+                .foregroundStyle(NBColor.secondaryText)
         }
         .lineLimit(1)
         .padding(.horizontal, NBSpacing.l)

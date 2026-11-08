@@ -74,9 +74,9 @@ struct SideButton: View {
                 Text("Active")
             }
         case .switchTo:
-            Text("Tap to switch").foregroundStyle(.secondary)
+            Text("Tap to switch").foregroundStyle(NBColor.secondaryText)
         case .resumeHere:
-            Text("Resume here").foregroundStyle(.secondary)
+            Text("Resume here").foregroundStyle(NBColor.secondaryText)
         }
     }
 
@@ -95,7 +95,7 @@ struct SideButton: View {
         case .resumeHere(wasLast: true):
             shape.fill(NBColor.card).overlay { shape.strokeBorder(tint, lineWidth: 3) }
         default:
-            shape.fill(NBColor.card).overlay { shape.strokeBorder(tint.opacity(0.6), lineWidth: 2) }
+            shape.fill(NBColor.card).overlay { shape.strokeBorder(tint, lineWidth: 2) }
         }
     }
 
