@@ -254,8 +254,8 @@ private struct CalendarWeekView: View {
 
 /// Seven day columns on a 24-hour axis. Each feed is a block at its start time, as tall as it
 /// lasted: breastfeeds split lavender / teal by side, bottles a small capsule in the bottle's
-/// color. Pumping sessions are narrow rose bars along the column's trailing edge, so they never
-/// hide a feed. Tap a day's header (or its column) to see that day's feeds.
+/// color. Pumping sessions are rose bars across the column at their time, drawn over feeds.
+/// Sides with no time are left out. Tap a day's header (or its column) to see that day's feeds.
 private struct WeekTimeline: View {
     let days: [Date]
     let entries: [FeedEntry]
@@ -411,8 +411,7 @@ private struct DayColumn: View {
             ForEach(pumps) { pump in
                 let top = height * CGFloat(max(0, pump.startedAt.timeIntervalSince(day)) / Self.dayLength)
                 PumpBlock(height: blockHeight(from: pump.startedAt, to: pump.endedAt, top: top))
-                    .padding(.trailing, 1)
-                    .frame(maxWidth: .infinity, alignment: .trailing)
+                    .padding(.horizontal, 3)
                     .offset(y: top)
             }
         }
@@ -435,17 +434,23 @@ private struct FeedBlock: View {
     var body: some View {
         switch entry.details {
         case .breast(let left, let right, let firstSide, _):
-            let first = firstSide ?? .left
-            let firstTime = first == .left ? left : right
-            let secondTime = first == .left ? right : left
-            let total = max(firstTime + secondTime, 1)
+            // Sides with no time are left out, so a one-sided feed is a single color.
+            let order = [firstSide ?? .left, (firstSide ?? .left).opposite]
+            let sides = order
+                .map { (side: $0, time: $0 == .left ? left : right) }
+                .filter { $0.time > 0 }
+            let total = sides.reduce(0) { $0 + $1.time }
             VStack(spacing: 0) {
-                Rectangle()
-                    .fill(NBColor.side(first))
-                    .frame(height: height * CGFloat(firstTime / total))
-                Rectangle()
-                    .fill(NBColor.side(first.opposite))
-                    .frame(height: height * CGFloat(secondTime / total))
+                if sides.isEmpty {
+                    // A feed with no time on either side still marks when it happened.
+                    Rectangle().fill(NBColor.side(order[0]))
+                } else {
+                    ForEach(sides, id: \.side) { part in
+                        Rectangle()
+                            .fill(NBColor.side(part.side))
+                            .frame(height: height * CGFloat(part.time / total))
+                    }
+                }
             }
             .frame(height: height)
             .clipShape(RoundedRectangle(cornerRadius: 4, style: .continuous))
@@ -457,15 +462,21 @@ private struct FeedBlock: View {
     }
 }
 
-/// A pumping session: a narrow rose bar, outlined so it stands out over a feed block.
+/// A pumping session: a rose bar across the day column at its time, as tall as it lasted (at
+/// least as thick as a bottle). Outlined in the card color so it stays distinct where it
+/// overlaps a feed.
 private struct PumpBlock: View {
     let height: CGFloat
 
     var body: some View {
-        Capsule()
+        RoundedRectangle(cornerRadius: 4, style: .continuous)
             .fill(NBColor.pump)
-            .overlay { Capsule().strokeBorder(NBColor.card, lineWidth: 1) }
-            .frame(width: 7, height: max(8, height))
+            .overlay {
+                RoundedRectangle(cornerRadius: 4, style: .continuous)
+                    .strokeBorder(NBColor.card, lineWidth: 1)
+            }
+            .frame(maxWidth: .infinity)
+            .frame(height: max(8, height))
     }
 }
 
@@ -757,7 +768,7 @@ private struct DaySummaryCard: View {
                     if left + right > 0 {
                         VStack(alignment: .leading, spacing: NBSpacing.xs) {
                             SegmentBar(left: left, right: right)
-                            Text("L \(DurationText.short(left)) · R \(DurationText.short(right))")
+                            Text(FeedText.usedSides(left: left, right: right))
                                 .font(.footnote.monospacedDigit())
                                 .foregroundStyle(NBColor.secondaryText)
                         }

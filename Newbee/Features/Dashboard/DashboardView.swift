@@ -88,7 +88,7 @@ private struct ProfileHeader: View {
     }
 }
 
-/// "Last fed · 2 h 14 min · Breast · L 12 min · R 9 min · 9:41 PM", centered and large.
+/// "Time since last feed · 2 h 14 min · Breast · L 12 min · R 9 min · 9:41 PM", centered and large.
 /// The side to start on next is marked on the round buttons below, not repeated here.
 private struct LastFeedCard: View {
     let summary: DashboardSummary
@@ -98,7 +98,7 @@ private struct LastFeedCard: View {
         Card {
             VStack(spacing: NBSpacing.s) {
                 if let last = summary.lastFeed, let since = summary.timeSinceLastFeed(at: now) {
-                    Text("Last fed")
+                    Text("Time since last feed")
                         .font(.caption.weight(.semibold))
                         .textCase(.uppercase)
                         .foregroundStyle(NBColor.secondaryText)
@@ -137,7 +137,7 @@ private struct LastFeedCard: View {
     }
 }
 
-/// The running feed in place of the Last fed card. Tapping it opens the timer.
+/// The running feed in place of the Time since last feed card. Tapping it opens the timer.
 private struct ActiveFeedCard: View {
     let model: FeedingSessionUIModel
 
