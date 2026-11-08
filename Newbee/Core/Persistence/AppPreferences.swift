@@ -20,8 +20,10 @@ final class AppPreferences {
         static let stillFeedingEnabled = "stillFeeding.enabled"
         static let stillFeedingMinutes = "stillFeeding.minutes"
         static let appearance = "appearance"
+        static let onboardingComplete = "onboardingComplete"
 
-        /// Everything "Delete all data" resets. Appearance is kept (docs/DATA_MODEL.md).
+        /// Everything "Delete all data" resets. Appearance and `onboardingComplete` are kept
+        /// (docs/DATA_MODEL.md), so deleting data doesn't throw the parent back into onboarding.
         static let resettable = [
             volumeUnit, bottlePresets, lastBottleContents, reminderEnabled, reminderIntervalMinutes, reminderBasis,
             quietStart, quietEnd, stillFeedingEnabled, stillFeedingMinutes,
@@ -84,6 +86,12 @@ final class AppPreferences {
         didSet { defaults.set(appearance.rawValue, forKey: Key.appearance) }
     }
 
+    /// Set once first-run onboarding is finished or skipped, or found unneeded because the
+    /// store already has data (docs/UX_SPEC.md §3.1).
+    var onboardingComplete: Bool {
+        didSet { defaults.set(onboardingComplete, forKey: Key.onboardingComplete) }
+    }
+
     init(defaults: UserDefaults, locale: Locale = .current) {
         self.defaults = defaults
         self.locale = locale
@@ -92,6 +100,7 @@ final class AppPreferences {
         lastBottleContents = defaults.string(forKey: Key.lastBottleContents).flatMap(BottleContents.init(rawValue:))
         reminders = Self.loadReminders(defaults)
         appearance = defaults.string(forKey: Key.appearance).flatMap(Appearance.init(rawValue:)) ?? .system
+        onboardingComplete = defaults.bool(forKey: Key.onboardingComplete)
     }
 
     /// Back to first-launch values, except appearance. Used by "Delete all data".

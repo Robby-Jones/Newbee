@@ -136,10 +136,7 @@ private struct BabyPhotoRow: View {
             selection = nil
         }
         do {
-            guard let data = try await item.loadTransferable(type: Data.self) else {
-                throw BabyPhotoStore.PhotoError.unreadable
-            }
-            try store.save(data)
+            try await store.save(item)
             errorMessage = nil
         } catch {
             errorMessage = (error as? LocalizedError)?.errorDescription ?? BabyPhotoStore.PhotoError.unreadable.errorDescription
@@ -147,7 +144,17 @@ private struct BabyPhotoRow: View {
     }
 }
 
-/// The baby's photo in a circle, or a heart when there's none. Used in Settings and on Home.
+extension BabyPhotoStore {
+    /// Saves a photo picked with `PhotosPicker`. Used by Settings and onboarding.
+    func save(_ item: PhotosPickerItem) async throws {
+        guard let data = try await item.loadTransferable(type: Data.self) else {
+            throw PhotoError.unreadable
+        }
+        try save(data)
+    }
+}
+
+/// The baby's photo in a circle, or a heart when there's none. Used in Settings, onboarding and on Home.
 struct BabyAvatar: View {
     let image: UIImage?
     var size: CGFloat = 64

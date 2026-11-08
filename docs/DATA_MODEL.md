@@ -113,7 +113,7 @@ A pumping session is a completed `FeedingSession` with `kind = pump`, `source = 
 ## 6. Deletion and integrity
 
 - Delete session → removes its segments and bottle details. Always go through `FeedingSession.deleteWithChildren(from:)`, because SwiftData's `.cascade` rule didn't reliably delete children on iOS 17 (caught by the former iOS 17 CI job), and the explicit path is kept on iOS 18. The `.cascade` rules stay in the schema as a second line of defence. Confirmation dialog plus undo toast (soft-hold the snapshot in memory for undo; re-insert on undo).
-- "Delete all data" in Settings → delete every session through `deleteWithChildren`, then every `Baby` (don't rely on `.cascade`; see above), end any Live Activity, cancel all notifications, reset prefs except appearance. Requires typed confirmation.
+- "Delete all data" in Settings → delete every session through `deleteWithChildren`, then every `Baby` (don't rely on `.cascade`; see above), end any Live Activity, cancel all notifications, reset prefs except appearance and `onboardingComplete` (deleting data doesn't replay onboarding). Requires typed confirmation.
 - Deleting the active session also ends its Live Activity and reminders through the manager.
 
 ## 7. Migration plan
