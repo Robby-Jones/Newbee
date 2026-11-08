@@ -31,8 +31,8 @@ struct LockScreenFeedingView: View {
     let isStale: Bool
 
     var body: some View {
-        if let ended = state.lastFeedEndedAt {
-            sinceLastFeed(ended)
+        if let since = state.sinceLastFeedStart {
+            sinceLastFeed(since)
         } else {
             feeding
         }
@@ -55,12 +55,12 @@ struct LockScreenFeedingView: View {
         .padding(NBSpacing.l)
     }
 
-    private func sinceLastFeed(_ ended: Date) -> some View {
+    private func sinceLastFeed(_ since: Date) -> some View {
         VStack(alignment: .leading, spacing: NBSpacing.s) {
             HStack(alignment: .center, spacing: NBSpacing.m) {
                 VStack(alignment: .leading, spacing: 0) {
                     ActivityStatusLabel(state: state, isStale: isStale)
-                    SinceLastFeedText(lastFeedEnded: ended)
+                    SinceLastFeedText(since: since)
                         .font(NBFont.timer(size: 44))
                         .foregroundStyle(ActivityColor.primaryText)
                         .multilineTextAlignment(.leading)

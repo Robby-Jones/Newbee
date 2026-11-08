@@ -99,6 +99,12 @@ public struct LiveActivityPlanner: Sendable {
     ///     showed then. We don't bring it back until the session changes again.
     ///   - babyName: Shown in the activity's header; `""` for a generic title.
     ///   - appearance: The app's Light / Dark / System setting (`ContentState.appearance`).
+    ///   - countFrom: Settings' "Count from": the since-last-feed count runs from the last feed's
+    ///     start or end (`ContentState.countFrom`).
+    ///   - mode: `.update` only brings what's showing up to date (and requests for a running feed
+    ///     that has no activity); `.show` also starts the since-last-feed count if nothing is
+    ///     showing, even after a swipe; `.refresh` replaces whatever is showing with a fresh
+    ///     request. See `LiveActivitySyncMode`.
     ///   - now: Current time.
     public func plan(
         for snapshot: SessionSnapshot?,
@@ -108,12 +114,16 @@ public struct LiveActivityPlanner: Sendable {
         dismissedAtRevision: Int? = nil,
         babyName: String = "",
         appearance: LiveActivityAppearance = .system,
+        countFrom: ReminderSettings.Basis = .end,
+        mode: LiveActivitySyncMode = .update,
         now: Date
     ) -> [LiveActivityAction] {
         // `nil` is drawn as system, and keeps content identical to older builds'.
         let appearance = appearance == .system ? nil : appearance
         let live = existing.filter { $0.phase == .live }
         let ended = existing.filter { $0.phase == .ended }
+        // `nil` is the end, and keeps content identical to older builds'.
+        let countFrom: ReminderSettings.Basis? = countFrom == .end ? nil : countFrom
 
         guard let snapshot, snapshot.status != .completed else {
             guard let latest = LatestFinishedFeed.of(breast: snapshot, bottle: lastBottle) else {
@@ -122,19 +132,32 @@ public struct LiveActivityPlanner: Sendable {
             }
             var state = FeedingActivityAttributes.ContentState(latest: latest, lastBreastSide: snapshot?.lastSide)
             state.appearance = appearance
+            state.countFrom = countFrom
             return planSinceLastFeed(
-                feedID: latest.id, state: state, staleDate: state.staleDate(after: staleAfter), live: live, ended: ended
+                feedID: latest.id, state: state, staleDate: state.staleDate(after: staleAfter),
+                live: live, ended: ended, babyName: babyName, mode: activitiesEnabled ? mode : .update
             )
         }
 
         var state = FeedingActivityAttributes.ContentState(snapshot: snapshot)
         state.appearance = appearance
+        state.countFrom = countFrom
         let staleDate = state.staleDate(after: staleAfter)
         let mine = live.filter { $0.sessionID == snapshot.id }
 
         // Active or paused. Anything left in the ended state (the 8-hour limit, or an older
         // build's summary) is now wrong.
         var actions = ended.map(Self.removeNow)
+
+        if mode == .refresh && activitiesEnabled {
+            // Settings' "Refresh Live Activity": one fresh request, replacing the activity the
+            // parent is most likely looking at once it succeeds; any others go now.
+            let previous = Self.newest(mine) ?? Self.mostRecentFeed(live)
+            actions += live.filter { $0.id != previous?.id }.map(Self.removeNow)
+            let attributes = FeedingActivityAttributes(sessionID: snapshot.id, babyName: babyName)
+            actions.append(.request(attributes, state, staleDate: staleDate, replacing: previous?.id))
+            return actions
+        }
 
         // Keep exactly one live activity for this session.
         guard let keep = Self.newest(mine) else {
@@ -143,7 +166,8 @@ public struct LiveActivityPlanner: Sendable {
             // most likely looking at is replaced by the new request, the rest go now.
             let previous = Self.mostRecentFeed(live)
             actions += live.filter { $0.id != previous?.id }.map(Self.removeNow)
-            let userDismissedThisState = dismissedAtRevision.map { snapshot.revision <= $0 } ?? false
+            // A swipe holds until the session changes again, unless the parent asked for it back.
+            let userDismissedThisState = mode == .update && (dismissedAtRevision.map { snapshot.revision <= $0 } ?? false)
             if activitiesEnabled && !userDismissedThisState {
                 let attributes = FeedingActivityAttributes(sessionID: snapshot.id, babyName: babyName)
                 actions.append(.request(attributes, state, staleDate: staleDate, replacing: previous?.id))
@@ -167,23 +191,33 @@ public struct LiveActivityPlanner: Sendable {
 
     /// No feed is running: the activity that showed the latest feed `feedID` (or, if it was another
     /// feed, such as one since deleted or a bottle logged after it, any activity still running)
-    /// switches to the time since that feed ended. Never requests one:
-    /// opening the app shouldn't put an activity back that the parent swiped away or that
-    /// reached the time limit; the next feed brings it back.
+    /// switches to the time since that feed. In `.update` mode it never requests one: opening the
+    /// app shouldn't put an activity back that the parent swiped away or that reached the time
+    /// limit. A newly entered latest feed (`.show`) or Settings' refresh (`.refresh`) does.
     private func planSinceLastFeed(
         feedID: UUID,
         state: FeedingActivityAttributes.ContentState,
         staleDate: Date,
         live: [LiveActivityRecord],
-        ended: [LiveActivityRecord]
+        ended: [LiveActivityRecord],
+        babyName: String,
+        mode: LiveActivitySyncMode
     ) -> [LiveActivityAction] {
         let mine = live.filter { $0.sessionID == feedID }
-        guard let keep = Self.newest(mine) ?? Self.mostRecentFeed(live) else {
+        let showing = Self.newest(mine) ?? Self.mostRecentFeed(live)
+        if mode == .refresh || (mode == .show && showing == nil) {
+            var actions = ended.map(Self.removeNow)
+            actions += live.filter { $0.id != showing?.id }.map(Self.removeNow)
+            let attributes = FeedingActivityAttributes(sessionID: feedID, babyName: babyName)
+            actions.append(.request(attributes, state, staleDate: staleDate, replacing: showing?.id))
+            return actions
+        }
+        guard let keep = showing else {
             // Nothing running. An ended activity (the 8-hour limit) may still be on the Lock
-            // Screen. It can't be updated, so one already counting from this feed's end is left
+            // Screen. It can't be updated, so one already counting from the same moment is left
             // to time out; any other is showing the wrong thing and goes now.
             return ended
-                .filter { $0.sessionID != feedID || $0.state.lastFeedEndedAt != state.lastFeedEndedAt }
+                .filter { $0.sessionID != feedID || $0.state.sinceLastFeedStart != state.sinceLastFeedStart }
                 .map(Self.removeNow)
         }
         var actions = ended.map(Self.removeNow)

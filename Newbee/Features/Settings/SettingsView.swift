@@ -18,6 +18,7 @@ struct SettingsView: View {
             BabyProfileSection()
             if let preferences {
                 UnitsSection(preferences: preferences)
+                TimeSinceLastFeedSection(preferences: preferences)
                 RemindersSection(preferences: preferences, reminders: reminders)
                 LiveActivitiesSection()
                 AppearanceSection(preferences: preferences)
@@ -185,6 +186,28 @@ private struct UnitsSection: View {
     }
 }
 
+// MARK: - Time since last feed
+
+/// "Count from": one setting for everything that counts the time since the last feed (Home, the
+/// Live Activity and feeding reminders). Stored with the reminder settings (`reminder.basis`).
+private struct TimeSinceLastFeedSection: View {
+    @Bindable var preferences: AppPreferences
+
+    var body: some View {
+        Section {
+            Picker("Count from", selection: $preferences.reminders.basis) {
+                Text("Start of last feed").tag(ReminderSettings.Basis.start)
+                Text("End of last feed").tag(ReminderSettings.Basis.end)
+            }
+            .accessibilityIdentifier("settings.countFrom")
+        } header: {
+            Text("Time since last feed")
+        } footer: {
+            Text("Used on Home, on the Lock Screen and in the Dynamic Island, and for feeding reminders.")
+        }
+    }
+}
+
 // MARK: - Reminders
 
 private struct RemindersSection: View {
@@ -219,10 +242,6 @@ private struct RemindersSection: View {
                     ForEach(ReminderSettings.intervalChoices, id: \.self) { interval in
                         Text(DurationText.short(interval)).tag(interval)
                     }
-                }
-                Picker("Count from", selection: $preferences.reminders.basis) {
-                    Text("Start of last feed").tag(ReminderSettings.Basis.start)
-                    Text("End of last feed").tag(ReminderSettings.Basis.end)
                 }
                 Toggle("Quiet hours", isOn: Binding(
                     get: { preferences.reminders.quietHours != nil },
@@ -293,7 +312,10 @@ private struct RemindersSection: View {
 
 private struct LiveActivitiesSection: View {
     @Environment(\.openURL) private var openURL
+    @Environment(FeedingSessionUIModel.self) private var sessionModel: FeedingSessionUIModel?
     @State private var enabled = ActivityAuthorizationInfo().areActivitiesEnabled
+    @State private var refreshing = false
+    @State private var refreshed = false
 
     var body: some View {
         Section {
@@ -302,11 +324,34 @@ private struct LiveActivitiesSection: View {
                 Button("Turn on in iOS Settings") {
                     if let url = URL(string: UIApplication.openSettingsURLString) { openURL(url) }
                 }
+            } else if let sessionModel {
+                Button {
+                    refreshing = true
+                    Task {
+                        await sessionModel.refreshLiveActivity()
+                        refreshing = false
+                        refreshed = true
+                    }
+                } label: {
+                    HStack {
+                        Text("Refresh Live Activity")
+                        Spacer()
+                        if refreshing {
+                            ProgressView()
+                        } else if refreshed {
+                            Image(systemName: "checkmark")
+                                .foregroundStyle(NBColor.accent)
+                                .accessibilityLabel("Refreshed")
+                        }
+                    }
+                }
+                .disabled(refreshing)
+                .accessibilityIdentifier("settings.refreshLiveActivity")
             }
         } header: {
             Text("Live Activities")
         } footer: {
-            Text("While a breastfeed runs, the timer and side buttons stay on the Lock Screen and in the Dynamic Island. After you end a feed, it counts the time since the last feed, with a + to open Newbee for the next one.")
+            Text("While a breastfeed runs, the timer and side buttons stay on the Lock Screen and in the Dynamic Island. After you end a feed, it counts the time since the last feed, with a + to open Newbee for the next one. If it's gone or looks wrong, Refresh Live Activity puts it back.")
         }
         .onReceive(NotificationCenter.default.publisher(for: UIApplication.didBecomeActiveNotification)) { _ in
             enabled = ActivityAuthorizationInfo().areActivitiesEnabled

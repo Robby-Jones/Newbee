@@ -60,9 +60,14 @@ public struct DashboardSummary: Sendable, Hashable {
         last24Hours = FeedTotals(past.filter { $0.start > dayAgo })
     }
 
-    /// Time since the last feed *started*, the interval parents and clinicians count. Never negative.
-    public func timeSinceLastFeed(at now: Date) -> TimeInterval? {
-        lastFeed.map { max(0, now.timeIntervalSince($0.start)) }
+    /// Time since the last feed started (the interval parents and clinicians count, and the
+    /// default) or ended, per Settings' "Count from". A feed without an end counts from its start.
+    /// Never negative.
+    public func timeSinceLastFeed(at now: Date, countingFrom basis: ReminderSettings.Basis = .start) -> TimeInterval? {
+        lastFeed.map { feed in
+            let anchor = basis == .end ? (feed.end ?? feed.start) : feed.start
+            return max(0, now.timeIntervalSince(anchor))
+        }
     }
 
     /// The side to offer next: opposite the side the last breastfeed ended on. Left with no history.

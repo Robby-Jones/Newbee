@@ -5,7 +5,7 @@ import Observation
 import os
 
 /// Makes the system's Live Activities match the session manager's snapshot
-/// (docs/LIVE_ACTIVITIES.md §5). `sync(_:lastBottle:)` is the only entry point.
+/// (docs/LIVE_ACTIVITIES.md §5). `sync(_:lastBottle:mode:)` is the only entry point.
 ///
 /// - The session manager calls it after every saved command and every bottle change: the active
 ///   or paused snapshot, or, when no feed is running, the latest finished breastfeed and the latest
@@ -28,6 +28,9 @@ final class LiveActivityCoordinator {
     /// The app's appearance setting, read at every sync so the Lock Screen activity matches the
     /// app. A change in Settings re-syncs (see `NewbeeApp`).
     @ObservationIgnored var appearance: @MainActor () -> LiveActivityAppearance = { .system }
+    /// Settings' "Count from" (the since-last-feed count runs from the last feed's start or end),
+    /// read at every sync. A change in Settings re-syncs (see `NewbeeApp`).
+    @ObservationIgnored var countFrom: @MainActor () -> ReminderSettings.Basis = { .end }
 
     private let client: any LiveActivityClient
     private let clock: any AppClock
@@ -60,19 +63,20 @@ final class LiveActivityCoordinator {
     }
 
     /// Brings the Live Activity in line with `snapshot` (and `lastBottle` when no feed is
-    /// running). Safe to call repeatedly; returns once every ActivityKit call for this and
-    /// earlier syncs has finished.
-    func sync(_ snapshot: SessionSnapshot?, lastBottle: BottleEntry?) async {
+    /// running). `mode` says whether to bring back an activity that isn't showing
+    /// (`LiveActivitySyncMode`). Safe to call repeatedly; returns once every ActivityKit call for
+    /// this and earlier syncs has finished.
+    func sync(_ snapshot: SessionSnapshot?, lastBottle: BottleEntry?, mode: LiveActivitySyncMode) async {
         let previous = tail
         let task = Task { [weak self] in
             await previous?.value
-            await self?.reconcile(snapshot, lastBottle: lastBottle)
+            await self?.reconcile(snapshot, lastBottle: lastBottle, mode: mode)
         }
         tail = task
         await task.value
     }
 
-    private func reconcile(_ snapshot: SessionSnapshot?, lastBottle: BottleEntry?) async {
+    private func reconcile(_ snapshot: SessionSnapshot?, lastBottle: BottleEntry?, mode: LiveActivitySyncMode) async {
         activitiesEnabled = client.areActivitiesEnabled
         let actions = planner.plan(
             for: snapshot,
@@ -82,12 +86,17 @@ final class LiveActivityCoordinator {
             dismissedAtRevision: snapshot.flatMap { dismissedRevisions[$0.id] },
             babyName: babyName,
             appearance: appearance(),
+            countFrom: countFrom(),
+            mode: mode,
             now: clock.now
         )
         for action in actions {
             await perform(action)
         }
-        if let snapshot, snapshot.status != .completed {
+        if mode != .update {
+            // The parent asked for the activity back, so an earlier swipe no longer holds.
+            dismissedRevisions.removeAll()
+        } else if let snapshot, snapshot.status != .completed {
             dismissedRevisions = dismissedRevisions.filter { $0.key == snapshot.id }
         } else {
             dismissedRevisions.removeAll()

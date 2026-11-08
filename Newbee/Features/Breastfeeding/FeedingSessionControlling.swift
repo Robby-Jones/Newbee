@@ -43,8 +43,15 @@ protocol FeedingSessionControlling: AnyObject, Observable {
     func discardActive() throws -> SessionSnapshot
 
     /// Undo: writes `snapshot` back (re-opens an ended session or re-inserts a discarded one).
-    /// Also inserts a new finished feed entered by hand in History.
     func restore(_ snapshot: SessionSnapshot) throws
+
+    /// Settings' "Refresh Live Activity": replaces the Live Activity with a fresh one for the
+    /// running feed or the since-last-feed count, bringing it back if it was swiped away.
+    func refreshLiveActivity() async
+
+    /// Inserts a new finished feed entered by hand. If it is the latest feed, the Live
+    /// Activity's since-last-feed count comes back even if the parent swiped it away.
+    func addFeed(_ snapshot: SessionSnapshot) throws
 
     /// Saves a hand-edited finished feed (History's Edit). Throws if the times break the session rules.
     func saveEdit(_ edited: SessionSnapshot) throws

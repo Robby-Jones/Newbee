@@ -44,7 +44,7 @@ final class SinceLastFeedRenderTests: XCTestCase {
 
     private func checkTimer(sinceMinutes minutes: Double, looksLike sample: String, file: StaticString = #filePath, line: UInt = #line) throws {
         let reference = try ink(Text(verbatim: sample).monospacedDigit())
-        let timer = try ink(SinceLastFeedText(lastFeedEnded: Date().addingTimeInterval(-minutes * 60)))
+        let timer = try ink(SinceLastFeedText(since: Date().addingTimeInterval(-minutes * 60)))
         let message = "\(minutes) min: timer \(timer.pixels) px over \(timer.width) pt, \"\(sample)\" \(reference.pixels) px over \(reference.width) pt"
         XCTAssertGreaterThan(timer.pixels, reference.pixels / 2, message, file: file, line: line)
         XCTAssertEqual(Double(timer.width), Double(reference.width), accuracy: Double(reference.width) * 0.2, message, file: file, line: line)

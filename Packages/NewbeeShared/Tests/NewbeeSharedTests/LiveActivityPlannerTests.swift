@@ -436,4 +436,110 @@ struct LiveActivityPlannerTests {
         #expect(light.appearance == .light)
         #expect(light.status == .ended)
     }
+
+    // MARK: Count from
+
+    @Test func countFromStartCountsFromTheLastFeedsStartAndAChangeUpdatesTheActivity() throws {
+        let completed = completedSpecExample()
+        let counting = record("a", state: State(snapshot: completed))
+        // End is the default and leaves content as it was.
+        #expect(planner.plan(for: completed, existing: [counting], activitiesEnabled: true, countFrom: .end, now: now).isEmpty)
+        let fromStart = try #require(idle(planner.plan(
+            for: completed, existing: [counting], activitiesEnabled: true, countFrom: .start, now: now
+        )))
+        #expect(fromStart.countFrom == .start)
+        #expect(fromStart.sinceLastFeedStart == completed.startedAt)
+        #expect(fromStart.staleDate(after: minutes(45)) == completed.startedAt + minutes(60))
+        // A running feed carries it too, so the count is right the moment the feed ends.
+        let running = activeOnRight()
+        let active = try #require(idle(planner.plan(
+            for: running, existing: [record("a", state: State(snapshot: running))], activitiesEnabled: true, countFrom: .start, now: now
+        )))
+        #expect(active.countFrom == .start)
+        #expect(active.sinceLastFeedStart == nil)
+    }
+
+    @Test func countFromStartUsesABottlesStart() throws {
+        let shown = record("a", state: State(snapshot: completedSpecExample()))
+        let state = try #require(idle(planner.plan(
+            for: completedSpecExample(), lastBottle: bottle(at: 60), existing: [shown], activitiesEnabled: true,
+            countFrom: .start, now: now
+        )))
+        #expect(state.sinceLastFeedStart == t0 + minutes(60))
+    }
+
+    @Test func anExpiredCountFromTheOtherEndOfTheFeedIsRemoved() {
+        let completed = completedSpecExample()
+        let expired = record("a", state: State(snapshot: completed), phase: .ended)
+        #expect(planner.plan(
+            for: completed, existing: [expired], activitiesEnabled: true, countFrom: .start, now: now
+        ) == [.end(id: "a", finalState: nil, dismissal: .immediate)])
+    }
+
+    // MARK: Showing the count again
+
+    @Test func aNewlyEnteredLatestFeedBringsTheCountBack() {
+        let b = bottle(at: 60)
+        let state = State(bottle: b, lastBreastSide: .right)
+        let expired = record("old", state: State(snapshot: completedSpecExample()), phase: .ended)
+        let actions = planner.plan(
+            for: completedSpecExample(), lastBottle: b, existing: [expired], activitiesEnabled: true,
+            babyName: "Ada", mode: .show, now: now
+        )
+        #expect(actions == [
+            .end(id: "old", finalState: nil, dismissal: .immediate),
+            .request(FeedingActivityAttributes(sessionID: bottleID, babyName: "Ada"), state, staleDate: state.staleDate(after: minutes(45))),
+        ])
+        // Not when Live Activities are off.
+        #expect(planner.plan(
+            for: completedSpecExample(), lastBottle: b, existing: [], activitiesEnabled: false, mode: .show, now: now
+        ).isEmpty)
+    }
+
+    @Test func showOnlyUpdatesACountThatIsAlreadyShowing() throws {
+        let shown = record("a", state: State(snapshot: completedSpecExample()))
+        let actions = planner.plan(
+            for: completedSpecExample(), lastBottle: bottle(at: 60), existing: [shown], activitiesEnabled: true, mode: .show, now: now
+        )
+        let state = try #require(idle(actions))
+        #expect(state.sessionID == bottleID)
+    }
+
+    @Test func refreshReplacesTheCountWithAFreshActivity() {
+        let completed = completedSpecExample()
+        let state = State(snapshot: completed)
+        let actions = planner.plan(
+            for: completed,
+            existing: [
+                record("a", state: state),
+                record("extra", session: otherSessionID, state: State(snapshot: activeOnRight())),
+            ],
+            activitiesEnabled: true, mode: .refresh, now: now
+        )
+        #expect(actions == [
+            .end(id: "extra", finalState: nil, dismissal: .immediate),
+            .request(FeedingActivityAttributes(sessionID: sessionID, babyName: ""), state, staleDate: state.staleDate(after: minutes(45)), replacing: "a"),
+        ])
+        // With nothing showing, it brings the count back.
+        #expect(planner.plan(for: completed, existing: [], activitiesEnabled: true, mode: .refresh, now: now) == [
+            .request(FeedingActivityAttributes(sessionID: sessionID, babyName: ""), state, staleDate: state.staleDate(after: minutes(45))),
+        ])
+        // With no feeds at all there's nothing to show.
+        #expect(planner.plan(for: nil, existing: [], activitiesEnabled: true, mode: .refresh, now: now).isEmpty)
+    }
+
+    @Test func refreshBringsBackARunningFeedTheParentSwipedAway() {
+        let snapshot = activeOnRight(revision: 4)
+        let state = State(snapshot: snapshot)
+        #expect(planner.plan(
+            for: snapshot, existing: [], activitiesEnabled: true, dismissedAtRevision: 4, mode: .refresh, now: now
+        ) == [
+            .request(FeedingActivityAttributes(sessionID: sessionID, babyName: ""), state, staleDate: state.staleDate(after: minutes(45))),
+        ])
+        // And replaces one that is showing.
+        let shown = record("a", state: state)
+        #expect(planner.plan(for: snapshot, existing: [shown], activitiesEnabled: true, mode: .refresh, now: now) == [
+            .request(FeedingActivityAttributes(sessionID: sessionID, babyName: ""), state, staleDate: state.staleDate(after: minutes(45)), replacing: "a"),
+        ])
+    }
 }

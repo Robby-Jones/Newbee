@@ -114,6 +114,13 @@ struct FeedTimelineTests {
 
 @Suite("DashboardSummary")
 struct DashboardSummaryTests {
+    @Test func timeSinceLastFeedCountsFromTheEndWhenAsked() {
+        let b = breast(at(6), left: 600, right: 1_200) // ends 30 min after it starts
+        let summary = DashboardSummary(entries: [b], now: at(8), calendar: utc)
+        #expect(abs((summary.timeSinceLastFeed(at: at(8)) ?? 0) - 2 * 3_600) < 0.001)
+        #expect(abs((summary.timeSinceLastFeed(at: at(8), countingFrom: .end) ?? 0) - 1.5 * 3_600) < 0.001)
+    }
+
     @Test func emptyHistory() {
         let summary = DashboardSummary(entries: [], now: at(10), calendar: utc)
         #expect(summary.lastFeed == nil)
@@ -129,6 +136,8 @@ struct DashboardSummaryTests {
         let summary = DashboardSummary(entries: [b, f], now: at(10.25), calendar: utc)
         #expect(summary.lastFeed?.id == f.id)
         #expect(summary.timeSinceLastFeed(at: at(10.25)) == 2.25 * 3_600)
+        // "Count from: End": a bottle without a duration still counts from its start.
+        #expect(summary.timeSinceLastFeed(at: at(10.25), countingFrom: .end) == 2.25 * 3_600)
         // A bottle doesn't change the suggestion: it comes from the last breastfeed.
         #expect(summary.lastBreastFeed?.id == b.id)
         #expect(summary.suggestedNextSide == .left) // b ended on the right

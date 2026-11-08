@@ -8,11 +8,13 @@ final class RecordingLiveActivity: LiveActivitySyncing {
     var synced: [SessionSnapshot?] = []
     /// The latest bottle passed with each sync, parallel to `synced`.
     var syncedBottles: [BottleEntry?] = []
+    /// The mode of each sync, parallel to `synced`.
+    var syncedModes: [LiveActivitySyncMode] = []
     /// When set, checks at every sync that the store already holds what is being synced.
     var repository: InMemoryFeedingRepository?
     var sawUnsavedState = false
 
-    func sync(_ snapshot: SessionSnapshot?, lastBottle: BottleEntry?) async {
+    func sync(_ snapshot: SessionSnapshot?, lastBottle: BottleEntry?, mode: LiveActivitySyncMode) async {
         if let repository, let snapshot, repository.sessions[snapshot.id] != snapshot {
             sawUnsavedState = true
         }
@@ -20,6 +22,7 @@ final class RecordingLiveActivity: LiveActivitySyncing {
         await Task.yield()
         synced.append(snapshot)
         syncedBottles.append(lastBottle)
+        syncedModes.append(mode)
     }
 }
 
@@ -41,7 +44,7 @@ final class EndingDuringSync: LiveActivitySyncing {
     weak var manager: FeedingSessionManager?
     private var fired = false
 
-    func sync(_ snapshot: SessionSnapshot?, lastBottle: BottleEntry?) async {
+    func sync(_ snapshot: SessionSnapshot?, lastBottle: BottleEntry?, mode: LiveActivitySyncMode) async {
         await Task.yield()
         guard !fired, let manager, snapshot?.status == .active else { return }
         fired = true
@@ -384,6 +387,72 @@ struct FeedingSessionManagerTests {
         try bottles.deleteBottle(id: bottle.id)
         await manager.bottlesDidChange()
         #expect(activity.syncedBottles.last == .some(nil))
+    }
+
+    @Test func aNewlyLoggedBottleShowsTheActivityOnlyIfItIsTheLatestFeed() async throws {
+        let manager = makeManager()
+        try manager.start(side: .left)
+        clock.advance(by: 60)
+        try manager.end()
+        clock.advance(by: 3600)
+
+        let latest = try logBottle()
+        await manager.bottlesDidChange(logged: latest.id)
+        #expect(activity.syncedModes.last == .show)
+
+        // Edits, deletes and foreground syncs only update what's showing.
+        await manager.bottlesDidChange()
+        #expect(activity.syncedModes.last == .update)
+        await manager.reload()
+        #expect(activity.syncedModes.last == .update)
+
+        // A bottle entered for earlier than the latest feed doesn't bring the activity back.
+        let older = try logBottle(startingIn: -1800)
+        await manager.bottlesDidChange(logged: older.id)
+        #expect(activity.syncedModes.last == .update)
+        try bottles.deleteBottle(id: latest.id)
+        let olderThanBreast = try logBottle(startingIn: -7200)
+        await manager.bottlesDidChange(logged: olderThanBreast.id)
+        #expect(activity.syncedModes.last == .update)
+    }
+
+    @Test func anAddedBreastfeedShowsTheActivityOnlyIfItIsTheLatestFeed() async throws {
+        let manager = makeManager()
+        let t = clock.now
+        let latest = SessionSnapshot(
+            status: .completed, segments: [Segment(side: .left, start: t - 600, end: t - 300)],
+            startedAt: t - 600, endedAt: t - 300
+        )
+        try manager.addFeed(latest)
+        await manager.waitForPendingEffects()
+        #expect(activity.syncedModes.last == .show)
+        #expect(activity.synced.last??.id == latest.id)
+
+        let older = SessionSnapshot(
+            status: .completed, segments: [Segment(side: .right, start: t - 7200, end: t - 6900)],
+            startedAt: t - 7200, endedAt: t - 6900
+        )
+        try manager.addFeed(older)
+        await manager.waitForPendingEffects()
+        #expect(activity.syncedModes.last == .update)
+
+        // Undo (restore) never asks to show it.
+        let deleted = try manager.deleteCompleted(sessionID: latest.id)
+        try manager.restore(deleted)
+        await manager.waitForPendingEffects()
+        #expect(activity.syncedModes.last == .update)
+    }
+
+    @Test func refreshAsksForAFreshActivityEvenDuringAFeed() async throws {
+        let manager = makeManager()
+        await manager.refreshLiveActivity()
+        #expect(activity.syncedModes.last == .refresh)
+        #expect(activity.synced.last == .some(nil))
+
+        try manager.start(side: .left)
+        await manager.refreshLiveActivity()
+        #expect(activity.syncedModes.last == .refresh)
+        #expect(activity.synced.last == .some(manager.activeSession))
     }
 
     @Test func aBottleIsTheLastFeedEvenWithNoBreastfeeds() async throws {

@@ -93,11 +93,14 @@ private struct ProfileHeader: View {
 private struct LastFeedCard: View {
     let summary: DashboardSummary
     let now: Date
+    /// Settings' "Count from"; a change redraws the card straight away.
+    @Environment(AppPreferences.self) private var preferences: AppPreferences?
 
     var body: some View {
         Card {
             VStack(spacing: NBSpacing.s) {
-                if let last = summary.lastFeed, let since = summary.timeSinceLastFeed(at: now) {
+                if let last = summary.lastFeed,
+                   let since = summary.timeSinceLastFeed(at: now, countingFrom: preferences?.reminders.basis ?? .start) {
                     Text("Time since last feed")
                         .font(.caption.weight(.semibold))
                         .textCase(.uppercase)
