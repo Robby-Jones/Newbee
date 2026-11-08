@@ -55,7 +55,7 @@ Legend: `[x]` done · `[ ]` pending · `[!]` blocked (reason noted). Updated by 
 - [x] ~~Tools~~ (dropped 2026-11-07: duplicated Home, History and Insights)
 - [x] Navigation simplified to 4 tabs; Calendar is a mode of History; Settings is a tab
 - [ ] CSV / PDF export
-- [ ] Settings + onboarding + delete all data
+- [x] Settings + onboarding + delete all data (onboarding added 2026-11-08)
 
 ## Phase 6: Testing & refinement
 - [ ] Full regression, 0 warnings, perf with 1 year of data, accessibility audit

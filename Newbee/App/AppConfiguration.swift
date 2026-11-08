@@ -14,4 +14,9 @@ enum AppConfiguration {
     static var isUITesting: Bool {
         ProcessInfo.processInfo.arguments.contains("-uiTesting")
     }
+
+    /// UI tests skip onboarding unless they pass `-showOnboarding` to test it.
+    static var showsOnboardingUnderUITests: Bool {
+        ProcessInfo.processInfo.arguments.contains("-showOnboarding")
+    }
 }

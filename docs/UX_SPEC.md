@@ -100,8 +100,10 @@ Each screen covers: purpose · layout · states (empty / loading / error / activ
 
 ### 3.1 Onboarding (3 steps, all skippable)
 1. **Welcome**: "Track feeds in two taps." Privacy line: "Your data stays on this iPhone."
-2. **Baby**: nickname (optional), birth date (optional). Units: mL / oz.
+2. **Baby**: photo, nickname and birth date (all optional). Units: mL / oz.
 3. **Stay in the loop**: explains Live Activities (illustration of the Lock Screen) and asks for notification permission *only if* the parent turns on reminders here. "Not medical advice" footnote.
+
+Skip (steps 1 and 2) and Start tracking both save whatever was entered. Shown once: `onboardingComplete` is set when it closes, and it's skipped automatically when the store already has a baby or any feed (people updating from an earlier build). UI tests skip it unless launched with `-showOnboarding`.
 
 ### 3.2 Home / Dashboard
 
