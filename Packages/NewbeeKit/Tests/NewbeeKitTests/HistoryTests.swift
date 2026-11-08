@@ -55,6 +55,22 @@ struct FeedEntryTests {
         #expect(FeedFilter.all.includes(b) && FeedFilter.all.includes(f))
         #expect(FeedFilter.breast.includes(b) && !FeedFilter.breast.includes(f))
         #expect(FeedFilter.bottle.includes(f) && !FeedFilter.bottle.includes(b))
+        let both: FeedFilter = [.breast, .bottle]
+        #expect(both.includes(b) && both.includes(f) && !both.includesPumping && !both.isAll)
+    }
+
+    @Test func toggleNeverLeavesTheFilterEmpty() {
+        var filter = FeedFilter.all
+        filter.toggle(.pump)
+        #expect(filter == [.breast, .bottle])
+        filter.toggle(.breast)
+        #expect(filter == .bottle)
+        filter.toggle(.bottle)
+        #expect(filter == .bottle)
+        filter.toggle(.pump)
+        #expect(filter == [.bottle, .pump])
+        filter.toggle(.breast)
+        #expect(filter.isAll)
     }
 }
 

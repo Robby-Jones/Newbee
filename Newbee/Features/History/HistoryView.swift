@@ -196,17 +196,35 @@ struct HistoryView: View {
         if mode == .list {
             ToolbarItem(placement: .topBarLeading) {
                 Menu {
-                    Picker("Show", selection: $filter) {
-                        Label("All feeds", systemImage: "list.bullet").tag(FeedFilter.all)
-                        Label("Breastfeeds", systemImage: "heart").tag(FeedFilter.breast)
-                        Label("Bottles", systemImage: "waterbottle").tag(FeedFilter.bottle)
-                        Label("Pumping", systemImage: PumpText.symbolName).tag(FeedFilter.pump)
+                    Button {
+                        filter = .all
+                    } label: {
+                        if filter.isAll {
+                            Label("All feeds", systemImage: "checkmark")
+                        } else {
+                            Label("All feeds", systemImage: "list.bullet")
+                        }
+                    }
+                    .accessibilityIdentifier("history.filter.all")
+                    Section("Show") {
+                        ForEach(FeedFilter.kinds, id: \.rawValue) { kind in
+                            Toggle(isOn: Binding(
+                                get: { filter.contains(kind) },
+                                set: { _ in filter.toggle(kind) }
+                            )) {
+                                Label(Self.filterTitle(kind), systemImage: Self.filterSymbol(kind))
+                            }
+                            // The last kind left can't be turned off.
+                            .disabled(filter == kind)
+                        }
                     }
                 } label: {
-                    Label("Filter", systemImage: filter == .all
+                    Label("Filter", systemImage: filter.isAll
                         ? "line.3.horizontal.decrease.circle"
                         : "line.3.horizontal.decrease.circle.fill")
                 }
+                // Keep the menu open so several kinds can be picked in one go.
+                .menuActionDismissBehavior(.disabled)
                 .accessibilityIdentifier("history.filter")
             }
         }
@@ -257,7 +275,24 @@ extension HistoryView {
         switch filter {
         case .bottle: "No bottle feeds yet"
         case .pump: "No pumping sessions yet"
-        default: "No breastfeeds yet"
+        case .breast: "No breastfeeds yet"
+        default: "Nothing matches this filter yet"
+        }
+    }
+
+    fileprivate static func filterTitle(_ kind: FeedFilter) -> LocalizedStringKey {
+        switch kind {
+        case .breast: "Breastfeeds"
+        case .bottle: "Bottles"
+        default: "Pumping"
+        }
+    }
+
+    fileprivate static func filterSymbol(_ kind: FeedFilter) -> String {
+        switch kind {
+        case .breast: "heart"
+        case .bottle: "waterbottle"
+        default: PumpText.symbolName
         }
     }
 }

@@ -177,6 +177,7 @@ struct HistoryTimelineTests {
         #expect(HistoryTimeline.days(feeds: feeds, pumps: pumps, filter: .pump, calendar: calendar).flatMap(\.items).map(\.id) == [pumps[0].id])
         #expect(HistoryTimeline.days(feeds: feeds, pumps: pumps, filter: .bottle, calendar: calendar).flatMap(\.items).map(\.id) == [feeds[0].id])
         #expect(HistoryTimeline.days(feeds: feeds, pumps: pumps, filter: .breast, calendar: calendar).isEmpty)
+        #expect(Set(HistoryTimeline.days(feeds: feeds, pumps: pumps, filter: [.bottle, .pump], calendar: calendar).flatMap(\.items).map(\.id)) == [feeds[0].id, pumps[0].id])
         #expect(!FeedFilter.pump.includes(feeds[0]))
     }
 }

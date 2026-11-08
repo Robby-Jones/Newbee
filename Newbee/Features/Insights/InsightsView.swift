@@ -23,9 +23,12 @@ struct InsightsView: View {
             .padding(.horizontal, NBSpacing.l)
             .padding(.vertical, NBSpacing.s)
 
-            // The query depends on the range, so it lives in a child view rebuilt per range.
-            InsightsContent(range: range)
-                .id(range)
+            // The query depends on the range, so it lives in a child view rebuilt per range. The
+            // scroll view stays outside it, so switching ranges keeps the scroll position.
+            ScrollView {
+                InsightsContent(range: range)
+                    .id(range)
+            }
         }
         .background(NBColor.canvas)
         .navigationTitle("Insights")
@@ -74,37 +77,35 @@ private struct InsightsContent: View {
             // since then isn't treated as being in the future and left out.
             let report = InsightsReport(entries: entries, range: range, now: max(context.date, .now))
             let unit = bottleModel?.unit ?? .milliliters
-            ScrollView {
-                VStack(alignment: .leading, spacing: NBSpacing.l) {
-                    if entries.isEmpty {
-                        ContentUnavailableView(
-                            "Insights appear after a couple of days of tracking",
-                            systemImage: "chart.bar",
-                            description: Text("Log feeds with the timer or a bottle and your patterns show up here.")
-                        )
-                        .padding(.top, NBSpacing.xl)
-                    } else {
-                        FeedsCard(report: report)
-                        if !report.intervals.isEmpty {
-                            IntervalsCard(report: report)
-                        }
-                        if report.breast.sessionCount > 0 {
-                            BreastCard(report: report)
-                        }
-                        if report.bottle.count > 0 {
-                            BottleCard(report: report, unit: unit)
-                        }
-                        if range != .day, !report.isEmpty {
-                            HeatmapCard(report: report)
-                        }
-                        if report.isSparse {
-                            SparseNote()
-                        }
-                        InsightsFooter(includesEstimated: report.includesEstimated)
+            VStack(alignment: .leading, spacing: NBSpacing.l) {
+                if entries.isEmpty {
+                    ContentUnavailableView(
+                        "Insights appear after a couple of days of tracking",
+                        systemImage: "chart.bar",
+                        description: Text("Log feeds with the timer or a bottle and your patterns show up here.")
+                    )
+                    .padding(.top, NBSpacing.xl)
+                } else {
+                    FeedsCard(report: report)
+                    if !report.intervals.isEmpty {
+                        IntervalsCard(report: report)
                     }
+                    if report.breast.sessionCount > 0 {
+                        BreastCard(report: report)
+                    }
+                    if report.bottle.count > 0 {
+                        BottleCard(report: report, unit: unit)
+                    }
+                    if range != .day, !report.isEmpty {
+                        HeatmapCard(report: report)
+                    }
+                    if report.isSparse {
+                        SparseNote()
+                    }
+                    InsightsFooter(includesEstimated: report.includesEstimated)
                 }
-                .padding(NBSpacing.l)
             }
+            .padding(NBSpacing.l)
         }
     }
 }
@@ -185,7 +186,7 @@ private struct FeedsCard: View {
             .chartForegroundStyleScale([String(localized: "Breast"): NBColor.accent, String(localized: "Bottle"): NBColor.bottleBreastMilk])
             .chartYScale(domain: 0...BarLabels.axisTop(tallest: tallest))
             .chartYAxis { AxisMarks(position: .leading, values: .automatic(desiredCount: 4)) }
-            .chartXAxis { dateAxis(for: report.range) }
+            .chartXAxis { dateAxis(for: report) }
             .frame(height: 180)
             .accessibilityLabel(summary)
         }
@@ -390,7 +391,7 @@ private struct BottleCard: View {
             ])
             .chartYScale(domain: 0...BarLabels.axisTop(tallest: tallest))
             .chartYAxis { AxisMarks(position: .leading, values: .automatic(desiredCount: 4)) }
-            .chartXAxis { dateAxis(for: report.range) }
+            .chartXAxis { dateAxis(for: report) }
             .frame(height: 160)
             .accessibilityLabel(summary)
         }
@@ -563,11 +564,22 @@ private struct SegmentValueLabel: View {
     }
 }
 
-/// Day labels for day ranges, hour labels for 24 h.
-private func dateAxis(for range: InsightsRange) -> some AxisContent {
-    AxisMarks(values: .automatic(desiredCount: range == .day ? 6 : min(range.dayCount, 7))) { _ in
+/// Day labels for day ranges, hour labels for 24 h, under the middle of their bars. The outer
+/// labels are pulled in so the chart's edge doesn't cut them off (`DateAxisLabels`).
+private func dateAxis(for report: InsightsReport) -> some AxisContent {
+    let marks = DateAxisLabels.marks(bucketStarts: report.buckets.map(\.start), range: report.range)
+    let format: Date.FormatStyle = report.range == .day ? .dateTime.hour() : .dateTime.day().month(.defaultDigits)
+    return AxisMarks(values: marks.map(\.date)) { value in
         AxisGridLine()
-        AxisValueLabel(format: range == .day ? .dateTime.hour() : .dateTime.day().month(.defaultDigits))
+        AxisValueLabel(format: format, anchor: labelAnchor(marks.indices.contains(value.index) ? marks[value.index].alignment : .center))
+    }
+}
+
+private func labelAnchor(_ alignment: DateAxisLabels.Alignment) -> UnitPoint? {
+    switch alignment {
+    case .center: nil
+    case .trailing: .topTrailing
+    case .leading: .topLeading
     }
 }
 

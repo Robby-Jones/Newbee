@@ -292,3 +292,41 @@ struct BarLabelsTests {
         #expect(BarLabels.axisTop(tallest: 0) == 1)
     }
 }
+
+@Suite("DateAxisLabels")
+struct DateAxisLabelsTests {
+    private var utc: Calendar {
+        var calendar = Calendar(identifier: .gregorian)
+        calendar.timeZone = TimeZone(identifier: "UTC")!
+        return calendar
+    }
+
+    private func days(_ count: Int) -> [Date] {
+        let start = Date(timeIntervalSince1970: 1_800_000_000 - 1_800_000_000.truncatingRemainder(dividingBy: 86_400))
+        return (0..<count).map { start.addingTimeInterval(Double($0) * 86_400) }
+    }
+
+    @Test func monthLabelsCountBackFromTodayAndStayInside() {
+        let starts = days(30)
+        let marks = DateAxisLabels.marks(bucketStarts: starts, range: .month, calendar: utc)
+        #expect(marks.count == 6)
+        #expect(marks.map(\.date) == [4, 9, 14, 19, 24, 29].map { starts[$0].addingTimeInterval(43_200) })
+        #expect(marks.last?.alignment == .trailing)
+        #expect(marks.dropLast().allSatisfy { $0.alignment == .center })
+    }
+
+    @Test func weekLabelsEveryDayWithBothEdgesPulledIn() {
+        let marks = DateAxisLabels.marks(bucketStarts: days(7), range: .week, calendar: utc)
+        #expect(marks.count == 7)
+        #expect(marks.first?.alignment == .leading)
+        #expect(marks.last?.alignment == .trailing)
+    }
+
+    @Test func dayLabelsEveryFourHours() {
+        let base = days(1)[0]
+        let hours = (0..<24).map { base.addingTimeInterval(Double($0) * 3_600) }
+        let marks = DateAxisLabels.marks(bucketStarts: hours, range: .day, calendar: utc)
+        #expect(marks.map(\.date) == [3, 7, 11, 15, 19, 23].map { hours[$0].addingTimeInterval(1_800) })
+        #expect(DateAxisLabels.marks(bucketStarts: [], range: .day, calendar: utc).isEmpty)
+    }
+}
