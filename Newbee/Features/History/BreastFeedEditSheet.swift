@@ -184,7 +184,7 @@ struct BreastFeedEditSheet: View {
     @ViewBuilder
     private var simpleSections: some View {
         Section {
-            DatePicker("Started", selection: $simple.start, in: ...Date.now)
+            DatePicker("Start time", selection: $simple.start, in: ...Date.now)
             Picker("First side", selection: $simple.firstSide) {
                 ForEach(Side.allCases, id: \.self) { side in
                     Text(side.title).tag(side)

@@ -108,7 +108,7 @@ private struct UnitsSection: View {
 
     var body: some View {
         let unit = preferences.volumeUnit
-        let presets = BottlePresets.amounts(storedML: preferences.bottlePresetsML, unit: unit)
+        let presets = BottlePresets.editable(storedML: preferences.bottlePresetsML, unit: unit)
         Section {
             Picker("Bottle unit", selection: $preferences.volumeUnit) {
                 Text("mL").tag(VolumeUnit.milliliters)
@@ -118,18 +118,41 @@ private struct UnitsSection: View {
             .accessibilityIdentifier("settings.unit")
 
             ForEach(Array(presets.enumerated()), id: \.offset) { index, amount in
-                Stepper(
-                    onIncrement: { update(presets, index: index, to: amount.stepped(by: 1)) },
-                    onDecrement: { update(presets, index: index, to: amount.stepped(by: -1)) }
-                ) {
-                    HStack {
-                        Text("Preset \(index + 1)")
-                        Spacer()
-                        Text(amount.formatted)
-                            .monospacedDigit()
-                            .foregroundStyle(.secondary)
+                HStack(spacing: 12) {
+                    if presets.count > BottlePresets.minimumCount {
+                        Button {
+                            remove(presets, at: index)
+                        } label: {
+                            Image(systemName: "minus.circle.fill")
+                                .font(.title3)
+                                .foregroundStyle(NBColor.destructive)
+                        }
+                        .buttonStyle(.borderless)
+                        .accessibilityLabel("Remove preset \(index + 1)")
+                        .accessibilityIdentifier("settings.preset.\(index + 1).remove")
+                    }
+                    Stepper(
+                        onIncrement: { update(presets, index: index, to: amount.stepped(by: 1)) },
+                        onDecrement: { update(presets, index: index, to: amount.stepped(by: -1)) }
+                    ) {
+                        HStack {
+                            Text("Preset \(index + 1)")
+                            Spacer()
+                            Text(amount.formatted)
+                                .monospacedDigit()
+                                .foregroundStyle(.secondary)
+                        }
                     }
                 }
+                .accessibilityIdentifier("settings.preset.\(index + 1)")
+            }
+            if presets.count < BottlePresets.maximumCount {
+                Button {
+                    add(to: presets, unit: unit)
+                } label: {
+                    Label("Add preset", systemImage: "plus.circle.fill")
+                }
+                .accessibilityIdentifier("settings.preset.add")
             }
             if preferences.bottlePresetsML != nil {
                 Button("Reset presets") { preferences.bottlePresetsML = nil }
@@ -137,7 +160,7 @@ private struct UnitsSection: View {
         } header: {
             Text("Units")
         } footer: {
-            Text("Quick amounts on the Log Bottle sheet.")
+            Text("Quick amounts on the Log Bottle sheet. Up to \(BottlePresets.maximumCount) presets.")
         }
     }
 
@@ -146,6 +169,19 @@ private struct UnitsSection: View {
         var values = presets
         values[index] = amount
         preferences.bottlePresetsML = values.map(\.milliliters)
+    }
+
+    private func add(to presets: [BottleAmount], unit: VolumeUnit) {
+        guard presets.count < BottlePresets.maximumCount else { return }
+        let values = presets + [BottlePresets.nextAmount(after: presets, unit: unit)]
+        withAnimation { preferences.bottlePresetsML = values.map(\.milliliters) }
+    }
+
+    private func remove(_ presets: [BottleAmount], at index: Int) {
+        guard presets.count > BottlePresets.minimumCount, presets.indices.contains(index) else { return }
+        var values = presets
+        values.remove(at: index)
+        withAnimation { preferences.bottlePresetsML = values.map(\.milliliters) }
     }
 }
 

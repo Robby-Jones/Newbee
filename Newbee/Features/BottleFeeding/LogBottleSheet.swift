@@ -143,7 +143,7 @@ struct LogBottleSheet: View {
         Card {
             VStack(alignment: .leading, spacing: NBSpacing.m) {
                 HStack {
-                    DatePicker("Time", selection: $draft.startedAt, in: ...Date.now, displayedComponents: [.date, .hourAndMinute])
+                    DatePicker("Start time", selection: $draft.startedAt, in: ...Date.now, displayedComponents: [.date, .hourAndMinute])
                         .accessibilityIdentifier("bottle.time")
                 }
                 if abs(draft.startedAt.timeIntervalSinceNow) > 60 {
