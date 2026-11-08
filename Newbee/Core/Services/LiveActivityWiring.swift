@@ -12,8 +12,8 @@ extension FeedingSessionManager: @retroactive LiveActivityCommandHandling {
         if let engineCommand = SessionCommand(command) {
             await applyRemote(engineCommand, sessionID: sessionID)
         } else if case .start(let side) = command {
-            // From the since-last-feed state: there is no running session for the id to name.
-            await applyRemoteStart(side: side)
+            // From the since-last-feed state: the id names the finished feed it was showing.
+            await applyRemoteStart(side: side, sessionID: sessionID)
         }
     }
 }

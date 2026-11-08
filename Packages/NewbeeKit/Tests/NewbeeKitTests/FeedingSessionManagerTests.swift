@@ -353,8 +353,9 @@ struct FeedingSessionManagerTests {
         try manager.start(side: .left)
         clock.advance(by: 60)
         try manager.end()
+        let finished = try #require(manager.lastCompletedSession)
         clock.advance(by: 2 * 3600)
-        await manager.applyRemoteStart(side: .right)
+        await manager.applyRemoteStart(side: .right, sessionID: finished.id)
         let started = try #require(manager.activeSession)
         #expect(started.openSegment?.side == .right)
         #expect(activity.synced.last == .some(started))
@@ -364,10 +365,28 @@ struct FeedingSessionManagerTests {
         let manager = makeManager()
         try manager.start(side: .left)
         let running = manager.activeSession
-        await manager.applyRemoteStart(side: .right)
+        await manager.applyRemoteStart(side: .right, sessionID: UUID())
         #expect(manager.activeSession == running)
         #expect(repository.sessions.count == 1)
         #expect(activity.synced.last == .some(running))
+    }
+
+    @Test func remoteStartFromAnOutOfDateActivityIsIgnoredButResyncs() async throws {
+        let manager = makeManager()
+        try manager.start(side: .left)
+        clock.advance(by: 60)
+        try manager.end()
+        let older = try #require(manager.lastCompletedSession)
+        clock.advance(by: 3600)
+        try manager.start(side: .right)
+        clock.advance(by: 60)
+        try manager.end()
+        let latest = try #require(manager.lastCompletedSession)
+        // A Start drawn for the older feed.
+        await manager.applyRemoteStart(side: .left, sessionID: older.id)
+        #expect(manager.activeSession == nil)
+        #expect(repository.sessions.count == 2)
+        #expect(activity.synced.last == .some(latest))
     }
 }
 

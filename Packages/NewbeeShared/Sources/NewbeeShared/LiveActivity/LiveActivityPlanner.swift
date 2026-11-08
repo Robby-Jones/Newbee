@@ -17,15 +17,29 @@ public struct LiveActivityRecord: Hashable, Sendable {
     /// The session the activity currently shows: `state.sessionID`, falling back to the
     /// attributes for content from older builds. See `sessionID(attributes:state:)`.
     public var sessionID: UUID
+    /// The session the activity was requested for (`FeedingActivityAttributes.sessionID`). Differs
+    /// from `sessionID` when the activity was carried over to another feed, so it is still on the
+    /// older feed's 8-hour clock.
+    public var requestedForSessionID: UUID
     public var state: FeedingActivityAttributes.ContentState
     public var phase: Phase
 
-    public init(id: String, sessionID: UUID, state: FeedingActivityAttributes.ContentState, phase: Phase) {
+    public init(
+        id: String,
+        sessionID: UUID,
+        requestedForSessionID: UUID? = nil,
+        state: FeedingActivityAttributes.ContentState,
+        phase: Phase
+    ) {
         self.id = id
         self.sessionID = sessionID
+        self.requestedForSessionID = requestedForSessionID ?? sessionID
         self.state = state
         self.phase = phase
     }
+
+    /// Showing a different feed from the one it was requested for (see `requestedForSessionID`).
+    public var isCarriedOver: Bool { requestedForSessionID != sessionID }
 
     /// The session an activity shows: its content's session, or the one it was requested for.
     public static func sessionID(
@@ -61,7 +75,9 @@ public enum LiveActivityAction: Hashable, Sendable {
 ///
 /// One activity covers a feed and the gap after it: while the feed runs it shows the timers, and
 /// once it ends the same activity counts up the time since that feed ended. The next feed gets a
-/// freshly requested activity, which restarts ActivityKit's 8-hour clock.
+/// freshly requested activity, which restarts ActivityKit's 8-hour clock. When iOS refuses that
+/// request (the app is in the background), the old activity is carried over to the new feed, and
+/// replaced with a fresh one at the next sync that can request (any sync in the foreground).
 public struct LiveActivityPlanner: Sendable {
     /// After this long without a change, the content goes stale and the views show
     /// "Still feeding? Open Newbee". Should equal the engine's `RecoveryPolicy` threshold so the
@@ -112,9 +128,9 @@ public struct LiveActivityPlanner: Sendable {
         // Keep exactly one live activity for this session.
         guard let keep = Self.newest(mine) else {
             // A new feed, or its activity was lost. Running activities for other sessions are
-            // the previous feed's since-last-feed count (or leftovers): the newest is replaced
-            // by the new request, the rest go now.
-            let previous = Self.newest(live)
+            // the previous feed's since-last-feed count (or leftovers): the one the parent is
+            // most likely looking at is replaced by the new request, the rest go now.
+            let previous = Self.mostRecentFeed(live)
             actions += live.filter { $0.id != previous?.id }.map(Self.removeNow)
             let userDismissedThisState = dismissedAtRevision.map { snapshot.revision <= $0 } ?? false
             if activitiesEnabled && !userDismissedThisState {
@@ -127,6 +143,13 @@ public struct LiveActivityPlanner: Sendable {
         }
 
         actions += live.filter { $0.id != keep.id }.map(Self.removeNow)
+        if keep.isCarriedOver && activitiesEnabled {
+            // Still on an older feed's 8-hour clock: swap in a fresh activity when iOS allows it
+            // (if it refuses, the coordinator updates this one instead, as when it was carried).
+            let attributes = FeedingActivityAttributes(sessionID: snapshot.id, babyName: babyName)
+            actions.append(.request(attributes, state, staleDate: staleDate, replacing: keep.id))
+            return actions
+        }
         actions += Self.update(keep, to: state, staleDate: staleDate, sameSession: true)
         return actions
     }
@@ -143,10 +166,13 @@ public struct LiveActivityPlanner: Sendable {
         ended: [LiveActivityRecord]
     ) -> [LiveActivityAction] {
         let mine = live.filter { $0.sessionID == snapshot.id }
-        guard let keep = Self.newest(mine) ?? Self.newest(live) else {
+        guard let keep = Self.newest(mine) ?? Self.mostRecentFeed(live) else {
             // Nothing running. An ended activity (the 8-hour limit) may still be on the Lock
-            // Screen; it can't be updated, so it is left to time out.
-            return []
+            // Screen. It can't be updated, so one already counting from this feed's end is left
+            // to time out; any other is showing the wrong thing and goes now.
+            return ended
+                .filter { $0.sessionID != snapshot.id || $0.state.lastFeedEndedAt != state.lastFeedEndedAt }
+                .map(Self.removeNow)
         }
         var actions = ended.map(Self.removeNow)
         actions += live.filter { $0.id != keep.id }.map(Self.removeNow)
@@ -166,8 +192,19 @@ public struct LiveActivityPlanner: Sendable {
         return [.update(id: record.id, state, staleDate: staleDate)]
     }
 
+    /// Among records of one session: the highest revision.
     private static func newest(_ records: [LiveActivityRecord]) -> LiveActivityRecord? {
         records.max(by: { $0.state.revision < $1.state.revision })
+    }
+
+    /// Among records of different sessions, whose revisions can't be compared: a since-last-feed
+    /// count first (the latest feed end), else the feed that started last.
+    private static func mostRecentFeed(_ records: [LiveActivityRecord]) -> LiveActivityRecord? {
+        let counting = records.filter { $0.state.lastFeedEndedAt != nil }
+        if let latest = counting.max(by: { $0.state.lastFeedEndedAt! < $1.state.lastFeedEndedAt! }) {
+            return latest
+        }
+        return records.max(by: { $0.state.sessionStart < $1.state.sessionStart })
     }
 
     private static func removeNow(_ record: LiveActivityRecord) -> LiveActivityAction {

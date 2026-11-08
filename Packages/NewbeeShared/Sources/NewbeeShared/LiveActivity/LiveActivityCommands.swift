@@ -11,7 +11,8 @@ public enum LiveActivityCommand: Hashable, Sendable {
     case resume
     case end
     /// Start a new feed on this side, from the since-last-feed state. The session id it is sent
-    /// with is the finished feed the activity was showing; it isn't needed to start.
+    /// with is the finished feed the activity was showing; the handler ignores the command unless
+    /// that is still the latest feed.
     case start(Side)
 }
 

@@ -53,6 +53,7 @@ final class ActivityKitClient: LiveActivityClient {
             return LiveActivityRecord(
                 id: activity.id,
                 sessionID: LiveActivityRecord.sessionID(attributes: activity.attributes, state: state),
+                requestedForSessionID: activity.attributes.sessionID,
                 state: state,
                 phase: Self.phase(of: activity.activityState)
             )

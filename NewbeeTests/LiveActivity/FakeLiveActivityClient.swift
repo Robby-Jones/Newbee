@@ -33,7 +33,9 @@ final class FakeLiveActivityClient: LiveActivityClient {
         let id = "activity-\(nextID)"
         nextID += 1
         let session = LiveActivityRecord.sessionID(attributes: attributes, state: state)
-        activities.append(LiveActivityRecord(id: id, sessionID: session, state: state, phase: .live))
+        activities.append(LiveActivityRecord(
+            id: id, sessionID: session, requestedForSessionID: attributes.sessionID, state: state, phase: .live
+        ))
         calls.append(.request(sessionID: attributes.sessionID, revision: state.revision))
         return id
     }

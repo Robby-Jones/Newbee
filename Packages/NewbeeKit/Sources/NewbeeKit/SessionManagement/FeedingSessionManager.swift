@@ -237,11 +237,14 @@ public final class FeedingSessionManager {
         await waitForPendingEffects()
     }
 
-    /// "Start" on the Live Activity's since-last-feed state. Refused (a feed is already running,
-    /// e.g. started in the app since the activity was drawn) is a silent no-op. Either way the
-    /// Live Activity is synced before this returns.
-    public func applyRemoteStart(side: Side) async {
-        if (try? perform(.start(side)))?.isNoOp != false {
+    /// "Start" on the Live Activity's since-last-feed state, which was drawn for the finished feed
+    /// `sessionID`. Ignored unless that is still the latest feed and none is running, so a tap on
+    /// an out-of-date activity doesn't start a feed. Either way the Live Activity is synced before
+    /// this returns, which corrects an out-of-date one.
+    public func applyRemoteStart(side: Side, sessionID: UUID) async {
+        try? refresh()
+        let current = activeSession == nil && lastCompletedSession?.id == sessionID
+        if !current || (try? perform(.start(side)))?.isNoOp != false {
             try? refresh()
             enqueueEffects(activity: .sync(liveActivitySnapshot), reminders: false)
         }

@@ -119,8 +119,8 @@ struct EndFeedingIntent: LiveActivityIntent {
 }
 
 /// "Start" on the since-last-feed state: begins a new feed on `side`. A no-op if a feed is
-/// already running. `sessionID` is the finished feed the activity was showing, kept only so the
-/// command goes through the same router as the others.
+/// already running, or if `sessionID` (the finished feed the activity was showing) is no longer the
+/// latest feed, so an out-of-date activity can't start one.
 struct StartFeedingIntent: LiveActivityIntent {
     static var title: LocalizedStringResource { "Start Feeding" }
     static var isDiscoverable: Bool { false }

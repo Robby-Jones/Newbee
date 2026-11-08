@@ -86,9 +86,8 @@ struct LiveActivityCoordinatorTests {
         #expect(visible.first?.state.sessionID == nextID)
         #expect(visible.first?.sessionID == nextID)
 
-        // Later syncs treat it as the new feed's activity.
+        // Still refused (another Lock Screen tap): it keeps updating the carried activity.
         client.clearCalls()
-        client.refuseRequests = false
         clock.advance(by: 60)
         var paused = next
         paused.segments[0].end = clock.now
@@ -96,6 +95,17 @@ struct LiveActivityCoordinatorTests {
         paused.revision = 2
         await coordinator.sync(paused)
         #expect(client.calls == [.update(id: "activity-1", revision: 2)])
+
+        // Back in the foreground: swapped for a fresh activity, so the feed isn't stuck on the
+        // old activity's 8-hour clock.
+        client.clearCalls()
+        client.refuseRequests = false
+        await coordinator.sync(paused)
+        #expect(client.calls == [
+            .request(sessionID: nextID, revision: 2),
+            .end(id: "activity-1", final: nil, dismissal: .immediate),
+        ])
+        #expect(client.activities.filter { $0.phase != .dismissed }.map(\.id) == ["activity-2"])
     }
 
     @Test func repeatedSyncOfTheSameSnapshotIsANoOp() async {

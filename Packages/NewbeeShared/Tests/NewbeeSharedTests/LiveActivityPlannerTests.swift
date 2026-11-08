@@ -96,6 +96,63 @@ struct LiveActivityPlannerTests {
         #expect(planner.plan(for: completed, existing: [expired], activitiesEnabled: true, now: now).isEmpty)
     }
 
+    @Test func anExpiredActivityCountingFromAnOlderFeedIsRemoved() {
+        // It hit the limit while counting from the previous feed; a newer feed has ended since.
+        var older = completedSpecExample()
+        older.id = otherSessionID
+        let expired = record("old", session: otherSessionID, state: State(snapshot: older), phase: .ended)
+        #expect(planner.plan(for: completedSpecExample(), existing: [expired], activitiesEnabled: true, now: now) == [
+            .end(id: "old", finalState: nil, dismissal: .immediate),
+        ])
+    }
+
+    @Test func theNextFeedReplacesTheSinceLastFeedCountNotAnOlderLeftover() {
+        // Revisions are per session, so a leftover's higher revision must not win.
+        let thirdID = UUID(uuidString: "33333333-3333-3333-3333-333333333333")!
+        var previous = completedSpecExample(revision: 3)
+        previous.id = otherSessionID
+        var leftover = activeOnRight(revision: 7)
+        leftover.id = thirdID
+        leftover.startedAt = t0 - 6 * 3600
+        let snapshot = SessionSnapshot(
+            id: sessionID, status: .active, segments: [Segment(side: .left, start: t0 + minutes(90))],
+            startedAt: t0 + minutes(90), revision: 1
+        )
+        let state = State(snapshot: snapshot)
+        let actions = planner.plan(
+            for: snapshot,
+            existing: [
+                record("leftover", session: thirdID, state: State(snapshot: leftover)),
+                record("count", session: otherSessionID, state: State(snapshot: previous)),
+            ],
+            activitiesEnabled: true, now: now
+        )
+        #expect(actions == [
+            .end(id: "leftover", finalState: nil, dismissal: .immediate),
+            .request(
+                FeedingActivityAttributes(sessionID: sessionID, babyName: ""), state,
+                staleDate: state.staleDate(after: minutes(45)), replacing: "count"
+            ),
+        ])
+    }
+
+    @Test func aCarriedOverActivityIsSwappedForAFreshOneAtTheNextSync() {
+        // Start on the Lock Screen carried the old activity over to this feed; the app is now in
+        // the foreground, so it can get one with its own 8-hour clock.
+        let snapshot = activeOnRight(revision: 2)
+        let state = State(snapshot: snapshot)
+        let carried = LiveActivityRecord(
+            id: "old", sessionID: sessionID, requestedForSessionID: otherSessionID, state: state, phase: .live
+        )
+        #expect(carried.isCarriedOver)
+        #expect(planner.plan(for: snapshot, existing: [carried], activitiesEnabled: true, now: now) == [
+            .request(
+                FeedingActivityAttributes(sessionID: sessionID, babyName: ""), state,
+                staleDate: state.staleDate(after: minutes(45)), replacing: "old"
+            ),
+        ])
+    }
+
     @Test func discardingEndsEverythingImmediately() {
         let shown = State(snapshot: activeOnRight())
         let actions = planner.plan(
