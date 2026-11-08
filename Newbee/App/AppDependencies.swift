@@ -54,6 +54,9 @@ final class AppDependencies {
         }
         modelContainer = container
         storeError = error
+        if let container, ScreenshotSampleData.isRequested {
+            ScreenshotSampleData.seed(into: container, clock: clock)
+        }
 
         let repository: any FeedingRepository
         let bottleRepository: any BottleRepository
