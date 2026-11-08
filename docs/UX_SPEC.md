@@ -195,7 +195,7 @@ grid described here.
 - Vertical timeline grouped by day (sticky headers "Today", "Yesterday", "Tue 4 Nov").
 - `FeedRow`: time column, colored rail, icon, title ("Breast · 21 min" / "Bottle · 90 mL formula"), `SegmentBar` for L/R, note preview, **gap label** between rows ("2 h 40 m later") so intervals are visible at a glance.
 - **List | Calendar** switch at the top (Calendar is §3.5).
-- Filter menu in the toolbar (All feeds · Breastfeeds · Bottles); its icon fills when a filter is on.
+- Filter menu in the toolbar: All feeds, plus Breastfeeds · Bottles · Pumping toggles that combine (at least one stays on); the menu stays open while toggling and its icon fills when a filter is on.
   Picking a date is done in Calendar mode.
 - Swipe actions: Edit, Delete (confirmation + undo). Tap opens Edit.
 - Rows with `needsReview` show a small amber "Review" badge.

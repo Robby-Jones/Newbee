@@ -98,25 +98,47 @@ public struct BottleSummary: Sendable, Hashable {
     }
 }
 
-/// History filter: All · Breast · Bottle · Pumping.
-public enum FeedFilter: String, Sendable, CaseIterable, Hashable {
-    case all
-    case breast
-    case bottle
-    /// Pumping sessions only. They aren't feeds, so no `FeedEntry` matches.
-    case pump
+/// History filter: any combination of breastfeeds, bottles and pumping sessions.
+///
+/// `.all` is every kind. An empty filter shows nothing; the History menu never leaves it empty.
+public struct FeedFilter: OptionSet, Sendable, Hashable {
+    public let rawValue: Int
+
+    public init(rawValue: Int) {
+        self.rawValue = rawValue
+    }
+
+    public static let breast = FeedFilter(rawValue: 1 << 0)
+    public static let bottle = FeedFilter(rawValue: 1 << 1)
+    /// Pumping sessions. They aren't feeds, so no `FeedEntry` matches this kind.
+    public static let pump = FeedFilter(rawValue: 1 << 2)
+    public static let all: FeedFilter = [.breast, .bottle, .pump]
+
+    /// Each single kind, in menu order.
+    public static let kinds: [FeedFilter] = [.breast, .bottle, .pump]
+
+    public var isAll: Bool { isSuperset(of: .all) }
 
     public func includes(_ entry: FeedEntry) -> Bool {
-        switch self {
-        case .all: true
-        case .breast: entry.kind == .breast
-        case .bottle: entry.kind == .bottle
-        case .pump: false
+        switch entry.kind {
+        case .breast: contains(.breast)
+        case .bottle: contains(.bottle)
+        case .pump, .combo: false
         }
     }
 
     /// Whether pumping sessions show under this filter.
     public var includesPumping: Bool {
-        self == .all || self == .pump
+        contains(.pump)
+    }
+
+    /// Turns one kind on or off, but never turns off the last kind left.
+    public mutating func toggle(_ kind: FeedFilter) {
+        if contains(kind) {
+            let remaining = subtracting(kind)
+            if !remaining.isEmpty { self = remaining }
+        } else {
+            formUnion(kind)
+        }
     }
 }
