@@ -31,9 +31,9 @@ struct BottleAmountTests {
     }
 
     @Test func stepperSnapsAndClamps() {
-        #expect(BottleAmount(90, .milliliters).stepped(by: 1) == BottleAmount(100, .milliliters))
-        #expect(BottleAmount(95, .milliliters).stepped(by: 1) == BottleAmount(100, .milliliters))
-        #expect(BottleAmount(95, .milliliters).stepped(by: -1) == BottleAmount(90, .milliliters))
+        #expect(BottleAmount(90, .milliliters).stepped(by: 1) == BottleAmount(95, .milliliters))
+        #expect(BottleAmount(92, .milliliters).stepped(by: 1) == BottleAmount(95, .milliliters))
+        #expect(BottleAmount(92, .milliliters).stepped(by: -1) == BottleAmount(90, .milliliters))
         #expect(BottleAmount(94, .milliliters).stepped(by: -1) == BottleAmount(90, .milliliters))
         #expect(BottleAmount(0, .milliliters).stepped(by: -1) == BottleAmount(0, .milliliters))
         #expect(BottleAmount(500, .milliliters).stepped(by: 1) == BottleAmount(500, .milliliters))

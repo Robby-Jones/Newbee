@@ -17,13 +17,13 @@ final class PumpLoggingFlowTests: XCTestCase {
         XCTAssertTrue(logPump.label.contains("None today"), logPump.label)
         logPump.tap()
 
-        // Opens pre-filled with 60 mL a side; one more step on the left makes 70 + 60.
+        // Opens pre-filled with 60 mL a side; one more step on the left makes 65 + 60.
         let more = app.buttons["pump.more.left"].firstMatch
         XCTAssertTrue(more.waitForExistence(timeout: 5))
         more.tap()
         app.buttons["pump.save"].firstMatch.tap()
 
-        XCTAssertTrue(waitForLabel(of: logPump, containing: "Today: 1 session · 130 mL"), logPump.label)
+        XCTAssertTrue(waitForLabel(of: logPump, containing: "Today: 1 session · 125 mL"), logPump.label)
         let undo = app.buttons["pump.undo"].firstMatch
         XCTAssertTrue(undo.waitForExistence(timeout: 5))
         undo.tap()
