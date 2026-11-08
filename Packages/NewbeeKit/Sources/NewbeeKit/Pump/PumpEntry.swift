@@ -8,7 +8,7 @@ public struct PumpEntry: Codable, Sendable, Hashable, Identifiable {
     public var id: UUID
     /// When pumping started.
     public var startedAt: Date
-    /// Canonical amounts in millilitres. Either side may be zero (one-sided pumping).
+    /// Canonical amounts in milliliters. Either side may be zero (one-sided pumping).
     public var leftML: Double
     public var rightML: Double
     /// The unit the parent typed, so editing shows their original entry.
@@ -137,7 +137,7 @@ public enum PumpValidationError: Error, Sendable, Hashable {
 /// Validation rules for pumping sessions: something was pumped, each side at most 500 mL,
 /// no times in the future, and an optional duration of 1 minute to 2 hours.
 public struct PumpRules: Sendable, Hashable {
-    /// Largest amount accepted on one side, in millilitres.
+    /// Largest amount accepted on one side, in milliliters.
     public var maximumPerSideML: Double
     /// Longest duration accepted.
     public var maximumDuration: TimeInterval

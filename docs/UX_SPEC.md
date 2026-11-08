@@ -34,7 +34,7 @@ a list/calendar switch, and Apple Fitness puts its calendar inside History. So:
 
 | Flow | Presentation | Why |
 |---|---|---|
-| Breastfeeding timer | **Full-screen cover**, swipe-down/"Minimise" to dismiss (session keeps running) | Focus, one-handed, big targets |
+| Breastfeeding timer | **Full-screen cover**, swipe-down/"Minimize" to dismiss (session keeps running) | Focus, one-handed, big targets |
 | Log bottle | **Sheet** with `.medium`/`.large` detents | Fast, contextual |
 | Edit / manual entry | Sheet, `.large` | Form-based |
 | Day detail (from Calendar) | Inline below the month grid, then push to a full day list | Keeps context |
@@ -134,8 +134,14 @@ feed). **Edit start** in the top bar moves the whole feed's start (the running s
 difference). In dark mode the dark tokens give a dim night look. The sketch below is the earlier
 layout.
 
+*Revised 2026-11-08:* the "Minimize" button is gone. Dragging down anywhere above **Pause**
+minimizes the timer: the screen follows the finger and minimizes past ~120 pt (or on a quick
+flick), otherwise it springs back. A grabber at the top hints at the gesture and is itself a
+**Minimize** button (VoiceOver, and at large text sizes where the screen scrolls and the drag is
+off). A drag never also counts as a tap on a side button.
+
 ```
- ⌄ Minimise                         ⋯ (Edit start time, Add note, Discard)
+ ⌄ Minimize                         ⋯ (Edit start time, Add note, Discard)
             Total
            18:42                      ← huge, rounded, monospaced
       Started 2:15 AM

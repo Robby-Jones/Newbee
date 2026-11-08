@@ -40,6 +40,10 @@ struct BreastfeedingTimerView: View {
 /// The timer, laid out like a nursing timer (docs/UX_SPEC.md §3.3): the total on top, two big
 /// round side buttons with each side's time inside, then Pause, End feed and Add note.
 ///
+/// Dragging down anywhere above Pause minimizes the screen: the content follows the finger and
+/// either minimizes on release or springs back. A grabber at the top shows the gesture is there
+/// and is also a tappable Minimize button (VoiceOver, Switch Control, and when the screen scrolls).
+///
 /// In dark mode the app's dark tokens give it a dim, low-glare night look for 3 a.m. feeds.
 private struct TimerContent: View {
     let model: FeedingSessionUIModel
@@ -51,20 +55,38 @@ private struct TimerContent: View {
     @State private var startDraft = Date.now
     @State private var editingNote = false
     @State private var noteDraft = ""
+    /// How far the screen has been dragged down toward minimizing.
+    @State private var dragOffset: CGFloat = 0
+    /// True while a minimize drag is moving, so a drag that starts and ends on a side button
+    /// doesn't also count as a tap on it.
+    @State private var isDragging = false
+    /// The drag-to-minimize gesture is off while the content is taller than the screen (large
+    /// accessibility text sizes), so it never fights scrolling; the grabber still works then.
+    @State private var contentScrolls = false
 
     var body: some View {
         GeometryReader { proxy in
             ScrollView {
                 VStack(spacing: NBSpacing.xl) {
-                    topBar
-                    Spacer(minLength: 0)
-                    header
-                    Spacer(minLength: 0)
-                    sideButtons
-                    if display.phase != .notStarted {
-                        SegmentBar(left: display.left, right: display.right)
-                            .frame(maxWidth: 240)
+                    VStack(spacing: NBSpacing.xl) {
+                        grabber
+                        if display.phase != .notStarted {
+                            topBar
+                        }
                         Spacer(minLength: 0)
+                        header
+                        Spacer(minLength: 0)
+                        sideButtons
+                        if display.phase != .notStarted {
+                            SegmentBar(left: display.left, right: display.right)
+                                .frame(maxWidth: 240)
+                            Spacer(minLength: 0)
+                        }
+                    }
+                    .frame(maxHeight: .infinity)
+                    .contentShape(Rectangle())
+                    .simultaneousGesture(minimizeDrag, including: contentScrolls ? .subviews : .all)
+                    if display.phase != .notStarted {
                         controls
                     }
                 }
@@ -73,44 +95,91 @@ private struct TimerContent: View {
                 .frame(minHeight: proxy.size.height)
             }
             .scrollBounceBehavior(.basedOnSize)
+            // When everything fits there is nothing to scroll, so the scroll view stays out of
+            // the way of the minimize drag.
+            .scrollDisabled(!contentScrolls)
+            .onScrollGeometryChange(for: Bool.self) { geometry in
+                geometry.contentSize.height > geometry.containerSize.height + 1
+            } action: { _, scrolls in
+                contentScrolls = scrolls
+            }
         }
+        .offset(y: dragOffset)
+        .opacity(1 - min(dragOffset / 600, 0.3))
         .animation(reduceMotion ? nil : .nbState, value: display.phase)
         .sheet(isPresented: $editingStart) { editStartSheet }
         .sheet(isPresented: $editingNote) { noteSheet }
+    }
+
+    // MARK: Minimize
+
+    /// Distance, or predicted fling distance, past which releasing a drag minimizes.
+    private static let minimizeThreshold: CGFloat = 120
+
+    private var minimizeDrag: some Gesture {
+        DragGesture(minimumDistance: 12, coordinateSpace: .global)
+            .onChanged { value in
+                // Only a mostly-downward drag counts; sideways or upward drags are left alone.
+                let dy = value.translation.height
+                guard isDragging || (dy > 0 && dy > abs(value.translation.width)) else { return }
+                isDragging = true
+                dragOffset = max(0, dy)
+            }
+            .onEnded { value in
+                guard isDragging else { return }
+                let shouldMinimize = value.translation.height > Self.minimizeThreshold
+                    || value.predictedEndTranslation.height > Self.minimizeThreshold * 2.5
+                if shouldMinimize {
+                    model.closeTimer()
+                } else {
+                    withAnimation(reduceMotion ? nil : .snappy(duration: 0.25)) { dragOffset = 0 }
+                }
+                // Cleared after this touch has been handled, so a button released at the end
+                // of the drag still sees it and ignores the touch.
+                Task { @MainActor in isDragging = false }
+            }
+    }
+
+    /// The handle at the top: shows the screen can be pulled down, and taps to minimize.
+    private var grabber: some View {
+        Button {
+            model.closeTimer()
+        } label: {
+            Capsule()
+                .fill(Color.secondary.opacity(0.45))
+                .frame(width: 40, height: 5)
+                .frame(maxWidth: .infinity, minHeight: NBLayout.minHitTarget)
+                .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .accessibilityLabel("Minimize")
+        .accessibilityHint(display.phase == .notStarted ? "Back to Home" : "The feed keeps running")
+        .padding(.top, -NBSpacing.s)
+        .padding(.bottom, -NBSpacing.xl)
     }
 
     // MARK: Top bar
 
     private var topBar: some View {
         HStack {
-            Button {
-                model.closeTimer()
-            } label: {
-                Label("Minimise", systemImage: "chevron.down")
-                    .font(.body.weight(.semibold))
-                    .frame(minHeight: NBLayout.minHitTarget)
-            }
-            .accessibilityHint(display.phase == .notStarted ? "Back to Home" : "The feed keeps running")
             Spacer()
-            if display.phase != .notStarted {
-                Button("Edit start") {
-                    startDraft = display.startedAt ?? .now
-                    editingStart = true
-                }
-                .font(.body.weight(.semibold))
-                .frame(minHeight: NBLayout.minHitTarget)
-                .accessibilityHint("Change when this feed started")
-                Menu {
-                    Button("Discard feed", systemImage: "trash", role: .destructive) {
-                        model.discardSession()
-                    }
-                } label: {
-                    Image(systemName: "ellipsis.circle")
-                        .font(.title3)
-                        .frame(minWidth: NBLayout.minHitTarget, minHeight: NBLayout.minHitTarget)
-                }
-                .accessibilityLabel("More")
+            Button("Edit start") {
+                startDraft = display.startedAt ?? .now
+                editingStart = true
             }
+            .font(.body.weight(.semibold))
+            .frame(minHeight: NBLayout.minHitTarget)
+            .accessibilityHint("Change when this feed started")
+            Menu {
+                Button("Discard feed", systemImage: "trash", role: .destructive) {
+                    model.discardSession()
+                }
+            } label: {
+                Image(systemName: "ellipsis.circle")
+                    .font(.title3)
+                    .frame(minWidth: NBLayout.minHitTarget, minHeight: NBLayout.minHitTarget)
+            }
+            .accessibilityLabel("More")
         }
         .tint(NBColor.accent)
     }
@@ -146,6 +215,7 @@ private struct TimerContent: View {
             .saturation(display.isPaused ? 0.3 : 1)
             .opacity(display.isPaused ? 0.75 : 1)
             .accessibilityElement(children: .combine)
+            .accessibilityIdentifier("timerHeader")
         }
     }
 
@@ -188,6 +258,7 @@ private struct TimerContent: View {
                     mode: display.mode(for: side),
                     elapsed: display.phase == .notStarted ? nil : display.elapsed(on: side)
                 ) {
+                    guard !isDragging else { return }
                     model.tapSide(side)
                 }
             }

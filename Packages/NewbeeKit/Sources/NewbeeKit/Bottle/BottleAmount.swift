@@ -64,7 +64,7 @@ extension VolumeUnit {
         }
     }
 
-    /// Display precision: whole millilitres, tenths of an ounce.
+    /// Display precision: whole milliliters, tenths of an ounce.
     func rounded(_ value: Double, down: Bool = false) -> Double {
         let scale: Double = self == .milliliters ? 1 : 10
         let scaled = value * scale

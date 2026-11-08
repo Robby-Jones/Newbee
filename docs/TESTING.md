@@ -66,7 +66,7 @@ Run each case on an **iPhone 14 Pro or later** (Dynamic Island). Where marked â€
 | D13 | Leave a feed running 8 h+ | Activity ends by system; "still feeding?" notification fired earlier; on open, recovery sheet + activity re-requested |
 | D14 | Disable Live Activities in iOS Settings, start feed | App works; gentle hint shown; no crash |
 | D15 | Compact / minimal island with another app's activity (e.g. a timer) | Minimal presentation renders correctly |
-| D16 | Dark mode, large Dynamic Type, VoiceOver on Lock Screen activity | Readable; buttons labelled |
+| D16 | Dark mode, large Dynamic Type, VoiceOver on Lock Screen activity | Readable; buttons labeled |
 | D17 | Low Power Mode | Timer still accurate (rendered by system) |
 | D18 | Reminder fires after configured interval; suppressed in quiet hours | As configured |
 | D19 | With the phone locked (not just asleep), tap Switch, Pause, Resume, End and Start on the Lock Screen activity, without Face ID looking at you (cover the camera) | Each tap takes effect with no unlock prompt; on unlock the app agrees. Before the first unlock after a restart the buttons can't work, because the store is still encrypted |
@@ -81,4 +81,4 @@ macOS runner minutes cost 10Ã— Linux on private repos. Keep the iOS job to PRs p
 
 ## 7. Definition of done (per feature)
 
-Unit and integration tests written and green in CI. Builds without warnings. Previews for all states. Accessibility labels. Checklist row updated. Device rows (if any) passed on Robby's iPhone. **No feature is called complete without its behaviour being tested** (guide rule 17).
+Unit and integration tests written and green in CI. Builds without warnings. Previews for all states. Accessibility labels. Checklist row updated. Device rows (if any) passed on Robby's iPhone. **No feature is called complete without its behavior being tested** (guide rule 17).

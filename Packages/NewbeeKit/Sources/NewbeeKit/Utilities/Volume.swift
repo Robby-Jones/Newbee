@@ -1,11 +1,11 @@
 import Foundation
 
-/// Units a parent can enter bottle volumes in. Volumes are always stored in millilitres.
+/// Units a parent can enter bottle volumes in. Volumes are always stored in milliliters.
 public enum VolumeUnit: String, Codable, Sendable, CaseIterable, Hashable {
     case milliliters = "ml"
     case fluidOunces = "oz"
 
-    /// Millilitres in one US fluid ounce.
+    /// Milliliters in one US fluid ounce.
     public static let millilitersPerFluidOunce = 29.5735295625
 
     public func toMilliliters(_ value: Double) -> Double {

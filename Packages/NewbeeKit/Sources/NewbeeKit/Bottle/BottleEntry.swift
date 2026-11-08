@@ -8,7 +8,7 @@ public struct BottleEntry: Codable, Sendable, Hashable, Identifiable {
     /// When the bottle feed started (or happened, if no duration was entered).
     public var startedAt: Date
     public var contents: BottleContents
-    /// Canonical amount in millilitres.
+    /// Canonical amount in milliliters.
     public var amountML: Double
     /// The unit the parent typed, so editing shows their original entry.
     public var enteredUnit: VolumeUnit
@@ -106,7 +106,7 @@ public enum BottleValidationError: Error, Sendable, Hashable {
 
 /// Validation rules for bottle feeds (docs/UX_SPEC.md §3.4: amount > 0 and ≤ 500 mL).
 public struct BottleRules: Sendable, Hashable {
-    /// Largest amount accepted, in millilitres.
+    /// Largest amount accepted, in milliliters.
     public var maximumML: Double
     /// Longest duration accepted.
     public var maximumDuration: TimeInterval

@@ -8,7 +8,7 @@ Likelihood / impact: H, M, L.
 |---|---|---|---|---|
 | R1 | **Live Activity 8-hour maximum** (then up to 4 h on Lock Screen); forgotten timers outlive it | H | M | Data unaffected; "still feeding?" notification; re-request + recovery on next foreground (`LIVE_ACTIVITIES.md` §6) |
 | R2 | **Activities can't be started from the background** without push-to-start (server) | M | M | Sessions start in-app (foreground). Siri/Control starts are post-MVP and verified first |
-| R3 | **Force-quit / reboot behaviour of Live Activities is undocumented / may change** | M | M | Reconcile on every launch/foreground; device tests D8–D9 record actual behaviour |
+| R3 | **Force-quit / reboot behavior of Live Activities is undocumented / may change** | M | M | Reconcile on every launch/foreground; device tests D8–D9 record actual behavior |
 | R4 | **User disables Live Activities** (globally or per app) or dismisses one | M | L | App fully functional without them; gentle hint; respect dismissal until next state change |
 | R5 | **No Dynamic Island** on pre-14-Pro / non-Pro older models | H | L | Lock Screen presentation + banner; design tested on both |
 | R6 | **SwiftData maturity** (predicate limits on enums/optionals, occasional crashes) | M | M | iOS 18 minimum CI job; raw-string enums, simple predicates, value-type mapping, repository protocol (swap possible) |
