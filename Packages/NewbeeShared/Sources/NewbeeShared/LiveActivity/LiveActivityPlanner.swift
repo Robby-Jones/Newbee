@@ -98,6 +98,7 @@ public struct LiveActivityPlanner: Sendable {
     ///   - dismissedAtRevision: If the parent swiped this session's activity away, the revision it
     ///     showed then. We don't bring it back until the session changes again.
     ///   - babyName: Shown in the activity's header; `""` for a generic title.
+    ///   - appearance: The app's Light / Dark / System setting (`ContentState.appearance`).
     ///   - now: Current time.
     public func plan(
         for snapshot: SessionSnapshot?,
@@ -106,8 +107,11 @@ public struct LiveActivityPlanner: Sendable {
         activitiesEnabled: Bool,
         dismissedAtRevision: Int? = nil,
         babyName: String = "",
+        appearance: LiveActivityAppearance = .system,
         now: Date
     ) -> [LiveActivityAction] {
+        // `nil` is drawn as system, and keeps content identical to older builds'.
+        let appearance = appearance == .system ? nil : appearance
         let live = existing.filter { $0.phase == .live }
         let ended = existing.filter { $0.phase == .ended }
 
@@ -116,13 +120,15 @@ public struct LiveActivityPlanner: Sendable {
                 // No feed at all (e.g. the only one was deleted): nothing to show.
                 return live.map(Self.removeNow)
             }
-            let state = FeedingActivityAttributes.ContentState(latest: latest, lastBreastSide: snapshot?.lastSide)
+            var state = FeedingActivityAttributes.ContentState(latest: latest, lastBreastSide: snapshot?.lastSide)
+            state.appearance = appearance
             return planSinceLastFeed(
                 feedID: latest.id, state: state, staleDate: state.staleDate(after: staleAfter), live: live, ended: ended
             )
         }
 
-        let state = FeedingActivityAttributes.ContentState(snapshot: snapshot)
+        var state = FeedingActivityAttributes.ContentState(snapshot: snapshot)
+        state.appearance = appearance
         let staleDate = state.staleDate(after: staleAfter)
         let mine = live.filter { $0.sessionID == snapshot.id }
 

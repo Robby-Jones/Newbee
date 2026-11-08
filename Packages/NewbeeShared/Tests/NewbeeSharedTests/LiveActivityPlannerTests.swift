@@ -418,4 +418,22 @@ struct LiveActivityPlannerTests {
             for: completedSpecExample(), lastBottle: bottle(at: 70), existing: [expired], activitiesEnabled: true, now: now
         ) == [.end(id: "a", finalState: nil, dismissal: .immediate)])
     }
+
+    // MARK: Appearance
+
+    @Test func theAppsAppearanceIsCarriedAndAChangeUpdatesTheActivity() throws {
+        let snapshot = activeOnRight()
+        let shown = record("a", state: State(snapshot: snapshot))
+        // System is the default and leaves content as it was.
+        #expect(planner.plan(for: snapshot, existing: [shown], activitiesEnabled: true, appearance: .system, now: now).isEmpty)
+        let dark = try #require(idle(planner.plan(for: snapshot, existing: [shown], activitiesEnabled: true, appearance: .dark, now: now)))
+        #expect(dark.appearance == .dark)
+        #expect(dark.status == .active)
+
+        let completed = completedSpecExample()
+        let counting = record("a", state: State(snapshot: completed))
+        let light = try #require(idle(planner.plan(for: completed, existing: [counting], activitiesEnabled: true, appearance: .light, now: now)))
+        #expect(light.appearance == .light)
+        #expect(light.status == .ended)
+    }
 }

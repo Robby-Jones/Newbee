@@ -73,38 +73,6 @@ struct LiveActivityWiringTests {
         #expect(visible.first?.state.status == .paused)
     }
 
-    @Test func startOnTheSinceLastFeedActivityBeginsTheNextFeed() async throws {
-        let clock = TestClock()
-        let client = FakeLiveActivityClient()
-        let coordinator = LiveActivityCoordinator(client: client, clock: clock)
-        let dependencies = AppDependencies(clock: clock, storage: .inMemory, liveActivity: coordinator)
-        let manager = dependencies.sessionManager
-
-        try manager.start(side: .left)
-        await manager.waitForPendingEffects()
-        let first = try #require(manager.activeSession?.id)
-        clock.advance(by: 8 * 60)
-        try manager.end()
-        await manager.waitForPendingEffects()
-        #expect(client.activities[0].state.status == .ended)
-
-        clock.advance(by: 2 * 3600)
-        await manager.handleLiveActivityCommand(.start(.right), sessionID: first)
-        let next = try #require(manager.activeSession)
-        #expect(next.id != first)
-        #expect(next.openSegment?.side == .right)
-        let visible = client.activities.filter { $0.phase != .dismissed }
-        #expect(visible.count == 1)
-        #expect(visible.first?.state.status == .active)
-        #expect(visible.first?.sessionID == next.id)
-
-        // A second tap (or a stale activity) doesn't start another feed.
-        await manager.handleLiveActivityCommand(.start(.left), sessionID: first)
-        #expect(manager.activeSession == next)
-    }
-
-    /// Robby's check: adding, editing or deleting the latest feed (bottle or breastfeed) while
-    /// the count runs moves it to whichever feed is now the latest.
     @Test func theCountFollowsTheLatestFeedAsBottlesAndFeedsChange() async throws {
         let clock = TestClock()
         let client = FakeLiveActivityClient()
@@ -174,30 +142,6 @@ struct LiveActivityWiringTests {
         #expect(client.activities.filter { $0.phase == .live }.count == 1)
     }
 
-    @Test func startOnACountSinceABottleBeginsTheNextFeed() async throws {
-        let clock = TestClock()
-        let client = FakeLiveActivityClient()
-        let coordinator = LiveActivityCoordinator(client: client, clock: clock)
-        let dependencies = AppDependencies(clock: clock, storage: .inMemory, liveActivity: coordinator)
-        let manager = dependencies.sessionManager
-
-        try manager.start(side: .left)
-        clock.advance(by: 10 * 60)
-        try manager.end()
-        clock.advance(by: 60 * 60)
-        let bottle = try dependencies.bottleLog.save(dependencies.bottleLog.newDraft(unit: .milliliters)).saved
-        await manager.bottlesDidChange()
-        #expect(client.activities[0].state.sessionID == bottle.id)
-
-        clock.advance(by: 2 * 3600)
-        await manager.handleLiveActivityCommand(.start(.right), sessionID: bottle.id)
-        let next = try #require(manager.activeSession)
-        #expect(next.openSegment?.side == .right)
-        let visible = client.activities.filter { $0.phase != .dismissed }
-        #expect(visible.count == 1)
-        #expect(visible.first?.state.status == .active)
-    }
-
     @Test(arguments: [
         (LiveActivityCommand.switchTo(.left), SessionCommand.switchTo(.left)),
         (.switchTo(.right), .switchTo(.right)),
@@ -207,9 +151,5 @@ struct LiveActivityWiringTests {
     ])
     func commandMapping(button: LiveActivityCommand, engine: SessionCommand) {
         #expect(SessionCommand(button) == engine)
-    }
-
-    @Test func startIsNotAnEngineCommandOnTheNamedSession() {
-        #expect(SessionCommand(LiveActivityCommand.start(.left)) == nil)
     }
 }

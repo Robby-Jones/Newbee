@@ -53,6 +53,10 @@ struct NewbeeApp: App {
                             Task { await dependencies.reminders.reschedule() }
                         }
                     }
+                    // Re-draws the Live Activity in the newly chosen Light / Dark / System look.
+                    .onChange(of: dependencies.preferences.appearance) {
+                        Task { await dependencies.sessionManager.reload() }
+                    }
                     .onReceive(NotificationCenter.default.publisher(for: .NSSystemClockDidChange)) { _ in
                         Task { await recovery.reconcile() }
                     }

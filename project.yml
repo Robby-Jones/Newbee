@@ -50,6 +50,11 @@ targets:
         LSApplicationCategoryType: public.app-category.healthcare-fitness
         NSSupportsLiveActivities: true
         NewbeeAppGroup: $(NEWBEE_APP_GROUP)
+        # newbee://home, from the Live Activity's "+".
+        CFBundleURLTypes:
+          - CFBundleURLName: $(NEWBEE_BUNDLE_ID)
+            CFBundleURLSchemes:
+              - newbee
         UILaunchScreen:
           UIColorName: AccentColor
         UIApplicationSceneManifest:

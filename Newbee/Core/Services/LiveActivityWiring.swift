@@ -9,25 +9,28 @@ import NewbeeShared
 /// Live Activity before returning.
 extension FeedingSessionManager: @retroactive LiveActivityCommandHandling {
     public func handleLiveActivityCommand(_ command: LiveActivityCommand, sessionID: UUID) async {
-        if let engineCommand = SessionCommand(command) {
-            await applyRemote(engineCommand, sessionID: sessionID)
-        } else if case .start(let side) = command {
-            // From the since-last-feed state: the id names the finished feed it was showing.
-            await applyRemoteStart(side: side, sessionID: sessionID)
-        }
+        await applyRemote(SessionCommand(command), sessionID: sessionID)
     }
 }
 
 extension SessionCommand {
-    /// The engine command for a button on a running feed, or `nil` for Start, which begins a new
-    /// feed instead of changing the one the activity names.
-    init?(_ command: LiveActivityCommand) {
+    /// The engine command for a Live Activity button.
+    init(_ command: LiveActivityCommand) {
         switch command {
         case .switchTo(let side): self = .switchTo(side)
         case .pause: self = .pause
         case .resume: self = .resume
         case .end: self = .end
-        case .start: return nil
+        }
+    }
+}
+
+extension LiveActivityAppearance {
+    init(_ appearance: AppPreferences.Appearance) {
+        switch appearance {
+        case .system: self = .system
+        case .light: self = .light
+        case .dark: self = .dark
         }
     }
 }

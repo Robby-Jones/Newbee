@@ -101,6 +101,10 @@ final class AppDependencies {
                 planner: LiveActivityPlanner(staleAfter: policy.effectiveThreshold)
             )
         }
+        // The Lock Screen activity follows the app's Light / Dark / System setting.
+        (activity as? LiveActivityCoordinator)?.appearance = { [preferences] in
+            LiveActivityAppearance(preferences.appearance)
+        }
         // Bottles too: the Live Activity counts from the latest feed of either kind.
         let manager = FeedingSessionManager(
             repository: repository, clock: clock, liveActivity: activity, reminders: reminders, bottles: bottleRepository

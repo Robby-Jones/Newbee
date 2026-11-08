@@ -53,6 +53,9 @@ public struct FeedingActivityAttributes: Codable, Hashable, Sendable {
         /// The amount, while counting from a bottle (then `sessionID` is the bottle's id).
         /// `nil` otherwise, and in content from older builds.
         public var lastBottle: BottleAmount?
+        /// The app's Light / Dark / System setting, so the Lock Screen activity matches the app.
+        /// `nil` in content from older builds, which is drawn as `.system`.
+        public var appearance: LiveActivityAppearance?
 
         public init(
             status: Status,
@@ -64,7 +67,8 @@ public struct FeedingActivityAttributes: Codable, Hashable, Sendable {
             pausedAt: Date?,
             revision: Int,
             sessionID: UUID? = nil,
-            lastBottle: BottleAmount? = nil
+            lastBottle: BottleAmount? = nil,
+            appearance: LiveActivityAppearance? = nil
         ) {
             self.status = status
             self.currentSide = currentSide
@@ -76,6 +80,7 @@ public struct FeedingActivityAttributes: Codable, Hashable, Sendable {
             self.revision = revision
             self.sessionID = sessionID
             self.lastBottle = lastBottle
+            self.appearance = appearance
         }
 
         public func accumulated(on side: Side) -> TimeInterval {
@@ -98,6 +103,17 @@ public struct FeedingActivityAttributes: Codable, Hashable, Sendable {
             currentSegmentStart?.addingTimeInterval(-(leftAccumulated + rightAccumulated))
         }
     }
+}
+
+/// The app's appearance setting, carried to the Live Activity (`ContentState.appearance`).
+public enum LiveActivityAppearance: String, Codable, Hashable, Sendable {
+    case system, light, dark
+}
+
+/// Links into the app from the Live Activity.
+public enum NewbeeLink {
+    /// Opens the app on Home.
+    public static let home = URL(string: "newbee://home")!
 }
 
 #if canImport(ActivityKit)
