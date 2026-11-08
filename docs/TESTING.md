@@ -59,6 +59,7 @@ Run each case on an **iPhone 14 Pro or later** (Dynamic Island). Where marked �
 | D5f | During D5: in Settings, switch Count from between Start of last feed and End of last feed, then look at Home and the Lock Screen | Both change straight away: from Start the count includes the feed's length and the line reads "started …"; from End it counts from the end and reads "ended …". Count from is its own section, not under Reminders |
 | D5g | After D5: swipe the activity away, open the app (it stays away), then log a bottle with the current time | The count comes back, counting from the bottle. Swipe again and add a past breastfeed later than the bottle: it comes back. Swipe again and add a feed for earlier: it stays away |
 | D5h | Swipe the activity away (or during a feed), then Settings → Live Activities → Refresh Live Activity | A checkmark shows and the activity is back, showing the running feed or the count; only one activity |
+| D5i | Long-press the island during a feed and after D5, before and after the count passes an hour | Expanded: "Since last feed", the full clock ("1:00:00", not "1:00:…") and the line about the last feed all show without "…", with the "+" on the right; during a feed, the total and "Feeding" over the side pills. Compact: the full clock, not cut off |
 | D6 | Double-tap End | One completed session, no errors |
 | D7 | Background app, open 3 other apps, return | Timer accurate |
 | D8 | Force-quit during active feed | Record what iOS does with the activity; reopening restores the session; activity reconciled |

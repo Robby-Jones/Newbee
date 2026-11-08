@@ -382,3 +382,103 @@ struct ActivitySidesAndControls: View {
         }
     }
 }
+
+// MARK: Shared layouts
+
+/// Sizes and text colors for the shared layouts below, so the Lock Screen and the expanded
+/// Dynamic Island draw the same content at their own scale.
+struct ActivityLayoutStyle {
+    var primaryText: Color
+    var secondaryText: Color
+    /// The feeding total while a feed is open.
+    var totalSize: CGFloat
+    /// The time since the last feed once it has ended.
+    var sinceSize: CGFloat
+    var newFeedButtonSize: CGFloat
+
+    static let lockScreen = ActivityLayoutStyle(
+        primaryText: ActivityColor.primaryText,
+        secondaryText: ActivityColor.secondaryText,
+        totalSize: 30,
+        sinceSize: 44,
+        newFeedButtonSize: 52
+    )
+
+    /// The island is always black, so its text is fixed white / gray (`IslandColor`).
+    static let island = ActivityLayoutStyle(
+        primaryText: IslandColor.primaryText,
+        secondaryText: IslandColor.secondaryText,
+        totalSize: 28,
+        sinceSize: 36,
+        newFeedButtonSize: 44
+    )
+
+    /// The widest live timer, "12:05:00", fits in this many points at `size`. Live timer text
+    /// takes all the width it's offered, so it always gets a cap; too tight a cap truncates the
+    /// clock to "1:00:…".
+    static func timerWidth(size: CGFloat) -> CGFloat { size * 5 }
+}
+
+/// While a feed is open: the total and a quiet status on one line, then the side pills with pause
+/// and end.
+///
+/// ```
+///  18:42                                Feeding 💧
+///  [  L 12:05  ] [  R 6:37  ]   (⏸)   (■)
+/// ```
+struct ActivityFeedingContent: View {
+    let attributes: FeedingActivityAttributes
+    let state: FeedingState
+    let isStale: Bool
+    let style: ActivityLayoutStyle
+
+    var body: some View {
+        VStack(spacing: NBSpacing.m) {
+            HStack(alignment: .firstTextBaseline, spacing: NBSpacing.s) {
+                TotalTimerText(state: state)
+                    .font(NBFont.timer(size: style.totalSize))
+                    .foregroundStyle(state.status == .paused ? style.secondaryText : style.primaryText)
+                    .multilineTextAlignment(.leading)
+                    .frame(maxWidth: ActivityLayoutStyle.timerWidth(size: style.totalSize), alignment: .leading)
+                Spacer(minLength: NBSpacing.s)
+                ActivityStatusLabel(state: state, isStale: isStale, textColor: style.secondaryText)
+                    .layoutPriority(1)
+            }
+            ActivitySidesAndControls(attributes: attributes, state: state)
+        }
+    }
+}
+
+/// Once the feed has ended: the time since it, large, with one "+" that opens the app on Home,
+/// and a line about that feed.
+///
+/// ```
+///  Since last feed 🕒
+///  2:15:03                                   (+)
+///  Last feed L 12:05 · R 9:00 · ended 3:40 PM
+/// ```
+struct ActivitySinceLastFeedContent: View {
+    let state: FeedingState
+    let isStale: Bool
+    let since: Date
+    let style: ActivityLayoutStyle
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: NBSpacing.s) {
+            HStack(alignment: .center, spacing: NBSpacing.m) {
+                VStack(alignment: .leading, spacing: 0) {
+                    ActivityStatusLabel(state: state, isStale: isStale, textColor: style.secondaryText)
+                    SinceLastFeedText(since: since)
+                        .font(NBFont.timer(size: style.sinceSize))
+                        .foregroundStyle(style.primaryText)
+                        .multilineTextAlignment(.leading)
+                        .frame(maxWidth: ActivityLayoutStyle.timerWidth(size: style.sinceSize), alignment: .leading)
+                }
+                Spacer(minLength: NBSpacing.s)
+                NewFeedButton(size: style.newFeedButtonSize)
+            }
+            LastFeedLine(state: state)
+                .foregroundStyle(style.secondaryText)
+        }
+    }
+}

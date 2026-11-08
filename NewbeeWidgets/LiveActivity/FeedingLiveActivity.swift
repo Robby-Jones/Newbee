@@ -27,16 +27,10 @@ struct FeedingLiveActivity: Widget {
             let state = context.state
             let attributes = context.attributes
             return DynamicIsland {
-                DynamicIslandExpandedRegion(.leading) {
-                    IslandExpandedLeading(state: state, isStale: context.isStale)
-                        .environment(\.colorScheme, .dark)
-                }
-                DynamicIslandExpandedRegion(.trailing) {
-                    IslandExpandedTrailing(state: state, isStale: context.isStale)
-                        .environment(\.colorScheme, .dark)
-                }
+                // Only the bottom region: the leading and trailing ones beside the camera are too
+                // narrow for the status and a clock past an hour (see `IslandExpandedBottom`).
                 DynamicIslandExpandedRegion(.bottom) {
-                    IslandExpandedBottom(attributes: attributes, state: state)
+                    IslandExpandedBottom(attributes: attributes, state: state, isStale: context.isStale)
                         .environment(\.colorScheme, .dark)
                 }
             } compactLeading: {

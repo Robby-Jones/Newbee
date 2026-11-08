@@ -15,63 +15,26 @@ enum IslandColor {
 
 // MARK: Expanded
 
-/// The total, or "Since last feed" over the time since the last feed once it has ended.
-struct IslandExpandedLeading: View {
-    let state: FeedingState
-    let isStale: Bool
-
-    var body: some View {
-        if let since = state.sinceLastFeedStart {
-            VStack(alignment: .leading, spacing: 0) {
-                ActivityStatusLabel(state: state, isStale: isStale, textColor: IslandColor.secondaryText)
-                SinceLastFeedText(since: since)
-                    .font(NBFont.timer(size: 30))
-                    .foregroundStyle(IslandColor.primaryText)
-                    .multilineTextAlignment(.leading)
-                    .frame(maxWidth: 150, alignment: .leading)
-            }
-            .padding(.leading, NBSpacing.xs)
-        } else {
-            TotalTimerText(state: state)
-                .font(NBFont.timer(size: 26))
-                .foregroundStyle(state.status == .paused ? IslandColor.secondaryText : IslandColor.primaryText)
-                .multilineTextAlignment(.leading)
-                .frame(maxWidth: 120, alignment: .leading)
-                .padding(.leading, NBSpacing.xs)
-        }
-    }
-}
-
-/// The status while feeding; the "+" that opens the app once the feed has ended.
-struct IslandExpandedTrailing: View {
-    let state: FeedingState
-    let isStale: Bool
-
-    var body: some View {
-        if state.status == .ended {
-            NewFeedButton(size: 44)
-                .padding(.trailing, NBSpacing.xs)
-        } else {
-            ActivityStatusLabel(state: state, isStale: isStale, textColor: IslandColor.secondaryText)
-                .padding(.trailing, NBSpacing.xs)
-        }
-    }
-}
-
-/// The side pills and controls while feeding; the line about the last feed once it has ended.
+/// Everything in the expanded island, drawn in its bottom region: the same layouts as the Lock
+/// Screen at a smaller scale.
+///
+/// The leading and trailing regions beside the camera are only about 100 pt wide, too narrow for
+/// "Since last feed" or a clock past an hour, which truncated to "Since last…" and "1:00:…"
+/// (2026-11-08). The bottom region spans the island's full width.
 struct IslandExpandedBottom: View {
     let attributes: FeedingActivityAttributes
     let state: FeedingState
+    let isStale: Bool
 
     var body: some View {
-        if state.status == .ended {
-            LastFeedLine(state: state)
-                .foregroundStyle(IslandColor.secondaryText)
-                .padding(.horizontal, NBSpacing.xs)
-        } else {
-            ActivitySidesAndControls(attributes: attributes, state: state)
-                .padding(.horizontal, NBSpacing.xs)
+        Group {
+            if let since = state.sinceLastFeedStart {
+                ActivitySinceLastFeedContent(state: state, isStale: isStale, since: since, style: .island)
+            } else {
+                ActivityFeedingContent(attributes: attributes, state: state, isStale: isStale, style: .island)
+            }
         }
+        .padding(.horizontal, NBSpacing.xs)
     }
 }
 
@@ -119,10 +82,10 @@ struct IslandCompactTrailing: View {
         }
     }
 
-    /// "45:12" fits 50 pt; past an hour ("1:02:03") needs 60. The time since the last feed is
-    /// usually past an hour.
+    /// "45:12" fits 50 pt; past an hour ("1:02:03") needs about 56, so 64 leaves room for wider
+    /// digits and bold text. The time since the last feed is usually past an hour.
     private var maxWidth: CGFloat {
-        state.status == .ended || state.totalAccumulated >= 3600 ? 60 : 50
+        state.status == .ended || state.totalAccumulated >= 3600 ? 64 : 50
     }
 }
 
