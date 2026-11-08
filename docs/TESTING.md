@@ -50,9 +50,9 @@ Run each case on an **iPhone 14 Pro or later** (Dynamic Island). Where marked �
 | D2 | Lock phone 5 min† | Lock Screen timer kept ticking; matches app on unlock ±1 s |
 | D3 | Switch side from Lock Screen ×5 rapidly† | Final side correct; no duplicate segments; app agrees |
 | D4 | Pause / resume from island expanded | State and timers frozen and resumed correctly |
-| D5 | End from Lock Screen† (and separately, End in the app) | The same activity stays and shows "Since last feed" counting up from 00:00 as hh:mm, large and readable (no seconds visible, no clipped digits), with one round "+" and a "Last feed L … · R … · ended …" line; session completed in History |
+| D5 | End from Lock Screen† (and separately, End in the app) | The same activity stays and shows "Since last feed" counting up from 0:00 as a stopwatch ("4:12", later "2:15:03"), large, readable and not cut off at either edge, with one round "+" and a "Last feed L … · R … · ended …" line; session completed in History |
 | D5e | Check D1–D5 with the phone in light mode and in dark mode, and with the app's Settings appearance on Light, Dark and System | Every label, timer and button is easy to read; the activity matches the app's setting (after changing it, open the app once) |
-| D5a | Leave D5 for over an hour (phone locked, app not opened) | The count goes from 00:59 to 01:00 and keeps ticking as hh:mm (island compact and expanded too) |
+| D5a | Leave D5 for over an hour (phone locked, app not opened) | The count goes from 59:59 to 1:00:00 and keeps ticking, not cut off (island compact and expanded too) |
 | D5b | After D5: tap Undo in the app, or start the next feed in the app† | Undo puts the feed back on the same activity; a new feed replaces it; only one activity is on the Lock Screen / island |
 | D5c | After D5: tap the **+** on the Lock Screen / expanded island | The app opens on Home; start a feed there and the activity shows it, one activity only |
 | D5d | After D5: log a bottle now in the app, then edit its time to before the breastfeed, then back, then delete it | Logged: the count restarts from the bottle's end and the line reads "Last feed bottle … · ended …". Moved earlier: back to the breastfeed's count and L/R line. Deleted: back to the breastfeed |

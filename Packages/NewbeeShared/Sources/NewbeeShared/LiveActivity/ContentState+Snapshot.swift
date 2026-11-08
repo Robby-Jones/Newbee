@@ -105,8 +105,8 @@ extension FeedingActivityAttributes.ContentState {
     /// uses, so the Lock Screen shows "Still feeding? Open Newbee" exactly when the app would ask.
     ///
     /// The since-last-feed count is never out of date, so its stale date is used for something
-    /// else: it is the one-hour mark (`sinceLastFeedHourMark`), where the system redraws the
-    /// activity so the count can switch from "00:59" to "01:00" (see `SinceLastFeedFormat`).
+    /// else: it is the one-hour mark (`sinceLastFeedHourMark`). The system redraws the activity
+    /// then, which is harmless; the views never show "Still feeding?" in this state.
     public func staleDate(after threshold: TimeInterval) -> Date {
         if let sinceLastFeedHourMark { return sinceLastFeedHourMark }
         return (currentSegmentStart ?? pausedAt ?? sessionStart).addingTimeInterval(threshold)

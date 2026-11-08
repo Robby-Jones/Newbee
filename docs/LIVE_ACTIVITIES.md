@@ -71,7 +71,7 @@ side pills and controls are one shared view (`ActivitySidesAndControls`). Minima
 - `PauseIntent` / `ResumeIntent` in one round slot that flips, then `EndIntent`. **End** is the only
   control in the destructive color and sits last with extra space before it, so it isn't hit by
   accident.
-- Since last feed (after End): "Since last feed" over a large `hh:mm` count, the main focus, with
+- Since last feed (after End): "Since last feed" over a large stopwatch ("4:12", "2:15:03"), the main focus, with
   one round **+** on the right that opens the app on Home (`Link` to `NewbeeLink.home`,
   `newbee://home`; the whole activity has the same `widgetURL`). A footnote gives the last feed's
   side times and end time. See §3.5.
@@ -103,14 +103,17 @@ side pills and controls are one shared view (`ActivitySidesAndControls`). Minima
   the header counts up from the end of the feed (`ContentState.lastFeedEndedAt`), and the footnote
   keeps the feed's L/R times. There is no Undo on the activity any more (removed with this change);
   the in-app undo toast still covers an End tapped by mistake.
-- The count is `hh:mm` ("00:45", "02:15"). iOS 18's live clock format (`SystemFormatStyle.Stopwatch`)
-  can't leave out seconds (with fewer fields or minute precision it switches to words like
-  "1 hour, 23 minutes"), and it has no hours field under an hour. So `SinceLastFeedFormat` draws
-  "00:" + a ticking `mm:ss` for the first hour, then a ticking `hh:mm:ss`, and the view clips it to
-  the width of "00:00", hiding the trailing ":ss". The clock ticks each second for that reason.
-  The content's `staleDate` is the one-hour mark, so the system redraws the activity there and the
-  view switches phase without the app running. ("Still feeding?" never shows in this state.) The
-  strings are pinned by `SinceLastFeedFormatTests` on the simulator.
+- The count is a stopwatch with seconds: "4:12", then "2:15:03" (`SinceLastFeedText`, the same
+  `Text(timerInterval:)` as the side pills and the total, which draws correctly on the Lock Screen).
+  - **Why not `hh:mm`:** iOS has no live format that shows hours and minutes as digits without
+    seconds (`SystemFormatStyle.Stopwatch` switches to words like "1 hour, 23 minutes" at minute
+    precision). Two builds drew a clock with seconds and clipped them off; both looked right in
+    simulator tests but drew shifted on a real Lock Screen (")0:04:"), because the system lays out a
+    live date text at its own width and position. Don't retry clipping.
+  - A true `hh:mm` would need the activity updated every minute, which only a push server can do
+    while the app isn't running (ActivityKit push updates). Not built: Newbee has no server.
+  - The content's `staleDate` is the one-hour mark (a harmless redraw); "Still feeding?" never
+    shows in this state.
 - **Bottles count too.** The count runs from the latest feed of either kind, by start time, with
   a breastfeed winning a tie (`LatestFinishedFeed`, the same rule reminders use). A bottle that
   ends later than the last breastfeed only takes over if it also *started* later; a bottle logged
@@ -200,7 +203,7 @@ Background gap: if the activity is gone and the app is never opened, nothing can
 | `LiveActivityPlanner`: request / update / end decisions for every case in §5–6 | same | `NewbeeSharedTests` |
 | `LiveActivityFormat`: static durations and VoiceOver text | same | `NewbeeSharedTests` |
 | `LiveActivityCommand`, `LiveActivityCommandHandling`, `LiveActivityIntentRouter` | same | `NewbeeSharedTests` |
-| Intents (`SwitchFeedingSideIntent`, `PauseFeedingIntent`, `ResumeFeedingIntent`, `EndFeedingIntent`), `SinceLastFeedFormat` and `SinceLastFeedText` | `LiveActivityIntents/`, compiled into **both** targets via `project.yml` | CI build + `SinceLastFeedFormatTests` and `SinceLastFeedRenderTests`; device |
+| Intents (`SwitchFeedingSideIntent`, `PauseFeedingIntent`, `ResumeFeedingIntent`, `EndFeedingIntent`) and `SinceLastFeedText` | `LiveActivityIntents/`, compiled into **both** targets via `project.yml` | CI build + `SinceLastFeedRenderTests`; device (the Lock Screen draws live text differently) |
 | `LiveActivityCoordinator` + `ActivityKitClient` | `Newbee/Core/Services/` | `NewbeeTests/LiveActivity` with a fake client |
 | Views + previews for all presentations | `NewbeeWidgets/LiveActivity/` | Xcode previews; device |
 
