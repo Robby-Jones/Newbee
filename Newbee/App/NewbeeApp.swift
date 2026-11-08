@@ -12,9 +12,11 @@ struct NewbeeApp: App {
         log: AppDependencies.shared.bottleLog,
         preferences: AppDependencies.shared.preferences,
         // A bottle counts as the last feed for reminders and the Live Activity's count.
-        onChange: {
+        onChange: { logged in
             Task { await AppDependencies.shared.reminders.reschedule() }
-            Task { await AppDependencies.shared.sessionManager.bottlesDidChange() }
+            // A newly logged bottle that is the latest feed brings the Live Activity back if it
+            // was swiped away or expired.
+            Task { await AppDependencies.shared.sessionManager.bottlesDidChange(logged: logged) }
         }
     )
     @State private var pumpModel = PumpLogUIModel(
@@ -56,6 +58,10 @@ struct NewbeeApp: App {
                     }
                     // Re-draws the Live Activity in the newly chosen Light / Dark / System look.
                     .onChange(of: dependencies.preferences.appearance) {
+                        Task { await dependencies.sessionManager.reload() }
+                    }
+                    // Re-draws the since-last-feed count from the newly chosen start or end.
+                    .onChange(of: dependencies.preferences.reminders.basis) {
                         Task { await dependencies.sessionManager.reload() }
                     }
                     .onReceive(NotificationCenter.default.publisher(for: .NSSystemClockDidChange)) { _ in

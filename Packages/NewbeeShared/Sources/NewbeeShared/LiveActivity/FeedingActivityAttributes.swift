@@ -56,6 +56,9 @@ public struct FeedingActivityAttributes: Codable, Hashable, Sendable {
         /// The app's Light / Dark / System setting, so the Lock Screen activity matches the app.
         /// `nil` in content from older builds, which is drawn as `.system`.
         public var appearance: LiveActivityAppearance?
+        /// Settings' "Count from": the since-last-feed count runs from the last feed's start
+        /// (`.start`) or end. `nil` means the end (and is what older builds sent).
+        public var countFrom: ReminderSettings.Basis?
 
         public init(
             status: Status,
@@ -68,7 +71,8 @@ public struct FeedingActivityAttributes: Codable, Hashable, Sendable {
             revision: Int,
             sessionID: UUID? = nil,
             lastBottle: BottleAmount? = nil,
-            appearance: LiveActivityAppearance? = nil
+            appearance: LiveActivityAppearance? = nil,
+            countFrom: ReminderSettings.Basis? = nil
         ) {
             self.status = status
             self.currentSide = currentSide
@@ -81,6 +85,7 @@ public struct FeedingActivityAttributes: Codable, Hashable, Sendable {
             self.sessionID = sessionID
             self.lastBottle = lastBottle
             self.appearance = appearance
+            self.countFrom = countFrom
         }
 
         public func accumulated(on side: Side) -> TimeInterval {
@@ -96,6 +101,13 @@ public struct FeedingActivityAttributes: Codable, Hashable, Sendable {
         /// When the last feed ended, while no feed is running: the start of the since-last-feed count.
         public var lastFeedEndedAt: Date? {
             status == .ended ? pausedAt : nil
+        }
+
+        /// What the since-last-feed count runs from, while no feed is running: the last feed's
+        /// start or end, per `countFrom`.
+        public var sinceLastFeedStart: Date? {
+            guard status == .ended else { return nil }
+            return countFrom == .start ? sessionStart : pausedAt
         }
 
         /// A start date that shows the session's total feeding time when counting up.

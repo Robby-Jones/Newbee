@@ -50,12 +50,15 @@ Run each case on an **iPhone 14 Pro or later** (Dynamic Island). Where marked �
 | D2 | Lock phone 5 min† | Lock Screen timer kept ticking; matches app on unlock ±1 s |
 | D3 | Switch side from Lock Screen ×5 rapidly† | Final side correct; no duplicate segments; app agrees |
 | D4 | Pause / resume from island expanded | State and timers frozen and resumed correctly |
-| D5 | End from Lock Screen† (and separately, End in the app) | The same activity stays and shows "Since last feed" counting up from 0:00 as a stopwatch ("4:12", later "2:15:03"), large, readable and not cut off at either edge, with one round "+" and a "Last feed L … · R … · ended …" line; session completed in History |
+| D5 | End from Lock Screen† (and separately, End in the app) | The same activity stays and shows "Since last feed" counting up as a stopwatch ("4:12", later "2:15:03") from the feed's start (Settings → Count from: Start, the default) or from 0:00 (End), large, readable and not cut off at either edge, with one round "+" and a "Last feed L … · R … · ended …" line; session completed in History |
 | D5e | Check D1–D5 with the phone in light mode and in dark mode, and with the app's Settings appearance on Light, Dark and System | Every label, timer and button is easy to read; the activity matches the app's setting (after changing it, open the app once) |
 | D5a | Leave D5 for over an hour (phone locked, app not opened) | The count goes from 59:59 to 1:00:00 and keeps ticking, not cut off (island compact and expanded too) |
 | D5b | After D5: tap Undo in the app, or start the next feed in the app† | Undo puts the feed back on the same activity; a new feed replaces it; only one activity is on the Lock Screen / island |
 | D5c | After D5: tap the **+** on the Lock Screen / expanded island | The app opens on Home; start a feed there and the activity shows it, one activity only |
 | D5d | After D5: log a bottle now in the app, then edit its time to before the breastfeed, then back, then delete it | Logged: the count restarts from the bottle's end and the line reads "Last feed bottle … · ended …". Moved earlier: back to the breastfeed's count and L/R line. Deleted: back to the breastfeed |
+| D5f | During D5: in Settings, switch Count from between Start of last feed and End of last feed, then look at Home and the Lock Screen | Both change straight away: from Start the count includes the feed's length and the line reads "started …"; from End it counts from the end and reads "ended …". Count from is its own section, not under Reminders |
+| D5g | After D5: swipe the activity away, open the app (it stays away), then log a bottle with the current time | The count comes back, counting from the bottle. Swipe again and add a past breastfeed later than the bottle: it comes back. Swipe again and add a feed for earlier: it stays away |
+| D5h | Swipe the activity away (or during a feed), then Settings → Live Activities → Refresh Live Activity | A checkmark shows and the activity is back, showing the running feed or the count; only one activity |
 | D6 | Double-tap End | One completed session, no errors |
 | D7 | Background app, open 3 other apps, return | Timer accurate |
 | D8 | Force-quit during active feed | Record what iOS does with the activity; reopening restores the session; activity reconciled |

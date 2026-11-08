@@ -21,10 +21,10 @@ struct IslandExpandedLeading: View {
     let isStale: Bool
 
     var body: some View {
-        if let ended = state.lastFeedEndedAt {
+        if let since = state.sinceLastFeedStart {
             VStack(alignment: .leading, spacing: 0) {
                 ActivityStatusLabel(state: state, isStale: isStale, textColor: IslandColor.secondaryText)
-                SinceLastFeedText(lastFeedEnded: ended)
+                SinceLastFeedText(since: since)
                     .font(NBFont.timer(size: 30))
                     .foregroundStyle(IslandColor.primaryText)
                     .multilineTextAlignment(.leading)

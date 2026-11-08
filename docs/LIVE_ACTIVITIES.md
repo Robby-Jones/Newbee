@@ -100,8 +100,9 @@ side pills and controls are one shared view (`ActivitySidesAndControls`). Minima
 
 ### 3.5 Since last feed (after End)
 - On End, from the Lock Screen or in the app, the **same activity stays** and updates to `.ended`:
-  the header counts up from the end of the feed (`ContentState.lastFeedEndedAt`), and the footnote
-  keeps the feed's L/R times. There is no Undo on the activity any more (removed with this change);
+  the header counts up from the feed's start or end, per Settings' **Count from**
+  (`ContentState.countFrom`, `sinceLastFeedStart`), and the footnote keeps the feed's L/R times
+  with "started 3:20 PM" or "ended 3:40 PM" to match. There is no Undo on the activity any more (removed with this change);
   the in-app undo toast still covers an End tapped by mistake.
 - The count is a stopwatch with seconds: "4:12", then "2:15:03" (`SinceLastFeedText`, the same
   `Text(timerInterval:)` as the side pills and the total, which draws correctly on the Lock Screen).
@@ -114,6 +115,11 @@ side pills and controls are one shared view (`ActivitySidesAndControls`). Minima
     while the app isn't running (ActivityKit push updates). Not built: Newbee has no server.
   - The content's `staleDate` is the one-hour mark (a harmless redraw); "Still feeding?" never
     shows in this state.
+- **Count from.** One setting (Settings → Time since last feed, stored as `reminder.basis`) for
+  Home's "Time since last feed", this count and feeding reminders. The coordinator reads it at
+  every sync like the appearance, and a change re-syncs (`NewbeeApp`), so the activity redraws at
+  once. `nil` in content means the end (older builds); a bottle counts from its start or end the
+  same way.
 - **Bottles count too.** The count runs from the latest feed of either kind, by start time, with
   a breastfeed winning a tie (`LatestFinishedFeed`, the same rule reminders use). A bottle that
   ends later than the last breastfeed only takes over if it also *started* later; a bottle logged
@@ -122,7 +128,7 @@ side pills and controls are one shared view (`ActivitySidesAndControls`). Minima
   `currentSide` stays the last breastfeed's side.
 - The manager syncs `activeSession ?? lastCompletedSession` plus the latest bottle, so every
   foreground keeps the count right. Logging, editing, deleting or undoing a bottle calls
-  `manager.bottlesDidChange()` (from the bottle model's `onChange`). Adding, editing or deleting
+  `manager.bottlesDidChange(logged:)` (from the bottle model's `onChange`). Adding, editing or deleting
   the latest feed of either kind moves the count to whichever feed is now the latest; discarding a
   running feed goes back to counting from the previous one. A bottle never changes a running feed.
 - **+** opens the app on Home (`RootView.onOpenURL`) to start or log the next feed there. (Start
@@ -135,8 +141,15 @@ side pills and controls are one shared view (`ActivitySidesAndControls`). Minima
     coordinator updates the old activity to the new feed instead, so the parent keeps it. Its
     content then names the new session (`ContentState.sessionID`), so its buttons act on the new
     feed; it keeps the old activity's remaining time.
-  - The since-last-feed state is never requested on its own: opening the app doesn't bring back an
-    activity the parent swiped away or one that hit the limit. The next feed brings it back.
+  - Opening the app doesn't bring back an activity the parent swiped away or one that hit the
+    limit (`LiveActivitySyncMode.update`). What does:
+    - starting a feed (always a fresh request);
+    - entering a feed that is now the latest: a new bottle (`bottlesDidChange(logged:)`) or a
+      breastfeed added by hand (`manager.addFeed(_:)`), which sync with `.show`. One entered for
+      earlier than the latest feed doesn't. Edits, deletes and undo never bring it back;
+    - Settings → Live Activities → **Refresh Live Activity** (`manager.refreshLiveActivity()`,
+      `.refresh`): a fresh request for the running feed or the count, replacing whatever is
+      showing, even after a swipe.
   - Typical newborn gaps (2–4 h) fit easily. A gap over about 8 h minus the feed's length (a long
     night) outlives the activity: the system ends it, and it may stay up to 4 h more with the
     count still drawn. It is replaced at the next feed.

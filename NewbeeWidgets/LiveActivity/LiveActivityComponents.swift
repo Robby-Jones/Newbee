@@ -121,25 +121,31 @@ struct TotalTimerText: View {
 }
 
 /// The line about the feed the count runs from: "Last feed L 12:05 · R 9:00 · ended 3:40 PM",
-/// or "Last feed bottle 90 mL · ended 3:40 PM" ("at" for a bottle with no duration).
+/// or "Last feed bottle 90 mL · ended 3:40 PM" ("at" for a bottle with no duration). With
+/// Settings' "Count from" at the start, it names the time the count runs from: "started 3:20 PM".
 struct LastFeedLine: View {
     let state: FeedingState
 
     var body: some View {
-        if let endedAt = state.lastFeedEndedAt, let bottle = state.lastBottle {
+        if let endedAt = state.lastFeedEndedAt {
             // A bottle with no duration ended when it started.
-            let when = endedAt > state.sessionStart ? "ended" : "at"
-            line(Text("Last feed bottle \(bottle.formatted) · \(when) \(endedAt, style: .time)"))
-                .accessibilityLabel(
-                    "Last feed: bottle, \(bottle.formatted), \(when) \(endedAt.formatted(date: .omitted, time: .shortened))"
-                )
-        } else if let endedAt = state.lastFeedEndedAt {
-            let left = LiveActivityFormat.clock(state.leftAccumulated)
-            let right = LiveActivityFormat.clock(state.rightAccumulated)
-            line(Text("Last feed L \(left) · R \(right) · ended \(endedAt, style: .time)"))
-                .accessibilityLabel(
-                    "Last feed: left \(LiveActivityFormat.spoken(state.leftAccumulated)), right \(LiveActivityFormat.spoken(state.rightAccumulated)), ended \(endedAt.formatted(date: .omitted, time: .shortened))"
-                )
+            let fromStart = state.countFrom == .start
+            let when = endedAt <= state.sessionStart
+                ? String(localized: "at") : fromStart ? String(localized: "started") : String(localized: "ended")
+            let time = fromStart ? state.sessionStart : endedAt
+            if let bottle = state.lastBottle {
+                line(Text("Last feed bottle \(bottle.formatted) · \(when) \(time, style: .time)"))
+                    .accessibilityLabel(
+                        "Last feed: bottle, \(bottle.formatted), \(when) \(time.formatted(date: .omitted, time: .shortened))"
+                    )
+            } else {
+                let left = LiveActivityFormat.clock(state.leftAccumulated)
+                let right = LiveActivityFormat.clock(state.rightAccumulated)
+                line(Text("Last feed L \(left) · R \(right) · \(when) \(time, style: .time)"))
+                    .accessibilityLabel(
+                        "Last feed: left \(LiveActivityFormat.spoken(state.leftAccumulated)), right \(LiveActivityFormat.spoken(state.rightAccumulated)), \(when) \(time.formatted(date: .omitted, time: .shortened))"
+                    )
+            }
         }
     }
 
@@ -152,14 +158,14 @@ struct LastFeedLine: View {
     }
 }
 
-/// The big number: the feed's total while it runs or is paused, the time since it ended after.
+/// The big number: the feed's total while it runs or is paused, the time since the last feed after.
 struct HeadlineTimerText: View {
     let state: FeedingState
     let isStale: Bool
 
     var body: some View {
-        if let ended = state.lastFeedEndedAt {
-            SinceLastFeedText(lastFeedEnded: ended)
+        if let since = state.sinceLastFeedStart {
+            SinceLastFeedText(since: since)
         } else {
             TotalTimerText(state: state)
         }

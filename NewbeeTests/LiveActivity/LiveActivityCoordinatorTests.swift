@@ -247,6 +247,72 @@ struct LiveActivityCoordinatorTests {
         #expect(client.calls.last == .update(id: "activity-1", revision: 1))
         #expect(client.activities[0].state.appearance == .light)
     }
+
+    @Test func carriesCountFromAndRedrawsTheCountWhenItChanges() async {
+        let coordinator = makeCoordinator()
+        let setting = CountFromSetting()
+        coordinator.countFrom = { setting.value }
+        let start = clock.now
+        await coordinator.sync(active(on: .left, revision: 1, since: start))
+        clock.advance(by: 600)
+        let completed = SessionSnapshot(
+            id: id, status: .completed, segments: [Segment(side: .left, start: start, end: clock.now)],
+            startedAt: start, endedAt: clock.now, revision: 2
+        )
+        await coordinator.sync(completed)
+        #expect(client.activities[0].state.sinceLastFeedStart == start)
+
+        // Changed in Settings: the same feed syncs again and the count runs from its end.
+        setting.value = .end
+        await coordinator.sync(completed)
+        #expect(client.calls.last == .update(id: "activity-1", revision: 2))
+        #expect(client.activities[0].state.sinceLastFeedStart == completed.endedAt)
+    }
+
+    @Test func showAndRefreshBringBackACountThatWasSwipedAway() async {
+        let coordinator = makeCoordinator()
+        let start = clock.now
+        await coordinator.sync(active(on: .left, revision: 1, since: start))
+        clock.advance(by: 600)
+        let completed = SessionSnapshot(
+            id: id, status: .completed, segments: [Segment(side: .left, start: start, end: clock.now)],
+            startedAt: start, endedAt: clock.now, revision: 2
+        )
+        await coordinator.sync(completed)
+        client.userDismisses("activity-1")
+        client.clearCalls()
+
+        await coordinator.sync(completed) // foreground: stays away
+        #expect(client.calls.isEmpty)
+        await coordinator.sync(completed, lastBottle: nil, mode: .show)
+        #expect(client.calls == [.request(sessionID: id, revision: 2)])
+
+        // Refresh swaps the showing one for a fresh request.
+        client.clearCalls()
+        await coordinator.sync(completed, lastBottle: nil, mode: .refresh)
+        #expect(client.calls == [
+            .request(sessionID: id, revision: 2),
+            .end(id: "activity-2", final: nil, dismissal: .immediate),
+        ])
+        #expect(client.activities.filter { $0.phase == .live }.map(\.id) == ["activity-3"])
+    }
+
+    @Test func refreshBringsBackARunningFeedTheParentSwipedAway() async {
+        let coordinator = makeCoordinator()
+        let snapshot = active(on: .left, revision: 1, since: clock.now)
+        await coordinator.sync(snapshot)
+        client.userDismisses("activity-1")
+        client.clearCalls()
+        await coordinator.sync(snapshot)
+        #expect(client.calls.isEmpty)
+        await coordinator.sync(snapshot, lastBottle: nil, mode: .refresh)
+        #expect(client.calls == [.request(sessionID: id, revision: 1)])
+    }
+}
+
+@MainActor
+private final class CountFromSetting {
+    var value = ReminderSettings.Basis.start
 }
 
 @MainActor

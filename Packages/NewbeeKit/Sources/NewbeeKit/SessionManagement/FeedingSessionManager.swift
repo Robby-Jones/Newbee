@@ -171,6 +171,17 @@ public final class FeedingSessionManager {
     /// Writes `snapshot` back (undo of end, switch or discard) with a new revision.
     /// Refused if it would create a second active or paused session.
     public func restore(_ snapshot: SessionSnapshot) throws {
+        try save(snapshot, entered: false)
+    }
+
+    /// Adds a finished breastfeed entered by hand (History's or Home's "Add past feed"). Like
+    /// `restore(_:)`, and if it is now the latest feed, the Live Activity's since-last-feed count
+    /// is shown even if none is showing (e.g. the parent swiped it away).
+    public func addFeed(_ snapshot: SessionSnapshot) throws {
+        try save(snapshot, entered: true)
+    }
+
+    private func save(_ snapshot: SessionSnapshot, entered: Bool) throws {
         let now = clock.now
         if snapshot.status != .completed,
            let other = try read({ try repository.openSessions() }).first(where: { $0.id != snapshot.id }) {
@@ -184,7 +195,10 @@ public final class FeedingSessionManager {
         try write { try repository.save(restored, modifiedAt: now) }
         recoveryPrompt = nil
         try? refresh()
-        enqueueEffects(activity: .sync(restored.status == .completed ? liveActivitySnapshot : restored), reminders: true)
+        let activity: ActivityUpdate = restored.status == .completed
+            ? .sync(liveActivitySnapshot, mode: syncMode(entered: entered ? restored.id : nil))
+            : .sync(restored)
+        enqueueEffects(activity: activity, reminders: true)
     }
 
     /// Saves a manually edited session after checking the same rules the engine enforces
@@ -262,13 +276,33 @@ public final class FeedingSessionManager {
 
     /// A bottle was logged, edited, deleted or restored. It may now be, or no longer be, the
     /// latest feed, so the since-last-feed count on the Live Activity is brought up to date.
-    /// Bottles don't touch a running breastfeed; its activity is left as it is.
-    public func bottlesDidChange() async {
+    /// `logged` names a newly logged bottle: if it is now the latest feed, the count's activity
+    /// is started even if none is showing (e.g. the parent swiped it away). Bottles don't touch a
+    /// running breastfeed; its activity is left as it is.
+    public func bottlesDidChange(logged: UUID? = nil) async {
         try? refresh()
         if activeSession == nil {
-            enqueueEffects(activity: .sync(liveActivitySnapshot), reminders: false)
+            enqueueEffects(activity: .sync(liveActivitySnapshot, mode: syncMode(entered: logged)), reminders: false)
         }
         await waitForPendingEffects()
+    }
+
+    /// Settings' "Refresh Live Activity": re-reads the store and replaces whatever activity is
+    /// showing with a fresh one for the running feed or the since-last-feed count, bringing it
+    /// back if it was swiped away or reached the time limit.
+    public func refreshLiveActivity() async {
+        try? refresh()
+        enqueueEffects(activity: .sync(liveActivitySnapshot, mode: .refresh), reminders: false)
+        await waitForPendingEffects()
+    }
+
+    /// `.show` when the feed the parent just entered is now the latest finished feed (and none
+    /// is running), else `.update`.
+    private func syncMode(entered id: UUID?) -> LiveActivitySyncMode {
+        guard let id, activeSession == nil,
+              LatestFinishedFeed.of(breast: lastCompletedSession, bottle: latestBottle())?.id == id
+        else { return .update }
+        return .show
     }
 
     /// Waits until every queued Live Activity and reminder update has finished.
@@ -306,7 +340,7 @@ public final class FeedingSessionManager {
 
     private enum ActivityUpdate {
         case unchanged
-        case sync(SessionSnapshot?)
+        case sync(SessionSnapshot?, mode: LiveActivitySyncMode = .update)
     }
 
     /// Queues side effects behind earlier ones so the Live Activity always sees changes in order.
@@ -317,12 +351,14 @@ public final class FeedingSessionManager {
         let lastCompleted = lastCompletedSession
         // Read now, in command order. Only matters when no feed is running.
         var lastBottle: BottleEntry?
-        if case .sync(let snapshot) = activity, snapshot?.status ?? .completed == .completed {
+        if case .sync(let snapshot, _) = activity, (snapshot?.status ?? .completed) == .completed {
             lastBottle = latestBottle()
         }
         effectsTail = Task { @MainActor [liveActivity, reminders, lastBottle] in
             await previous?.value
-            if case .sync(let snapshot) = activity { await liveActivity.sync(snapshot, lastBottle: lastBottle) }
+            if case let .sync(snapshot, mode) = activity {
+                await liveActivity.sync(snapshot, lastBottle: lastBottle, mode: mode)
+            }
             if shouldReschedule {
                 await reminders.feedingDataDidChange(activeSession: active, lastCompletedSession: lastCompleted)
             }

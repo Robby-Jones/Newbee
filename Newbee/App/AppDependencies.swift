@@ -109,6 +109,9 @@ final class AppDependencies {
         (activity as? LiveActivityCoordinator)?.appearance = { [preferences] in
             LiveActivityAppearance(preferences.appearance)
         }
+        (activity as? LiveActivityCoordinator)?.countFrom = { [preferences] in
+            preferences.reminders.basis
+        }
         // Bottles too: the Live Activity counts from the latest feed of either kind.
         let manager = FeedingSessionManager(
             repository: repository, clock: clock, liveActivity: activity, reminders: reminders, bottles: bottleRepository

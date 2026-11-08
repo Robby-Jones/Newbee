@@ -112,8 +112,8 @@ extension FeedingActivityAttributes.ContentState {
         return (currentSegmentStart ?? pausedAt ?? sessionStart).addingTimeInterval(threshold)
     }
 
-    /// One hour after the last feed ended, while no feed is running.
+    /// One hour into the since-last-feed count, while no feed is running.
     public var sinceLastFeedHourMark: Date? {
-        lastFeedEndedAt?.addingTimeInterval(3600)
+        sinceLastFeedStart?.addingTimeInterval(3600)
     }
 }

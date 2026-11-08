@@ -110,6 +110,14 @@ final class PreviewSessionController: FeedingSessionControlling {
         return s
     }
 
+    func refreshLiveActivity() async {
+        log.append("refreshLiveActivity")
+    }
+
+    func addFeed(_ snapshot: SessionSnapshot) throws {
+        try restore(snapshot)
+    }
+
     func restore(_ snapshot: SessionSnapshot) throws {
         log.append("restore")
         if snapshot.status == .completed {

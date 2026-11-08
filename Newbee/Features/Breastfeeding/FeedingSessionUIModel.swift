@@ -192,9 +192,14 @@ final class FeedingSessionUIModel {
         }
     }
 
+    /// Settings' "Refresh Live Activity".
+    func refreshLiveActivity() async {
+        await controller.refreshLiveActivity()
+    }
+
     /// Adds a finished breastfeed entered by hand.
     func addManualFeed(_ session: SessionSnapshot) throws {
-        try controller.restore(session)
+        try controller.addFeed(session)
         feedback = FeedbackEvent(kind: .success)
     }
 
