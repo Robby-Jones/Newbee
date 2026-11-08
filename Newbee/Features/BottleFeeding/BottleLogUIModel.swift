@@ -61,7 +61,7 @@ final class BottleLogUIModel {
 
     /// Opens the sheet on a new bottle at `time` (default: now).
     func presentNew(at time: Date? = nil) {
-        editor = EditorRequest(draft: log.newDraft(unit: unit, at: time))
+        editor = EditorRequest(draft: log.newDraft(unit: unit, contents: preferences.lastBottleContents, at: time))
     }
 
     /// Opens the sheet on an existing bottle feed (for example from a History row).
@@ -90,6 +90,7 @@ final class BottleLogUIModel {
         do {
             let result = try log.save(draft)
             preferences.volumeUnit = draft.amount.unit
+            preferences.lastBottleContents = draft.contents
             editor = nil
             feedback = FeedbackEvent(kind: .success)
             let what = Self.describe(result.saved)
