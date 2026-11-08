@@ -200,7 +200,7 @@ private struct TimerContent: View {
                     Text(display.isPaused ? "Paused" : "Total")
                 }
                 .font(.headline)
-                .foregroundStyle(.secondary)
+                .foregroundStyle(NBColor.secondaryText)
 
                 TimerText(display.total)
                     .accessibilityLabel(Text("Total feeding time"))
@@ -209,11 +209,11 @@ private struct TimerContent: View {
                 if let startedAt = display.startedAt {
                     Text("Started \(startedAt, format: .dateTime.hour().minute())")
                         .font(.subheadline)
-                        .foregroundStyle(.secondary)
+                        .foregroundStyle(NBColor.secondaryText)
                 }
             }
             .saturation(display.isPaused ? 0.3 : 1)
-            .opacity(display.isPaused ? 0.75 : 1)
+            .opacity(display.isPaused ? 0.85 : 1)
             .accessibilityElement(children: .combine)
             .accessibilityIdentifier("timerHeader")
         }
@@ -230,7 +230,7 @@ private struct TimerContent: View {
             if let ended = display.lastFeedEnded, let side = display.lastFeedSide {
                 Text("Last feed ended \(ended, format: .relative(presentation: .named)) on the \(side.title.lowercased())")
                     .font(.subheadline)
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(NBColor.secondaryText)
                     .multilineTextAlignment(.center)
             }
             if let suggested = display.suggestedSide {

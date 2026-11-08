@@ -142,7 +142,7 @@ struct LogPumpSheet: View {
                     .accessibilityIdentifier("pump.amount.\(side.rawValue)")
                 Text(amount.unit.symbol)
                     .font(.subheadline.weight(.semibold))
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(NBColor.secondaryText)
             }
             .frame(minWidth: 84)
             stepButton(1, side: side, systemImage: "plus", label: "More on the \(side.title.lowercased())")

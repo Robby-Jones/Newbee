@@ -119,7 +119,7 @@ struct PumpRow: View {
         HStack(alignment: .top, spacing: NBSpacing.m) {
             Text(entry.startedAt, format: .dateTime.hour().minute())
                 .font(.subheadline.monospacedDigit())
-                .foregroundStyle(.secondary)
+                .foregroundStyle(NBColor.secondaryText)
                 .frame(minWidth: 64, alignment: .leading)
 
             Capsule()
@@ -130,14 +130,14 @@ struct PumpRow: View {
             VStack(alignment: .leading, spacing: NBSpacing.xs) {
                 HStack(spacing: NBSpacing.s) {
                     Image(systemName: PumpText.symbolName)
-                        .foregroundStyle(NBColor.pump)
+                        .foregroundStyle(NBColor.pumpInk)
                         .accessibilityHidden(true)
                     Text(PumpText.title(entry))
                         .font(.body.weight(.semibold))
                 }
                 Text(PumpText.detail(entry))
                     .font(.footnote.monospacedDigit())
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(NBColor.secondaryText)
                 if !entry.notes.isEmpty {
                     Label {
                         Text(entry.notes)
@@ -147,7 +147,7 @@ struct PumpRow: View {
                             .accessibilityHidden(true)
                     }
                     .font(.footnote)
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(NBColor.secondaryText)
                     .padding(.horizontal, NBSpacing.s)
                     .padding(.vertical, 6)
                     .frame(maxWidth: .infinity, alignment: .leading)

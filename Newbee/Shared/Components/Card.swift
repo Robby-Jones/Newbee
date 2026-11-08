@@ -43,7 +43,7 @@ private struct CardBackground: ViewModifier {
     VStack {
         Card {
             Text("Last feed").font(.headline)
-            Text("2 h 14 min ago").foregroundStyle(.secondary)
+            Text("2 h 14 min ago").foregroundStyle(NBColor.secondaryText)
         }
     }
     .padding()

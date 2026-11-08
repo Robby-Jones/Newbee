@@ -127,7 +127,7 @@ private struct UnitsSection: View {
                         Spacer()
                         Text(amount.formatted)
                             .monospacedDigit()
-                            .foregroundStyle(.secondary)
+                            .foregroundStyle(NBColor.secondaryText)
                     }
                 }
             }

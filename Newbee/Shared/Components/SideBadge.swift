@@ -30,7 +30,7 @@ struct SideBadge: View {
     private var foreground: Color {
         switch style {
         case .filled, .onTint: NBColor.onSide
-        case .soft: NBColor.side(side)
+        case .soft: NBColor.sideInk(side)
         }
     }
 

@@ -10,6 +10,11 @@ extension NBColor {
 
     /// Pumping sessions: a soft rose, distinct from the side and bottle colors.
     static let pump = Color(light: 0xE58FAE, dark: 0xF0A8C2)
+    /// `pump` as a text or icon color (see the contrast rules on NBColor).
+    static let pumpInk = Color(light: 0xA8436A, dark: 0xF0A8C2)
+
+    /// Amber text for the "Review" badge. System orange is about 2:1 on white.
+    static let reviewInk = Color(light: 0x8F5200, dark: 0xFF9F0A)
 
     /// Hairline border for cards in dark mode.
     static let hairline = Color.primary.opacity(0.08)

@@ -70,12 +70,12 @@ struct RecoverySheet: View {
             TimelineView(.periodic(from: .now, by: 30)) { context in
                 Text("Started \(prompt.session.startedAt, format: .dateTime.hour().minute()) on the \(side.title.lowercased()) · running \(DurationText.short(prompt.session.span(at: context.date)))")
                     .font(.subheadline)
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(NBColor.secondaryText)
             }
             if prompt.reason != .longRunning {
                 Text("Your iPhone's clock changed during this feed, so the times may be off.")
                     .font(.footnote)
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(NBColor.secondaryText)
             }
         }
         .accessibilityElement(children: .combine)
