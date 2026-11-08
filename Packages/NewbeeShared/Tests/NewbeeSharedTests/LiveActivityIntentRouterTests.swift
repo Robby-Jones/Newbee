@@ -20,8 +20,7 @@ struct LiveActivityIntentRouterTests {
         #expect(LiveActivityIntentRouter.isRegistered)
         #expect(await LiveActivityIntentRouter.route(.switchTo(.left), sessionID: sessionID))
         #expect(await LiveActivityIntentRouter.route(.end, sessionID: sessionID))
-        #expect(await LiveActivityIntentRouter.route(.start(.right), sessionID: sessionID))
-        #expect(handler.received.map(\.0) == [.switchTo(.left), .end, .start(.right)])
+        #expect(handler.received.map(\.0) == [.switchTo(.left), .end])
         #expect(handler.received.allSatisfy { $0.1 == sessionID })
     }
 

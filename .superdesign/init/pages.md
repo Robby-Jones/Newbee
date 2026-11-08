@@ -5,7 +5,7 @@
 ## Live Activity (Lock Screen + Dynamic Island)
 Entry: `NewbeeWidgets/LiveActivity/FeedingLiveActivity.swift`
 - `NewbeeWidgets/LiveActivity/LockScreenFeedingView.swift`
-  - `NewbeeWidgets/LiveActivity/LiveActivityComponents.swift` (SideBadge, TotalTimerText, SideRow, ActivityControlLabel, EndControlLabel, PauseResumeButton, EndButton, SideSwitchButton, ActivitySidesAndControls, StartSidePill, SinceLastFeedText)
+  - `NewbeeWidgets/LiveActivity/LiveActivityComponents.swift` (SideBadge, TotalTimerText, SideRow, ActivityControlLabel, EndControlLabel, PauseResumeButton, EndButton, SideSwitchButton, ActivitySidesAndControls, NewFeedButton, LastFeedLine, ActivityColor; SinceLastFeedText is in LiveActivityIntents/SinceLastFeedFormat.swift)
 - `NewbeeWidgets/LiveActivity/DynamicIslandViews.swift`
 - `Packages/NewbeeShared/Sources/NewbeeShared/DesignTokens/DesignTokens.swift`
 

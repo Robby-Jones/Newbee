@@ -3,33 +3,73 @@ import NewbeeShared
 import SwiftUI
 import WidgetKit
 
-// Dynamic Island presentations (docs/LIVE_ACTIVITIES.md §3.2–3.4). The island is always dark,
-// so text uses white/secondary and side colors carry the identity.
+// Dynamic Island presentations (docs/LIVE_ACTIVITIES.md §3.2–3.4). The island is always black,
+// so text uses fixed white / gray (`IslandColor`), never `.secondary`, which is dark gray when
+// the phone is in light mode. `FeedingLiveActivity` draws every region in the dark scheme so the
+// adaptive side and control colors pick their dark-mode values.
+
+enum IslandColor {
+    static let primaryText = Color.white
+    static let secondaryText = Color(white: 0.7)
+}
 
 // MARK: Expanded
 
-/// The total, or the time since the last feed once it has ended.
+/// The total, or "Since last feed" over the time since the last feed once it has ended.
 struct IslandExpandedLeading: View {
     let state: FeedingState
     let isStale: Bool
 
     var body: some View {
-        HeadlineTimerText(state: state, isStale: isStale)
-            .font(NBFont.timer(size: 26))
-            .foregroundStyle(state.status == .paused ? Color.secondary : Color.white)
-            .multilineTextAlignment(.leading)
-            .frame(maxWidth: 120, alignment: .leading)
+        if let ended = state.lastFeedEndedAt {
+            VStack(alignment: .leading, spacing: 0) {
+                ActivityStatusLabel(state: state, isStale: isStale, textColor: IslandColor.secondaryText)
+                SinceLastFeedText(lastFeedEnded: ended, isStale: isStale)
+                    .font(NBFont.timer(size: 34))
+                    .foregroundStyle(IslandColor.primaryText)
+            }
             .padding(.leading, NBSpacing.xs)
+        } else {
+            TotalTimerText(state: state)
+                .font(NBFont.timer(size: 26))
+                .foregroundStyle(state.status == .paused ? IslandColor.secondaryText : IslandColor.primaryText)
+                .multilineTextAlignment(.leading)
+                .frame(maxWidth: 120, alignment: .leading)
+                .padding(.leading, NBSpacing.xs)
+        }
     }
 }
 
+/// The status while feeding; the "+" that opens the app once the feed has ended.
 struct IslandExpandedTrailing: View {
     let state: FeedingState
     let isStale: Bool
 
     var body: some View {
-        ActivityStatusLabel(state: state, isStale: isStale)
-            .padding(.trailing, NBSpacing.xs)
+        if state.status == .ended {
+            NewFeedButton(size: 44)
+                .padding(.trailing, NBSpacing.xs)
+        } else {
+            ActivityStatusLabel(state: state, isStale: isStale, textColor: IslandColor.secondaryText)
+                .padding(.trailing, NBSpacing.xs)
+        }
+    }
+}
+
+/// The side pills and controls while feeding; the line about the last feed once it has ended.
+struct IslandExpandedBottom: View {
+    let attributes: FeedingActivityAttributes
+    let state: FeedingState
+
+    var body: some View {
+        if state.status == .ended {
+            LastFeedLine(state: state)
+                .foregroundStyle(IslandColor.secondaryText)
+                .padding(.horizontal, NBSpacing.xs)
+        } else {
+            ActivitySidesAndControls(attributes: attributes, state: state)
+                .padding(.horizontal, NBSpacing.xs)
+        }
     }
 }
 
@@ -50,7 +90,7 @@ struct IslandCompactLeading: View {
         case .ended:
             Image(systemName: "clock")
                 .font(.caption.weight(.bold))
-                .foregroundStyle(Color.secondary)
+                .foregroundStyle(IslandColor.secondaryText)
                 .accessibilityLabel("Since last feed")
         }
     }
@@ -72,8 +112,8 @@ struct IslandCompactTrailing: View {
     private var foreground: Color {
         switch state.status {
         case .active: NBColor.side(state.currentSide)
-        case .paused: Color.secondary
-        case .ended: Color.white
+        case .paused: IslandColor.secondaryText
+        case .ended: IslandColor.primaryText
         }
     }
 
@@ -104,10 +144,10 @@ struct IslandMinimal: View {
                     .font(.system(size: 8, weight: .bold))
                     .foregroundStyle(color)
             case .ended:
-                Circle().strokeBorder(Color.secondary, lineWidth: 2)
+                Circle().strokeBorder(IslandColor.secondaryText, lineWidth: 2)
                 Image(systemName: "clock")
                     .font(.system(size: 9, weight: .bold))
-                    .foregroundStyle(Color.secondary)
+                    .foregroundStyle(IslandColor.secondaryText)
             }
         }
         .frame(width: 22, height: 22)

@@ -25,6 +25,9 @@ final class LiveActivityCoordinator {
     /// Name shown in the activity header; empty for a generic "Feeding".
     /// TODO(5b): set from the baby profile once onboarding stores a name.
     @ObservationIgnored var babyName = ""
+    /// The app's appearance setting, read at every sync so the Lock Screen activity matches the
+    /// app. A change in Settings re-syncs (see `NewbeeApp`).
+    @ObservationIgnored var appearance: @MainActor () -> LiveActivityAppearance = { .system }
 
     private let client: any LiveActivityClient
     private let clock: any AppClock
@@ -78,6 +81,7 @@ final class LiveActivityCoordinator {
             activitiesEnabled: activitiesEnabled,
             dismissedAtRevision: snapshot.flatMap { dismissedRevisions[$0.id] },
             babyName: babyName,
+            appearance: appearance(),
             now: clock.now
         )
         for action in actions {

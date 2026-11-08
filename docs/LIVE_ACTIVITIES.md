@@ -71,11 +71,20 @@ side pills and controls are one shared view (`ActivitySidesAndControls`). Minima
 - `PauseIntent` / `ResumeIntent` in one round slot that flips, then `EndIntent`. **End** is the only
   control in the destructive color and sits last with extra space before it, so it isn't hit by
   accident.
-- Since last feed (after End): the header counts up the time since the feed ended as `hh:mm`, two
-  **Start** pills (`StartFeedingIntent`, one per side, the suggested next side tinted stronger)
-  replace the side pills and controls, and a footnote gives the last feed's side times and end time.
-  See §3.5.
-- `activityBackgroundTint` is a soft neutral that works in light and dark. `activitySystemActionForegroundColor` uses the accent color.
+- Since last feed (after End): "Since last feed" over a large `hh:mm` count, the main focus, with
+  one round **+** on the right that opens the app on Home (`Link` to `NewbeeLink.home`,
+  `newbee://home`; the whole activity has the same `widgetURL`). A footnote gives the last feed's
+  side times and end time. See §3.5.
+- **Colors.** Text uses `ActivityColor` (adaptive, like `NBColor.card`), never the system's
+  `.primary` / `.secondary`: on device those were drawn for the opposite appearance from the
+  card, which hid the big number (white on white in light mode, black on dark at night). Side text
+  uses `ActivityColor.sideInk`, darker than the side fill colors, for AA contrast on its tint.
+- **Appearance.** The activity follows the app's Light / Dark / System setting:
+  `ContentState.appearance` carries it (the coordinator reads `AppPreferences.appearance` at every
+  sync, and a change in Settings re-syncs). Light or dark forces that color scheme and a fixed
+  background; System uses the adaptive `NBColor.card`. `activitySystemActionForegroundColor` uses
+  the accent color. The Dynamic Island is always drawn in the dark scheme with fixed white / gray
+  text (`IslandColor`).
 
 ### 3.2 Dynamic Island: expanded
 - **Leading:** total timer (live).
@@ -107,20 +116,19 @@ side pills and controls are one shared view (`ActivitySidesAndControls`). Minima
   ends later than the last breastfeed only takes over if it also *started* later; a bottle logged
   now with an earlier time doesn't. For a bottle, `ContentState.lastBottle` holds the amount, the
   footnote reads "Last feed bottle 90 mL · ended 3:40 PM" ("at" when no duration was entered), and
-  `currentSide` stays the last breastfeed's side so Start still suggests the other breast.
+  `currentSide` stays the last breastfeed's side.
 - The manager syncs `activeSession ?? lastCompletedSession` plus the latest bottle, so every
   foreground keeps the count right. Logging, editing, deleting or undoing a bottle calls
   `manager.bottlesDidChange()` (from the bottle model's `onChange`). Adding, editing or deleting
   the latest feed of either kind moves the count to whichever feed is now the latest; discarding a
   running feed goes back to counting from the previous one. A bottle never changes a running feed.
-- **Start** (`StartFeedingIntent` → `manager.applyRemoteStart(side:)`) begins the next feed. A
-  no-op if a feed is already running, or if the activity shows a feed (breast or bottle) that is
-  no longer the latest.
+- **+** opens the app on Home (`RootView.onOpenURL`) to start or log the next feed there. (Start
+  Left / Right buttons on the activity were replaced by it, so the count is the focus.)
 - **Time limit.** ActivityKit ends an activity 8 h after it was requested, then may leave it on
   the Lock Screen up to 4 h more. To get the most out of that window:
   - Every new feed requests a **fresh** activity (a new 8 h window) and only then ends the old
     since-last-feed one (`LiveActivityAction.request(..., replacing:)`), so there's no gap.
-  - If iOS refuses the request (the app is in the background, e.g. Start on the Lock Screen), the
+  - If iOS refuses the request (the app is in the background, e.g. relaunched by an intent), the
     coordinator updates the old activity to the new feed instead, so the parent keeps it. Its
     content then names the new session (`ContentState.sessionID`), so its buttons act on the new
     feed; it keeps the old activity's remaining time.
@@ -138,8 +146,7 @@ side pills and controls are one shared view (`ActivitySidesAndControls`). Minima
 | `PauseIntent` | `sessionID` | `manager.pause()` |
 | `ResumeIntent` | `sessionID` | `manager.resume()` |
 | `EndSessionIntent` | `sessionID` | `manager.end()` |
-| `StartFeedingIntent` | `sessionID` (the finished feed shown), `side` | `manager.applyRemoteStart(side:)` (§3.5) |
-| *(future)* Siri/Shortcuts/Control start | `side` | Could reuse `StartFeedingIntent`'s path. |
+| *(future)* Siri/Shortcuts/Control start | `side` | Not built; the since-last-feed "+" opens the app instead (§3.5). |
 
 All `perform()`s are `@MainActor` and go through the single `FeedingSessionManager` (from `AppDependencies.shared`, created lazily if the app was launched just for the intent). They return `.result()` after the manager has saved **and** awaited `activity.update`.
 - Unknown or old `sessionID` → no-op + end that stale activity.
@@ -193,7 +200,7 @@ Background gap: if the activity is gone and the app is never opened, nothing can
 | `LiveActivityPlanner`: request / update / end decisions for every case in §5–6 | same | `NewbeeSharedTests` |
 | `LiveActivityFormat`: static durations and VoiceOver text | same | `NewbeeSharedTests` |
 | `LiveActivityCommand`, `LiveActivityCommandHandling`, `LiveActivityIntentRouter` | same | `NewbeeSharedTests` |
-| Intents (`SwitchFeedingSideIntent`, `PauseFeedingIntent`, `ResumeFeedingIntent`, `EndFeedingIntent`, `StartFeedingIntent`) and `SinceLastFeedFormat` | `LiveActivityIntents/`, compiled into **both** targets via `project.yml` | CI build + `SinceLastFeedFormatTests`; device |
+| Intents (`SwitchFeedingSideIntent`, `PauseFeedingIntent`, `ResumeFeedingIntent`, `EndFeedingIntent`), `SinceLastFeedFormat` and `SinceLastFeedText` | `LiveActivityIntents/`, compiled into **both** targets via `project.yml` | CI build + `SinceLastFeedFormatTests` and `SinceLastFeedRenderTests`; device |
 | `LiveActivityCoordinator` + `ActivityKitClient` | `Newbee/Core/Services/` | `NewbeeTests/LiveActivity` with a fake client |
 | Views + previews for all presentations | `NewbeeWidgets/LiveActivity/` | Xcode previews; device |
 
