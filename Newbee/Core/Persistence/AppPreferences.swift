@@ -11,6 +11,7 @@ final class AppPreferences {
     enum Key {
         static let volumeUnit = "volumeUnit"
         static let bottlePresets = "bottlePresets"
+        static let lastBottleContents = "bottle.lastContents"
         static let reminderEnabled = "reminder.enabled"
         static let reminderIntervalMinutes = "reminder.intervalMinutes"
         static let reminderBasis = "reminder.basis"
@@ -22,7 +23,7 @@ final class AppPreferences {
 
         /// Everything "Delete all data" resets. Appearance is kept (docs/DATA_MODEL.md).
         static let resettable = [
-            volumeUnit, bottlePresets, reminderEnabled, reminderIntervalMinutes, reminderBasis,
+            volumeUnit, bottlePresets, lastBottleContents, reminderEnabled, reminderIntervalMinutes, reminderBasis,
             quietStart, quietEnd, stillFeedingEnabled, stillFeedingMinutes,
         ]
     }
@@ -58,6 +59,11 @@ final class AppPreferences {
         didSet { defaults.set(volumeUnit.rawValue, forKey: Key.volumeUnit) }
     }
 
+    /// The bottle type saved last (breast milk, formula, other), so the next bottle starts on it.
+    var lastBottleContents: BottleContents? {
+        didSet { defaults.set(lastBottleContents?.rawValue, forKey: Key.lastBottleContents) }
+    }
+
     /// The parent's own bottle presets in mL, or `nil` for the defaults.
     var bottlePresetsML: [Double]? {
         didSet {
@@ -83,6 +89,7 @@ final class AppPreferences {
         self.locale = locale
         volumeUnit = Self.loadUnit(defaults, locale: locale)
         bottlePresetsML = defaults.array(forKey: Key.bottlePresets) as? [Double]
+        lastBottleContents = defaults.string(forKey: Key.lastBottleContents).flatMap(BottleContents.init(rawValue:))
         reminders = Self.loadReminders(defaults)
         appearance = defaults.string(forKey: Key.appearance).flatMap(Appearance.init(rawValue:)) ?? .system
     }
@@ -92,6 +99,7 @@ final class AppPreferences {
         for key in Key.resettable { defaults.removeObject(forKey: key) }
         volumeUnit = Self.loadUnit(defaults, locale: locale)
         bottlePresetsML = nil
+        lastBottleContents = nil
         reminders = Self.loadReminders(defaults)
     }
 

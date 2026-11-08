@@ -56,11 +56,11 @@ public struct BottleAmount: Codable, Sendable, Hashable {
 }
 
 extension VolumeUnit {
-    /// Stepper increment: 10 mL or ½ oz.
+    /// Stepper increment: 10 mL or 0.1 oz.
     public var step: Double {
         switch self {
         case .milliliters: 10
-        case .fluidOunces: 0.5
+        case .fluidOunces: 0.1
         }
     }
 

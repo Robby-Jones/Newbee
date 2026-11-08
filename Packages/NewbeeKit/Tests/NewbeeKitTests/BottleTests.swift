@@ -37,9 +37,11 @@ struct BottleAmountTests {
         #expect(BottleAmount(94, .milliliters).stepped(by: -1) == BottleAmount(90, .milliliters))
         #expect(BottleAmount(0, .milliliters).stepped(by: -1) == BottleAmount(0, .milliliters))
         #expect(BottleAmount(500, .milliliters).stepped(by: 1) == BottleAmount(500, .milliliters))
-        #expect(BottleAmount(2, .fluidOunces).stepped(by: 1) == BottleAmount(2.5, .fluidOunces))
-        // 500 mL is 16.9 oz: the stepper stops below the limit, never above it.
-        #expect(BottleAmount(16.5, .fluidOunces).stepped(by: 1) == BottleAmount(16.9, .fluidOunces))
+        #expect(BottleAmount(2, .fluidOunces).stepped(by: 1) == BottleAmount(2.1, .fluidOunces))
+        #expect(BottleAmount(2.1, .fluidOunces).stepped(by: -1) == BottleAmount(2, .fluidOunces))
+        #expect(BottleAmount(0.1, .fluidOunces).stepped(by: -1) == BottleAmount(0, .fluidOunces))
+        // 500 mL is 16.9 oz: the stepper stops at the limit, never above it.
+        #expect(BottleAmount(16.8, .fluidOunces).stepped(by: 1) == BottleAmount(16.9, .fluidOunces))
         #expect(BottleAmount(16.9, .fluidOunces).stepped(by: 1).milliliters <= 500)
     }
 
@@ -124,6 +126,12 @@ struct BottleLogTests {
         #expect(draft.amount == BottleAmount(4, .fluidOunces))
         #expect(draft.startedAt == clock.now)
         #expect(log.newDraft(unit: .milliliters).amount == BottleAmount(118, .milliliters))
+    }
+
+    @Test func rememberedContentsWinOverTheLatestBottle() throws {
+        try log.save(BottleDraft(contents: .formula, amount: BottleAmount(90, .milliliters), startedAt: clock.now))
+        #expect(log.newDraft(unit: .milliliters, contents: .breastMilk).contents == .breastMilk)
+        #expect(log.newDraft(unit: .milliliters, contents: nil).contents == .formula)
     }
 
     @Test func draftCanStartEarlierButNotLater() {
