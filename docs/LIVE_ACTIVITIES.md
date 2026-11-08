@@ -17,7 +17,7 @@ Re-verify each item against current Apple docs and on device in Phase 5.
 | Widget views can't run timers or code over time, but `Text(timerInterval:pauseTime:countsDown:showsHours:)` and `Text(_:style: .timer)` render live-ticking text driven by the system. | This is how the timer progresses with zero updates. |
 | Update budget: local updates are not strictly rate-limited like push, but should be sparing. | We update only on state changes (start, switch, pause, resume, end). |
 | `staleDate` marks content as outdated; `context.isStale` is readable in views. | Used as a safety net for long sessions. |
-| Behaviour after force-quit and device restart is **not guaranteed** by docs. | Must be validated on device; reconciliation covers both outcomes. |
+| Behavior after force-quit and device restart is **not guaranteed** by docs. | Must be validated on device; reconciliation covers both outcomes. |
 
 ## 2. Shared model (`NewbeeShared`)
 
@@ -98,7 +98,7 @@ side pills and controls are one shared view (`ActivitySidesAndControls`). Minima
 
 ## 4. App Intents
 
-| Intent | Params | Behaviour |
+| Intent | Params | Behavior |
 |---|---|---|
 | `SwitchSideIntent: LiveActivityIntent` | `sessionID`, `side` | `manager.switch(to:)` (works from paused too = resume on side) |
 | `PauseIntent` | `sessionID` | `manager.pause()` |

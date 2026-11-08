@@ -1,14 +1,14 @@
 import XCTest
 
 /// End-to-end tap path for the timer screen: open it from Home's Breastfeed button, start on
-/// the left, switch, minimise to the pill, reopen, end, and close the summary.
+/// the left, switch, minimize to the pill, reopen, end, and close the summary.
 final class BreastfeedingTimerFlowTests: XCTestCase {
     override func setUpWithError() throws {
         continueAfterFailure = false
     }
 
     @MainActor
-    func testStartSwitchMinimiseEnd() throws {
+    func testStartSwitchMinimizeEnd() throws {
         let app = XCUIApplication()
         app.launchArguments = ["-uiTesting"]
         app.launch()
@@ -28,8 +28,8 @@ final class BreastfeedingTimerFlowTests: XCTestCase {
         right.tap()
         XCTAssertTrue(app.buttons["End feed"].exists)
 
-        // Minimise: the session keeps running and the pill appears.
-        app.buttons["Minimise"].tap()
+        // Minimize with the grabber: the session keeps running and the pill appears.
+        app.buttons["Minimize"].tap()
         let pill = app.buttons["activeSessionPill"].firstMatch
         XCTAssertTrue(pill.waitForExistence(timeout: 5))
 
@@ -46,5 +46,28 @@ final class BreastfeedingTimerFlowTests: XCTestCase {
 
         XCTAssertTrue(app.buttons["breastfeedButton"].firstMatch.waitForExistence(timeout: 5))
         XCTAssertFalse(app.buttons["activeSessionPill"].exists)
+    }
+
+    /// Dragging down on the timer (above Pause) minimizes it, and the feed keeps running.
+    @MainActor
+    func testSwipeDownMinimizes() throws {
+        let app = XCUIApplication()
+        app.launchArguments = ["-uiTesting"]
+        app.launch()
+
+        let breastfeed = app.buttons["breastfeedButton"].firstMatch
+        XCTAssertTrue(breastfeed.waitForExistence(timeout: 10))
+        breastfeed.tap()
+
+        let startLeft = app.buttons["sideButton.left"].firstMatch
+        XCTAssertTrue(startLeft.waitForExistence(timeout: 5))
+        startLeft.tap()
+
+        let header = app.descendants(matching: .any)["timerHeader"].firstMatch
+        XCTAssertTrue(header.waitForExistence(timeout: 5))
+        header.swipeDown()
+
+        let pill = app.buttons["activeSessionPill"].firstMatch
+        XCTAssertTrue(pill.waitForExistence(timeout: 5))
     }
 }

@@ -104,7 +104,7 @@ Writes are tiny, so saving on every command costs nothing and means a power loss
 
 ## 6. Time edge cases
 
-| Case | Behaviour |
+| Case | Behavior |
 |---|---|
 | Crossing midnight | No special handling; durations are instant differences. Day attribution = start day. |
 | DST change mid-feed | Same; absolute instants are unaffected. Display uses the current calendar. |

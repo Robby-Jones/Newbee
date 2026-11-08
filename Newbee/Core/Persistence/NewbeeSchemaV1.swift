@@ -132,7 +132,7 @@ enum NewbeeSchemaV1: VersionedSchema {
     final class BottleDetails {
         var session: FeedingSession?
         var contentsRaw: String = BottleContents.breastMilk.rawValue
-        /// Canonical amount in millilitres.
+        /// Canonical amount in milliliters.
         var amountML: Double = 0
         /// The unit the parent typed, so editing shows their original entry.
         var enteredUnitRaw: String = VolumeUnit.milliliters.rawValue

@@ -4,7 +4,7 @@ import Testing
 
 @Suite("Bottle amounts")
 struct BottleAmountTests {
-    @Test func ouncesConvertToMillilitres() {
+    @Test func ouncesConvertToMilliliters() {
         #expect(approx(BottleAmount(2, .fluidOunces).milliliters, 59.147059125))
         #expect(BottleAmount(90, .milliliters).milliliters == 90)
     }
@@ -126,7 +126,7 @@ struct BottleLogTests {
         #expect(log.newDraft(unit: .milliliters).amount == BottleAmount(118, .milliliters))
     }
 
-    @Test func saveStoresCanonicalMillilitresAndTheEnteredUnit() throws {
+    @Test func saveStoresCanonicalMillilitersAndTheEnteredUnit() throws {
         let result = try log.save(BottleDraft(contents: .breastMilk, amount: BottleAmount(2, .fluidOunces), startedAt: clock.now))
         #expect(result.previous == nil)
         let stored = try #require(repository.entries[result.saved.id])

@@ -70,7 +70,7 @@ public struct FeedEntry: Sendable, Hashable, Identifiable {
         return 0
     }
 
-    /// Bottle volume in millilitres; zero for breastfeeds.
+    /// Bottle volume in milliliters; zero for breastfeeds.
     public var bottleML: Double {
         if case let .bottle(bottle) = details { return bottle.amountML }
         return 0
@@ -86,7 +86,7 @@ public struct FeedEntry: Sendable, Hashable, Identifiable {
 /// What a bottle feed recorded.
 public struct BottleSummary: Sendable, Hashable {
     public var contents: BottleContents
-    /// Canonical amount in millilitres.
+    /// Canonical amount in milliliters.
     public var amountML: Double
     /// The unit the parent typed it in, so it is shown back the same way.
     public var enteredUnit: VolumeUnit
