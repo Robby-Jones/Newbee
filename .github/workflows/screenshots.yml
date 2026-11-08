@@ -1,0 +1,80 @@
+name: Screenshots
+
+# Takes the App Store screenshots on a 6.9" iPhone simulator with sample feeds, and uploads them
+# as the "app-store-screenshots" artifact (Actions → Screenshots → latest run → Artifacts).
+# Run on demand: Actions → Screenshots → Run workflow. Test: NewbeeUITests/AppStoreScreenshots.swift.
+
+on:
+  workflow_dispatch:
+  # Also when the screenshot setup itself changes, so a PR shows the result.
+  pull_request:
+    paths:
+      - .github/workflows/screenshots.yml
+      - NewbeeUITests/AppStoreScreenshots.swift
+      - Newbee/App/ScreenshotSampleData.swift
+
+jobs:
+  capture:
+    name: Capture App Store screenshots
+    runs-on: macos-15
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+      - name: Select Xcode
+        run: scripts/select-xcode.sh 26
+      - name: Install XcodeGen and xcbeautify
+        run: brew install xcodegen xcbeautify
+      - name: Generate project
+        run: xcodegen generate
+      - name: Pick a 6.9-inch iPhone simulator
+        id: sim
+        run: |
+          UDID="$(xcrun simctl list devices available -j | python3 -c '
+          import json, sys
+          devices = json.load(sys.stdin)["devices"]
+          phones = [d for rt, ds in sorted(devices.items()) if "iOS" in rt for d in ds if d["name"].startswith("iPhone") and "Pro Max" in d["name"]]
+          print(phones[-1]["udid"] if phones else "")
+          ')"
+          if [ -z "$UDID" ]; then
+            echo "::error::No iPhone Pro Max simulator available."
+            xcrun simctl list devices available
+            exit 1
+          fi
+          xcrun simctl list devices | grep "$UDID"
+          echo "udid=$UDID" >> "$GITHUB_OUTPUT"
+      - name: Prepare simulator (light mode, clean status bar)
+        run: |
+          UDID="${{ steps.sim.outputs.udid }}"
+          xcrun simctl boot "$UDID" || true
+          xcrun simctl bootstatus "$UDID" -b
+          xcrun simctl ui "$UDID" appearance light
+          xcrun simctl status_bar "$UDID" override --time "9:41" --dataNetwork wifi --wifiMode active \
+            --wifiBars 3 --cellularMode active --cellularBars 4 --batteryState charged --batteryLevel 100
+      - name: Capture
+        env:
+          TEST_RUNNER_NEWBEE_SCREENSHOTS: "1"
+          TEST_RUNNER_NEWBEE_SCREENSHOT_DIR: ${{ runner.temp }}/screenshots
+        run: |
+          set -o pipefail
+          xcodebuild test \
+            -project Newbee.xcodeproj \
+            -scheme Newbee \
+            -destination "id=${{ steps.sim.outputs.udid }}" \
+            -only-testing:NewbeeUITests/AppStoreScreenshots \
+            -resultBundlePath Screenshots.xcresult \
+            CODE_SIGNING_ALLOWED=NO \
+            | xcbeautify --renderer github-actions
+          ls -l "$RUNNER_TEMP/screenshots"
+          sips -g pixelWidth -g pixelHeight "$RUNNER_TEMP"/screenshots/*.png
+      - name: Upload screenshots
+        uses: actions/upload-artifact@v4
+        with:
+          name: app-store-screenshots
+          path: ${{ runner.temp }}/screenshots/*.png
+          if-no-files-found: error
+      - name: Upload test results
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: Screenshots-xcresult
+          path: Screenshots.xcresult

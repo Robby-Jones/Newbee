@@ -61,8 +61,8 @@ Legend: `[x]` done · `[ ]` pending · `[!]` blocked (reason noted). Updated by 
 - [ ] Full regression, 0 warnings, perf with 1 year of data, accessibility audit
 
 ## Phase 7: Deployment
-- [ ] Icon, launch, name, versioning, permission strings
-- [ ] Privacy policy + App Privacy labels
-- [ ] Screenshots, description
-- [ ] TestFlight build
-- [ ] App Store submission
+- [x] Icon, launch, name, versioning (1.0.0), permission strings (none needed: system photo picker)
+- [x] Privacy policy + App Privacy labels (site/, docs/app-store/PRIVACY_LABELS.md)
+- [x] Screenshots (Screenshots workflow), description (docs/app-store/LISTING.md)
+- [x] TestFlight build
+- [ ] App Store submission (Robby: docs/app-store/SUBMISSION_CHECKLIST.md)

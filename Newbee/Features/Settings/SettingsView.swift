@@ -662,10 +662,20 @@ private struct AboutSection: View {
                 .font(.footnote)
             Label("Newbee is a log, not medical advice. Ask your pediatrician about feeding concerns.", systemImage: "stethoscope")
                 .font(.footnote)
+            Link(destination: Self.privacyPolicyURL) {
+                Label("Privacy Policy", systemImage: "hand.raised")
+            }
+            Link(destination: Self.supportURL) {
+                Label("Help & Support", systemImage: "questionmark.circle")
+            }
         } header: {
             Text("About")
         }
     }
+
+    /// Published from `site/` by the Website workflow (also the App Store listing's URLs).
+    static let privacyPolicyURL = URL(string: "https://robby-jones.github.io/Newbee/privacy.html")!
+    static let supportURL = URL(string: "https://robby-jones.github.io/Newbee/support.html")!
 
     static var version: String {
         let info = Bundle.main.infoDictionary
