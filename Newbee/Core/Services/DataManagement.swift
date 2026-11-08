@@ -34,7 +34,7 @@ extension AppDependencies {
         }
         let context = container.mainContext
         do {
-            // Children explicitly: `.cascade` is unreliable on iOS 17.
+            // Children explicitly: `.cascade` proved unreliable (seen on iOS 17), so don't rely on it.
             for session in try context.fetch(FetchDescriptor<FeedingSession>()) {
                 session.deleteWithChildren(from: context)
             }

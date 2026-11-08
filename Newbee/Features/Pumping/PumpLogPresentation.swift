@@ -163,7 +163,7 @@ struct PumpRow: View {
 }
 
 extension PumpText {
-    /// SF Symbol for pumping, available on iOS 17.
+    /// SF Symbol for pumping.
     static let symbolName = "drop.halffull"
 }
 
