@@ -4,38 +4,55 @@
 import Foundation
 import SwiftUI
 
-/// The since-last-feed count on the Live Activity, as a ticking `h:mm` clock: "0:05", "0:45",
-/// "1:23", "12:05".
+/// The since-last-feed count on the Live Activity, as a ticking `hh:mm` clock: "00:05", "00:45",
+/// "01:23", "12:05".
 ///
-/// The system's live-updating formats (iOS 18 `SystemFormatStyle`) drop the hours field until an
-/// hour has passed, so they can't show "0:45" on their own. The count is drawn in two phases:
-/// - First hour: a static "0:" before a ticking two-digit minutes field.
-/// - After that: a ticking hours-and-minutes clock.
+/// iOS 18's live-updating `SystemFormatStyle.Stopwatch` has no hours-and-minutes clock: dropping
+/// the seconds field turns it into words ("1 hour, 23 minutes"), and it leaves the hours field out
+/// until an hour has passed (pinned by `SinceLastFeedFormatTests`). So the view draws a clock that
+/// still has seconds and clips them off:
+/// - First hour: "00:" + a ticking "mm:ss" → "00:05:12", drawn as "00:05".
+/// - After that: a ticking "hh:mm:ss" → "01:23:45", drawn as "01:23".
 ///
 /// The content's stale date is the hour mark (`ContentState.sinceLastFeedHourMark`), which makes
 /// the system redraw the activity then and switch phase without the app running.
 enum SinceLastFeedFormat {
-    /// Whether to draw the hours-and-minutes phase. `isStale` is the system's signal that the hour
-    /// mark has passed since the content was drawn.
+    /// Sizes the visible part: the clock is clipped to this text's width.
+    static let visibleTemplate = "00:00"
+    /// The ":ss" the clip hides.
+    static let hiddenSuffixLength = 3
+
+    /// Whether to draw the hours phase. `isStale` is the system's signal that the hour mark has
+    /// passed since the content was drawn.
     static func showsHours(since lastFeedEnded: Date, isStale: Bool, now: Date = .now) -> Bool {
         isStale || now >= lastFeedEnded.addingTimeInterval(3600)
     }
 
-    /// Minutes only, zero-padded ("05", "45"), for the first hour.
-    static func minutes(since lastFeedEnded: Date) -> SystemFormatStyle.Stopwatch {
-        SystemFormatStyle.Stopwatch(startingAt: lastFeedEnded, showsHours: false, maxFieldCount: 1, maxPrecision: .seconds(1))
+    /// Static text before the ticking clock: "00:" for the first hour, where the clock has no
+    /// hours field.
+    static func prefix(showsHours: Bool) -> String {
+        showsHours ? "" : "00:"
     }
 
-    /// Hours and minutes ("1:23", "12:05"), once an hour has passed.
-    static func hoursAndMinutes(since lastFeedEnded: Date) -> SystemFormatStyle.Stopwatch {
-        SystemFormatStyle.Stopwatch(startingAt: lastFeedEnded, showsHours: true, maxFieldCount: 2, maxPrecision: .seconds(1))
+    /// The ticking clock, seconds included: "mm:ss" for the first hour, then "hh:mm:ss".
+    /// It must tick each second: a coarser precision switches the style to words.
+    static func clock(since lastFeedEnded: Date, showsHours: Bool) -> SystemFormatStyle.Stopwatch {
+        SystemFormatStyle.Stopwatch(
+            startingAt: lastFeedEnded,
+            showsHours: showsHours,
+            maxFieldCount: showsHours ? 3 : 2,
+            maxPrecision: .seconds(1)
+        )
     }
 
-    /// The same text the views draw, at a given moment. For tests and VoiceOver.
-    static func text(since lastFeedEnded: Date, at now: Date) -> String {
-        if showsHours(since: lastFeedEnded, isStale: false, now: now) {
-            return String(hoursAndMinutes(since: lastFeedEnded).format(now).characters)
-        }
-        return "0:" + String(minutes(since: lastFeedEnded).format(now).characters)
+    /// The full drawn string before clipping, e.g. "00:05:12".
+    static func fullText(since lastFeedEnded: Date, at now: Date) -> String {
+        let hours = showsHours(since: lastFeedEnded, isStale: false, now: now)
+        return prefix(showsHours: hours) + String(clock(since: lastFeedEnded, showsHours: hours).format(now).characters)
+    }
+
+    /// What the parent sees at a given moment, e.g. "00:05". For tests.
+    static func visibleText(since lastFeedEnded: Date, at now: Date) -> String {
+        String(fullText(since: lastFeedEnded, at: now).dropLast(hiddenSuffixLength))
     }
 }

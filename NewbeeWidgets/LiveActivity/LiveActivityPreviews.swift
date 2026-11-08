@@ -44,7 +44,7 @@ extension FeedingActivityAttributes.ContentState {
         )
     }
 
-    /// Just ended (the spec example: left 12, right 9): counts "0:00", "0:01", ...
+    /// Just ended (the spec example: left 12, right 9): counts "00:00", "00:01", ...
     static var previewEnded: Self {
         Self(
             status: .ended, currentSide: .right, sessionStart: .now.addingTimeInterval(-1260),

@@ -71,7 +71,7 @@ side pills and controls are one shared view (`ActivitySidesAndControls`). Minima
 - `PauseIntent` / `ResumeIntent` in one round slot that flips, then `EndIntent`. **End** is the only
   control in the destructive color and sits last with extra space before it, so it isn't hit by
   accident.
-- Since last feed (after End): the header counts up the time since the feed ended as `h:mm`, two
+- Since last feed (after End): the header counts up the time since the feed ended as `hh:mm`, two
   **Start** pills (`StartFeedingIntent`, one per side, the suggested next side tinted stronger)
   replace the side pills and controls, and a footnote gives the last feed's side times and end time.
   See §3.5.
@@ -94,11 +94,14 @@ side pills and controls are one shared view (`ActivitySidesAndControls`). Minima
   the header counts up from the end of the feed (`ContentState.lastFeedEndedAt`), and the footnote
   keeps the feed's L/R times. There is no Undo on the activity any more (removed with this change);
   the in-app undo toast still covers an End tapped by mistake.
-- The count is `h:mm` ("0:45", "2:15"). iOS 18's live text formats drop the hours field under an
-  hour, so `SinceLastFeedFormat` draws "0:" + ticking minutes for the first hour, then a ticking
-  hours-and-minutes clock. The content's `staleDate` is the one-hour mark, so the system redraws
-  the activity there and the view switches format without the app running. ("Still feeding?"
-  never shows in this state.) The strings are pinned by `SinceLastFeedFormatTests` on the simulator.
+- The count is `hh:mm` ("00:45", "02:15"). iOS 18's live clock format (`SystemFormatStyle.Stopwatch`)
+  can't leave out seconds (with fewer fields or minute precision it switches to words like
+  "1 hour, 23 minutes"), and it has no hours field under an hour. So `SinceLastFeedFormat` draws
+  "00:" + a ticking `mm:ss` for the first hour, then a ticking `hh:mm:ss`, and the view clips it to
+  the width of "00:00", hiding the trailing ":ss". The clock ticks each second for that reason.
+  The content's `staleDate` is the one-hour mark, so the system redraws the activity there and the
+  view switches phase without the app running. ("Still feeding?" never shows in this state.) The
+  strings are pinned by `SinceLastFeedFormatTests` on the simulator.
 - The manager syncs `activeSession ?? lastCompletedSession`, so every foreground keeps the count
   right. Deleting or editing the latest feed moves the count to the new latest; discarding a
   running feed goes back to counting from the previous one.

@@ -77,9 +77,10 @@ struct IslandCompactTrailing: View {
         }
     }
 
-    /// "12:05" since last feed fits the narrow width; a feed over an hour needs "1:02:03".
+    /// "02:15" since last feed fits the narrow width (it sizes itself); a feed over an hour
+    /// needs "1:02:03".
     private var maxWidth: CGFloat {
-        state.status != .ended && state.totalAccumulated >= 3600 ? 60 : 46
+        state.status != .ended && state.totalAccumulated >= 3600 ? 60 : 50
     }
 }
 

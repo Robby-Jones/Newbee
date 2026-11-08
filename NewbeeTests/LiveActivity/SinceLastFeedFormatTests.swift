@@ -4,8 +4,8 @@ import Testing
 import XCTest
 @testable import Newbee
 
-/// The since-last-feed clock uses iOS 18's live-updating `SystemFormatStyle`, whose exact output
-/// isn't fully documented, so the strings the Live Activity draws are pinned here on the simulator.
+/// The since-last-feed clock uses iOS 18's live-updating `SystemFormatStyle`, whose output isn't
+/// fully documented, so the strings the Live Activity draws are pinned here on the simulator.
 @Suite("Since-last-feed clock")
 struct SinceLastFeedFormatTests {
     let ended = Date(timeIntervalSince1970: 1_800_000_000)
@@ -19,10 +19,9 @@ struct SinceLastFeedFormatTests {
         #expect(SinceLastFeedFormat.showsHours(since: ended, isStale: false, now: at(1, 0)))
         #expect(SinceLastFeedFormat.showsHours(since: ended, isStale: true, now: at(0, 10)))
     }
-
 }
 
-/// XCTest rather than Swift Testing so CI's log shows the failure message with the real strings.
+/// XCTest rather than Swift Testing so a failure's strings show in CI's log.
 final class SinceLastFeedClockStringTests: XCTestCase {
     let ended = Date(timeIntervalSince1970: 1_800_000_000)
 
@@ -30,40 +29,36 @@ final class SinceLastFeedClockStringTests: XCTestCase {
         ended.addingTimeInterval(TimeInterval(hours * 3600 + minutes * 60 + seconds))
     }
 
-    func testShowsHoursAndMinutes() {
+    /// The whole drawn clock keeps a two-character seconds field at the end, so clipping the
+    /// last three characters (":ss") always leaves hh:mm.
+    func testDrawnClockEndsInSeconds() {
         let cases: [(Int, Int, Int, String)] = [
-            (0, 0, 0, "0:00"),
-            (0, 0, 59, "0:00"),
-            (0, 5, 0, "0:05"),
-            (0, 45, 30, "0:45"),
-            (0, 59, 59, "0:59"),
-            (1, 0, 0, "1:00"),
-            (1, 23, 45, "1:23"),
-            (12, 5, 0, "12:05"),
+            (0, 0, 0, "00:00:00"),
+            (0, 5, 12, "00:05:12"),
+            (0, 59, 59, "00:59:59"),
+            (1, 0, 0, "01:00:00"),
+            (1, 23, 45, "01:23:45"),
+            (12, 5, 0, "12:05:00"),
         ]
         for (h, m, s, expected) in cases {
-            let date = at(h, m, s)
-            XCTAssertEqual(
-                SinceLastFeedFormat.text(since: ended, at: date), expected,
-                "at \(h)h\(m)m\(s)s: \(diagnostics(at: date))"
-            )
+            XCTAssertEqual(SinceLastFeedFormat.fullText(since: ended, at: at(h, m, s)), expected, "at \(h)h\(m)m\(s)s")
         }
     }
 
-    /// Raw output of the candidate styles, shown when an assertion fails.
-    private func diagnostics(at date: Date) -> String {
-        func render(_ style: SystemFormatStyle.Stopwatch) -> String { String(style.format(date).characters) }
-        let candidates: [(String, SystemFormatStyle.Stopwatch)] = [
-            ("minutes", SinceLastFeedFormat.minutes(since: ended)),
-            ("hoursAndMinutes", SinceLastFeedFormat.hoursAndMinutes(since: ended)),
-            ("sw h=true f=2 p=60", .init(startingAt: ended, showsHours: true, maxFieldCount: 2, maxPrecision: .seconds(60))),
-            ("sw h=false f=2 p=1", .init(startingAt: ended, showsHours: false, maxFieldCount: 2, maxPrecision: .seconds(1))),
-            ("sw h=true f=3 p=1", .init(startingAt: ended, showsHours: true, maxFieldCount: 3, maxPrecision: .seconds(1))),
+    func testShowsHoursAndMinutes() {
+        let cases: [(Int, Int, Int, String)] = [
+            (0, 0, 59, "00:00"),
+            (0, 5, 0, "00:05"),
+            (0, 45, 30, "00:45"),
+            (0, 59, 59, "00:59"),
+            (1, 0, 0, "01:00"),
+            (1, 23, 45, "01:23"),
+            (12, 5, 0, "12:05"),
         ]
-        let timer = SystemFormatStyle.Timer(
-            countingUpIn: ended..<ended.addingTimeInterval(24 * 3600), showsHours: false, maxFieldCount: 1
-        )
-        return candidates.map { "\($0.0)=\"\(render($0.1))\"" }.joined(separator: " ")
-            + " timer h=false f=1=\"\(String(timer.format(date).characters))\""
+        for (h, m, s, expected) in cases {
+            let visible = SinceLastFeedFormat.visibleText(since: ended, at: at(h, m, s))
+            XCTAssertEqual(visible, expected, "at \(h)h\(m)m\(s)s")
+            XCTAssertEqual(visible.count, SinceLastFeedFormat.visibleTemplate.count)
+        }
     }
 }

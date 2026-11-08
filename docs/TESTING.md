@@ -50,8 +50,8 @@ Run each case on an **iPhone 14 Pro or later** (Dynamic Island). Where marked �
 | D2 | Lock phone 5 min† | Lock Screen timer kept ticking; matches app on unlock ±1 s |
 | D3 | Switch side from Lock Screen ×5 rapidly† | Final side correct; no duplicate segments; app agrees |
 | D4 | Pause / resume from island expanded | State and timers frozen and resumed correctly |
-| D5 | End from Lock Screen† (and separately, End in the app) | The same activity stays and shows "Since last feed" counting up from 0:00 as h:mm, with Start Left / Start Right and a "Last feed L … · R … · ended …" line; session completed in History |
-| D5a | Leave D5 for over an hour (phone locked, app not opened) | The count goes from 0:59 to 1:00 and keeps ticking as h:mm (island compact too) |
+| D5 | End from Lock Screen† (and separately, End in the app) | The same activity stays and shows "Since last feed" counting up from 00:00 as hh:mm (no seconds visible, no clipped digits), with Start Left / Start Right and a "Last feed L … · R … · ended …" line; session completed in History |
+| D5a | Leave D5 for over an hour (phone locked, app not opened) | The count goes from 00:59 to 01:00 and keeps ticking as hh:mm (island compact and expanded too) |
 | D5b | After D5: tap Undo in the app, or start the next feed in the app† | Undo puts the feed back on the same activity; a new feed replaces it; only one activity is on the Lock Screen / island |
 | D5c | After D5: tap **Start** on the Lock Screen / island (phone unlocked) | A feed starts on that side; the app shows it running; one activity, showing the new feed, and its buttons work |
 | D6 | Double-tap End | One completed session, no errors |

@@ -67,24 +67,31 @@ struct TotalTimerText: View {
     }
 }
 
-/// Time since the last feed ended, ticking as `h:mm` ("0:45", "2:15"). See `SinceLastFeedFormat`.
+/// Time since the last feed ended, ticking as `hh:mm` ("00:45", "02:15").
+///
+/// The system's clock formats can't leave out seconds, so a clock with seconds is drawn and
+/// clipped to the width of "00:00", which hides the trailing ":ss" (see `SinceLastFeedFormat`).
 struct SinceLastFeedText: View {
     let lastFeedEnded: Date
     /// Past the hour mark (the content's stale date) when the system last drew the activity.
     let isStale: Bool
 
     var body: some View {
-        clock
+        let showsHours = SinceLastFeedFormat.showsHours(since: lastFeedEnded, isStale: isStale)
+        Text(verbatim: SinceLastFeedFormat.visibleTemplate)
+            .hidden()
+            .overlay(alignment: .leading) {
+                (Text(verbatim: SinceLastFeedFormat.prefix(showsHours: showsHours))
+                    + Text(.currentDate, format: SinceLastFeedFormat.clock(since: lastFeedEnded, showsHours: showsHours)))
+                    .multilineTextAlignment(.leading)
+                    .lineLimit(1)
+                    .fixedSize()
+            }
+            .clipped()
             .monospacedDigit()
+            .accessibilityElement(children: .ignore)
             .accessibilityLabel(Text("Time since last feed"))
             .accessibilityValue(Text(lastFeedEnded, style: .relative))
-    }
-
-    private var clock: Text {
-        if SinceLastFeedFormat.showsHours(since: lastFeedEnded, isStale: isStale) {
-            return Text(.currentDate, format: SinceLastFeedFormat.hoursAndMinutes(since: lastFeedEnded))
-        }
-        return Text(verbatim: "0:") + Text(.currentDate, format: SinceLastFeedFormat.minutes(since: lastFeedEnded))
     }
 }
 

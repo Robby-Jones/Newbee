@@ -81,7 +81,7 @@ extension FeedingActivityAttributes.ContentState {
     ///
     /// The since-last-feed count is never out of date, so its stale date is used for something
     /// else: it is the one-hour mark (`sinceLastFeedHourMark`), where the system redraws the
-    /// activity so the count can switch from "0:59" to "1:00" (see `SinceLastFeedFormat`).
+    /// activity so the count can switch from "00:59" to "01:00" (see `SinceLastFeedFormat`).
     public func staleDate(after threshold: TimeInterval) -> Date {
         if let sinceLastFeedHourMark { return sinceLastFeedHourMark }
         return (currentSegmentStart ?? pausedAt ?? sessionStart).addingTimeInterval(threshold)
