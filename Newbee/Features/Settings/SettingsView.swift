@@ -13,6 +13,8 @@ import UIKit
 struct SettingsView: View {
     @Environment(AppPreferences.self) private var preferences: AppPreferences?
     @Environment(ReminderScheduler.self) private var reminders: ReminderScheduler?
+    @State private var dataPresentation: DataPresentation?
+    @State private var dataError: String?
 
     var body: some View {
         Form {
@@ -24,8 +26,18 @@ struct SettingsView: View {
                 LiveActivitiesSection()
                 AppearanceSection(preferences: preferences)
             }
-            DataSection()
+            DataSection(presentation: $dataPresentation, errorMessage: $dataError)
             AboutSection()
+        }
+        // Presented from the Form, not from the Section: a modifier on a Section applies to each
+        // of its rows, so every row tried to present the same sheet and it closed itself again.
+        .sheet(item: $dataPresentation) { presentation in
+            DataPresentationView(presentation: presentation)
+        }
+        .alert("Something went wrong", isPresented: Binding(get: { dataError != nil }, set: { if !$0 { dataError = nil } })) {
+            Button("OK", role: .cancel) {}
+        } message: {
+            Text(dataError ?? "")
         }
         .navigationTitle("Settings")
         .task { await reminders?.reschedule() }
@@ -471,15 +483,25 @@ private struct AppearanceSection: View {
 
 // MARK: - Data
 
+/// What the "Your data" section has open. Settings presents it from the Form (see `SettingsView`).
+enum DataPresentation: Identifiable {
+    case share(SharedFile)
+    case report
+    case deleteAll
+
+    var id: String {
+        switch self {
+        case .share(let file): "share-\(file.url.absoluteString)"
+        case .report: "report"
+        case .deleteAll: "deleteAll"
+        }
+    }
+}
+
 private struct DataSection: View {
+    @Binding var presentation: DataPresentation?
+    @Binding var errorMessage: String?
     @Environment(\.dataManagement) private var actions
-    @Environment(FeedingSessionUIModel.self) private var sessionModel: FeedingSessionUIModel?
-    @Environment(BottleLogUIModel.self) private var bottleModel: BottleLogUIModel?
-    @Environment(PumpLogUIModel.self) private var pumpModel: PumpLogUIModel?
-    @State private var sharing: SharedFile?
-    @State private var exportingReport = false
-    @State private var confirmingDelete = false
-    @State private var errorMessage: String?
 
     var body: some View {
         Section {
@@ -492,7 +514,7 @@ private struct DataSection: View {
             .accessibilityIdentifier("settings.export")
 
             Button {
-                exportingReport = true
+                presentation = .report
             } label: {
                 Label("Export feeding report (PDF)", systemImage: "doc.richtext")
             }
@@ -500,7 +522,7 @@ private struct DataSection: View {
             .accessibilityIdentifier("settings.exportPDF")
 
             Button(role: .destructive) {
-                confirmingDelete = true
+                presentation = .deleteAll
             } label: {
                 Label("Delete all data", systemImage: "trash")
                     .foregroundStyle(NBColor.destructive)
@@ -512,31 +534,37 @@ private struct DataSection: View {
         } footer: {
             Text("Feeds are stored only on this iPhone and are included in its iCloud or computer backup. Share a PDF report with your pediatrician, or export a CSV to keep a copy.")
         }
-        .sheet(item: $sharing) { file in
-            ShareSheet(url: file.url)
-                .presentationDetents([.medium, .large])
-        }
-        .sheet(isPresented: $exportingReport) {
-            if let actions {
-                ExportReportSheet(export: actions.exportPDF)
-            }
-        }
-        .sheet(isPresented: $confirmingDelete) {
-            DeleteAllDataSheet { try await deleteAll() }
-        }
-        .alert("Something went wrong", isPresented: Binding(get: { errorMessage != nil }, set: { if !$0 { errorMessage = nil } })) {
-            Button("OK", role: .cancel) {}
-        } message: {
-            Text(errorMessage ?? "")
-        }
     }
 
     private func export() {
         guard let actions else { return }
         do {
-            sharing = SharedFile(url: try actions.exportCSV())
+            presentation = .share(SharedFile(url: try actions.exportCSV()))
         } catch {
             errorMessage = error.localizedDescription
+        }
+    }
+}
+
+/// The sheet for a `DataPresentation`: the share sheet, the PDF report options or delete all.
+private struct DataPresentationView: View {
+    let presentation: DataPresentation
+    @Environment(\.dataManagement) private var actions
+    @Environment(FeedingSessionUIModel.self) private var sessionModel: FeedingSessionUIModel?
+    @Environment(BottleLogUIModel.self) private var bottleModel: BottleLogUIModel?
+    @Environment(PumpLogUIModel.self) private var pumpModel: PumpLogUIModel?
+
+    var body: some View {
+        switch presentation {
+        case .share(let file):
+            ShareSheet(url: file.url)
+                .presentationDetents([.medium, .large])
+        case .report:
+            if let actions {
+                ExportReportSheet(export: actions.exportPDF)
+            }
+        case .deleteAll:
+            DeleteAllDataSheet { try await deleteAll() }
         }
     }
 
