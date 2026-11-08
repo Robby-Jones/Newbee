@@ -3,7 +3,9 @@ import Foundation
 /// Logs, edits and deletes bottle feeds, with validation and undo.
 ///
 /// Bottle feeds are instant entries rather than timed sessions, so they don't go through
-/// `FeedingSessionManager` and never affect the breastfeeding timer or its Live Activity.
+/// `FeedingSessionManager` and never affect the breastfeeding timer. They do count as the last
+/// feed: after a change, the app calls `FeedingSessionManager.bottlesDidChange()` so the Live
+/// Activity's since-last-feed count follows the newest feed.
 @MainActor
 public final class BottleLog {
     /// The result of a save, with what's needed to undo it.

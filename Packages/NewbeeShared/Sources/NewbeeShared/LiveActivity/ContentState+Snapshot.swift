@@ -6,8 +6,9 @@ extension FeedingActivityAttributes.ContentState {
     ///
     /// - Active: the open segment is rendered by the system from `currentSegmentStart`; the
     ///   accumulated values hold closed segments only.
-    /// - Paused / ended: every value is frozen. `pausedAt` holds the moment the timers stopped
-    ///   (the pause, or the end of the session).
+    /// - Paused: every value is frozen. `pausedAt` holds the moment the timers stopped.
+    /// - Completed (`.ended`): the side times are frozen at the end of the feed, and `pausedAt`
+    ///   holds that end, which the views count up from to show the time since the last feed.
     ///
     /// The mapping is defensive about inconsistent snapshots: an "active" snapshot without an open
     /// segment is shown as paused rather than ticking from a wrong start.
@@ -25,7 +26,8 @@ extension FeedingActivityAttributes.ContentState {
                 leftAccumulated: snapshot.closedDuration(on: .left),
                 rightAccumulated: snapshot.closedDuration(on: .right),
                 pausedAt: nil,
-                revision: snapshot.revision
+                revision: snapshot.revision,
+                sessionID: snapshot.id
             )
         case .active, .paused, .completed:
             let frozenAt = Self.freezeTime(of: snapshot)
@@ -37,8 +39,34 @@ extension FeedingActivityAttributes.ContentState {
                 leftAccumulated: snapshot.duration(on: .left, at: frozenAt),
                 rightAccumulated: snapshot.duration(on: .right, at: frozenAt),
                 pausedAt: frozenAt,
-                revision: snapshot.revision
+                revision: snapshot.revision,
+                sessionID: snapshot.id
             )
+        }
+    }
+
+    /// The since-last-feed count from a bottle. `currentSide` is the last breastfeed's side
+    /// (`.left` if none), so Start still suggests the other one.
+    public init(bottle: BottleEntry, lastBreastSide: Side?) {
+        self.init(
+            status: .ended,
+            currentSide: lastBreastSide ?? .left,
+            sessionStart: bottle.startedAt,
+            currentSegmentStart: nil,
+            leftAccumulated: 0,
+            rightAccumulated: 0,
+            pausedAt: bottle.endedAt,
+            revision: 0,
+            sessionID: bottle.id,
+            lastBottle: BottleAmount(milliliters: bottle.amountML).converted(to: bottle.enteredUnit)
+        )
+    }
+
+    /// The since-last-feed count for whichever feed is the latest.
+    public init(latest: LatestFinishedFeed, lastBreastSide: Side?) {
+        switch latest {
+        case .breast(let session): self.init(snapshot: session)
+        case .bottle(let bottle): self.init(bottle: bottle, lastBreastSide: lastBreastSide)
         }
     }
 
@@ -75,7 +103,17 @@ extension FeedingActivityAttributes.ContentState {
     /// The `staleDate` to pass with this content: `threshold` after the running segment started
     /// (or after the pause). Pass the same "still feeding?" threshold the in-app recovery prompt
     /// uses, so the Lock Screen shows "Still feeding? Open Newbee" exactly when the app would ask.
+    ///
+    /// The since-last-feed count is never out of date, so its stale date is used for something
+    /// else: it is the one-hour mark (`sinceLastFeedHourMark`), where the system redraws the
+    /// activity so the count can switch from "00:59" to "01:00" (see `SinceLastFeedFormat`).
     public func staleDate(after threshold: TimeInterval) -> Date {
-        (currentSegmentStart ?? pausedAt ?? sessionStart).addingTimeInterval(threshold)
+        if let sinceLastFeedHourMark { return sinceLastFeedHourMark }
+        return (currentSegmentStart ?? pausedAt ?? sessionStart).addingTimeInterval(threshold)
+    }
+
+    /// One hour after the last feed ended, while no feed is running.
+    public var sinceLastFeedHourMark: Date? {
+        lastFeedEndedAt?.addingTimeInterval(3600)
     }
 }

@@ -97,7 +97,7 @@ struct ResumeFeedingIntent: LiveActivityIntent {
     }
 }
 
-/// Ends the feed. The "Feed complete" summary then offers Undo (`UndoEndFeedingIntent`).
+/// Ends the feed. The same activity then counts the time since this feed ended.
 struct EndFeedingIntent: LiveActivityIntent {
     static var title: LocalizedStringResource { "End Feeding" }
     static var isDiscoverable: Bool { false }
@@ -118,23 +118,27 @@ struct EndFeedingIntent: LiveActivityIntent {
     }
 }
 
-/// Undo on the "Feed complete" summary: reopens the feed that just ended, as it was.
-struct UndoEndFeedingIntent: LiveActivityIntent {
-    static var title: LocalizedStringResource { "Undo End Feeding" }
+/// "Start" on the since-last-feed state: begins a new feed on `side`. A no-op if a feed is
+/// already running, or if `sessionID` (the finished feed the activity was showing) is no longer the
+/// latest feed, so an out-of-date activity can't start one.
+struct StartFeedingIntent: LiveActivityIntent {
+    static var title: LocalizedStringResource { "Start Feeding" }
     static var isDiscoverable: Bool { false }
     /// Runs from a locked Lock Screen without asking for Face ID or the passcode.
     static var authenticationPolicy: IntentAuthenticationPolicy { .alwaysAllowed }
 
     @Parameter(title: "Session") var sessionID: String
+    @Parameter(title: "Side") var side: IntentSide
 
     init() {}
 
-    init(sessionID: UUID) {
+    init(sessionID: UUID, side: Side) {
         self.sessionID = sessionID.uuidString
+        self.side = IntentSide(side)
     }
 
     func perform() async throws -> some IntentResult {
-        await LiveActivityIntentRunner.run(.undoEnd, sessionID: sessionID)
+        await LiveActivityIntentRunner.run(.start(side.side), sessionID: sessionID)
         return .result()
     }
 }

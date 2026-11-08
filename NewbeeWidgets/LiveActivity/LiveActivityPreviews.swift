@@ -4,7 +4,7 @@ import NewbeeShared
 import SwiftUI
 import WidgetKit
 
-// Previews for every presentation in active / paused / ended states. Review on a Mac in Xcode
+// Previews for every presentation in active / paused / since-last-feed states. Review on a Mac in Xcode
 // (Canvas), including dark mode and large Dynamic Type via the canvas variants.
 
 extension FeedingActivityAttributes {
@@ -44,12 +44,31 @@ extension FeedingActivityAttributes.ContentState {
         )
     }
 
-    /// The spec example: left 12, right 9.
+    /// Just ended (the spec example: left 12, right 9): counts "00:00", "00:01", ...
     static var previewEnded: Self {
         Self(
             status: .ended, currentSide: .right, sessionStart: .now.addingTimeInterval(-1260),
             currentSegmentStart: nil, leftAccumulated: 720, rightAccumulated: 540,
             pausedAt: .now, revision: 5
+        )
+    }
+
+    /// Ended 2 h 15 min ago, last on the left, so Right is the suggested start.
+    static var previewSinceLastFeedLong: Self {
+        Self(
+            status: .ended, currentSide: .left, sessionStart: .now.addingTimeInterval(-9300),
+            currentSegmentStart: nil, leftAccumulated: 600, rightAccumulated: 300,
+            pausedAt: .now.addingTimeInterval(-8100), revision: 4
+        )
+    }
+
+    /// A 90 mL bottle that ended 40 minutes ago, after a breastfeed that ended on the right.
+    static var previewSinceBottle: Self {
+        Self(
+            status: .ended, currentSide: .right, sessionStart: .now.addingTimeInterval(-3000),
+            currentSegmentStart: nil, leftAccumulated: 0, rightAccumulated: 0,
+            pausedAt: .now.addingTimeInterval(-2400), revision: 0,
+            lastBottle: BottleAmount(90, .milliliters)
         )
     }
 }
@@ -61,6 +80,8 @@ extension FeedingActivityAttributes.ContentState {
     FeedingActivityAttributes.ContentState.previewActiveLong
     FeedingActivityAttributes.ContentState.previewPaused
     FeedingActivityAttributes.ContentState.previewEnded
+    FeedingActivityAttributes.ContentState.previewSinceLastFeedLong
+    FeedingActivityAttributes.ContentState.previewSinceBottle
 }
 
 #Preview("Island expanded", as: .dynamicIsland(.expanded), using: FeedingActivityAttributes.preview) {
@@ -69,6 +90,7 @@ extension FeedingActivityAttributes.ContentState {
     FeedingActivityAttributes.ContentState.previewActiveLeft
     FeedingActivityAttributes.ContentState.previewPaused
     FeedingActivityAttributes.ContentState.previewEnded
+    FeedingActivityAttributes.ContentState.previewSinceLastFeedLong
 }
 
 #Preview("Island compact", as: .dynamicIsland(.compact), using: FeedingActivityAttributes.preview) {
@@ -77,6 +99,7 @@ extension FeedingActivityAttributes.ContentState {
     FeedingActivityAttributes.ContentState.previewActiveLeft
     FeedingActivityAttributes.ContentState.previewActiveLong
     FeedingActivityAttributes.ContentState.previewPaused
+    FeedingActivityAttributes.ContentState.previewSinceLastFeedLong
 }
 
 #Preview("Island minimal", as: .dynamicIsland(.minimal), using: FeedingActivityAttributes.preview) {
@@ -85,5 +108,6 @@ extension FeedingActivityAttributes.ContentState {
     FeedingActivityAttributes.ContentState.previewActiveLeft
     FeedingActivityAttributes.ContentState.previewPaused
     FeedingActivityAttributes.ContentState.previewEnded
+    FeedingActivityAttributes.ContentState.previewSinceLastFeedLong
 }
 #endif

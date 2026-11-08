@@ -52,13 +52,20 @@ struct LiveActivityWiringTests {
         await manager.handleLiveActivityCommand(.end, sessionID: UUID())
         #expect(manager.activeSession?.status == .paused)
 
-        // End from the Lock Screen: summary shown, then Undo in the app.
+        // End from the Lock Screen: the same activity now counts since the feed ended.
         let beforeEnd = try #require(manager.activeSession)
         await manager.handleLiveActivityCommand(.end, sessionID: id)
         #expect(manager.activeSession == nil)
-        #expect(client.activities[0].phase == .ended)
+        #expect(client.activities[0].phase == .live)
+        #expect(client.activities[0].state.status == .ended)
+        #expect(client.activities[0].state.lastFeedEndedAt == manager.lastCompletedSession?.endedAt)
+
+        // Opening the app again keeps it.
+        await manager.reload()
+        #expect(client.activities[0].phase == .live)
         #expect(client.activities[0].state.status == .ended)
 
+        // Undo in the app puts the feed back on the same activity.
         try manager.restore(beforeEnd)
         await manager.waitForPendingEffects()
         let visible = client.activities.filter { $0.phase != .dismissed }
@@ -66,7 +73,7 @@ struct LiveActivityWiringTests {
         #expect(visible.first?.state.status == .paused)
     }
 
-    @Test func undoOnTheSummaryReopensTheFeedAndItsActivity() async throws {
+    @Test func startOnTheSinceLastFeedActivityBeginsTheNextFeed() async throws {
         let clock = TestClock()
         let client = FakeLiveActivityClient()
         let coordinator = LiveActivityCoordinator(client: client, clock: clock)
@@ -75,19 +82,120 @@ struct LiveActivityWiringTests {
 
         try manager.start(side: .left)
         await manager.waitForPendingEffects()
-        let id = try #require(manager.activeSession?.id)
+        let first = try #require(manager.activeSession?.id)
         clock.advance(by: 8 * 60)
-        await manager.handleLiveActivityCommand(.end, sessionID: id)
+        try manager.end()
+        await manager.waitForPendingEffects()
         #expect(client.activities[0].state.status == .ended)
 
-        clock.advance(by: 20)
-        await manager.handleLiveActivityCommand(.undoEnd, sessionID: id)
-        #expect(manager.activeSession?.id == id)
-        #expect(manager.activeSession?.status == .active)
+        clock.advance(by: 2 * 3600)
+        await manager.handleLiveActivityCommand(.start(.right), sessionID: first)
+        let next = try #require(manager.activeSession)
+        #expect(next.id != first)
+        #expect(next.openSegment?.side == .right)
         let visible = client.activities.filter { $0.phase != .dismissed }
         #expect(visible.count == 1)
         #expect(visible.first?.state.status == .active)
-        #expect(visible.first?.state.currentSide == .left)
+        #expect(visible.first?.sessionID == next.id)
+
+        // A second tap (or a stale activity) doesn't start another feed.
+        await manager.handleLiveActivityCommand(.start(.left), sessionID: first)
+        #expect(manager.activeSession == next)
+    }
+
+    /// Robby's check: adding, editing or deleting the latest feed (bottle or breastfeed) while
+    /// the count runs moves it to whichever feed is now the latest.
+    @Test func theCountFollowsTheLatestFeedAsBottlesAndFeedsChange() async throws {
+        let clock = TestClock()
+        let client = FakeLiveActivityClient()
+        let coordinator = LiveActivityCoordinator(client: client, clock: clock)
+        let dependencies = AppDependencies(clock: clock, storage: .inMemory, liveActivity: coordinator)
+        let manager = dependencies.sessionManager
+        let bottles = dependencies.bottleLog
+        func shown() -> FeedingActivityAttributes.ContentState? {
+            let visible = client.activities.filter { $0.phase == .live }
+            return visible.count == 1 ? visible[0].state : nil
+        }
+
+        try manager.start(side: .left)
+        clock.advance(by: 10 * 60)
+        try manager.end()
+        await manager.waitForPendingEffects()
+        let breastfeed = try #require(manager.lastCompletedSession)
+        #expect(shown()?.sessionID == breastfeed.id)
+
+        // A bottle logged after it: the count restarts from the bottle's end.
+        clock.advance(by: 30 * 60)
+        var draft = bottles.newDraft(unit: .milliliters)
+        draft.startedAt = clock.now.addingTimeInterval(-5 * 60)
+        draft.durationSeconds = 5 * 60
+        let bottle = try bottles.save(draft).saved
+        await manager.bottlesDidChange()
+        #expect(shown()?.sessionID == bottle.id)
+        #expect(shown()?.lastFeedEndedAt == clock.now)
+        #expect(shown()?.lastBottle != nil)
+
+        // Edited to before the breastfeed: the breastfeed is the latest again.
+        var edit = try #require(try bottles.editDraft(id: bottle.id))
+        edit.startedAt = breastfeed.startedAt.addingTimeInterval(-3600)
+        let moved = try bottles.save(edit)
+        await manager.bottlesDidChange()
+        #expect(shown()?.sessionID == breastfeed.id)
+        #expect(shown()?.lastFeedEndedAt == breastfeed.endedAt)
+
+        // Undo the edit: back to the bottle.
+        try bottles.undo(moved)
+        await manager.bottlesDidChange()
+        #expect(shown()?.sessionID == bottle.id)
+
+        // A breastfeed added from History after the bottle takes over; deleting it hands back.
+        clock.advance(by: 30 * 60)
+        let manual = SessionSnapshot(
+            status: .completed,
+            segments: [Segment(side: .right, start: clock.now.addingTimeInterval(-20 * 60), end: clock.now.addingTimeInterval(-10 * 60))],
+            startedAt: clock.now.addingTimeInterval(-20 * 60),
+            endedAt: clock.now.addingTimeInterval(-10 * 60),
+            revision: 1,
+            source: .manual
+        )
+        try manager.restore(manual)
+        await manager.waitForPendingEffects()
+        #expect(shown()?.sessionID == manual.id)
+        #expect(shown()?.lastFeedEndedAt == manual.endedAt)
+        _ = try manager.deleteCompleted(sessionID: manual.id)
+        await manager.waitForPendingEffects()
+        #expect(shown()?.sessionID == bottle.id)
+
+        // Deleting the bottle goes back to the first breastfeed.
+        try bottles.delete(id: bottle.id)
+        await manager.bottlesDidChange()
+        #expect(shown()?.sessionID == breastfeed.id)
+        #expect(shown()?.lastBottle == nil)
+        #expect(client.activities.filter { $0.phase == .live }.count == 1)
+    }
+
+    @Test func startOnACountSinceABottleBeginsTheNextFeed() async throws {
+        let clock = TestClock()
+        let client = FakeLiveActivityClient()
+        let coordinator = LiveActivityCoordinator(client: client, clock: clock)
+        let dependencies = AppDependencies(clock: clock, storage: .inMemory, liveActivity: coordinator)
+        let manager = dependencies.sessionManager
+
+        try manager.start(side: .left)
+        clock.advance(by: 10 * 60)
+        try manager.end()
+        clock.advance(by: 60 * 60)
+        let bottle = try dependencies.bottleLog.save(dependencies.bottleLog.newDraft(unit: .milliliters)).saved
+        await manager.bottlesDidChange()
+        #expect(client.activities[0].state.sessionID == bottle.id)
+
+        clock.advance(by: 2 * 3600)
+        await manager.handleLiveActivityCommand(.start(.right), sessionID: bottle.id)
+        let next = try #require(manager.activeSession)
+        #expect(next.openSegment?.side == .right)
+        let visible = client.activities.filter { $0.phase != .dismissed }
+        #expect(visible.count == 1)
+        #expect(visible.first?.state.status == .active)
     }
 
     @Test(arguments: [
@@ -101,7 +209,7 @@ struct LiveActivityWiringTests {
         #expect(SessionCommand(button) == engine)
     }
 
-    @Test func undoIsNotAnEngineCommand() {
-        #expect(SessionCommand(LiveActivityCommand.undoEnd) == nil)
+    @Test func startIsNotAnEngineCommandOnTheNamedSession() {
+        #expect(SessionCommand(LiveActivityCommand.start(.left)) == nil)
     }
 }

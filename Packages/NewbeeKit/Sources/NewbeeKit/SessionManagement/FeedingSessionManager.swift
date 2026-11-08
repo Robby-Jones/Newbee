@@ -53,32 +53,22 @@ public final class FeedingSessionManager {
     @ObservationIgnored private let engine: SessionEngine
     @ObservationIgnored private let liveActivity: any LiveActivitySyncing
     @ObservationIgnored private let reminders: any ReminderScheduling
+    /// Read only for the Live Activity: a bottle can be the latest feed it counts from.
+    @ObservationIgnored private let bottles: (any BottleRepository)?
     @ObservationIgnored private var effectsTail: Task<Void, Never>?
     /// Session ID → when the parent answered "Keep going" (consumed by `RecoveryCoordinator`).
     @ObservationIgnored var recoveryAcknowledgements: [UUID: Date] = [:]
-    /// The last End, kept so "Undo" on the Live Activity summary can put the feed back exactly
-    /// as it was. In memory only: if the app was terminated in between, undo reopens the feed
-    /// paused instead (see `undoEnd(sessionID:)`).
-    @ObservationIgnored private var lastEnd: EndRecord?
-
-    private struct EndRecord {
-        var before: SessionSnapshot
-        var completedRevision: Int
-        var endedAt: Date
-    }
-
-    /// How long after End the Live Activity summary offers Undo. Matches the summary's time on
-    /// the Lock Screen.
-    public static let undoEndWindow: TimeInterval = 15 * 60
 
     public init(
         repository: any FeedingRepository,
         clock: any AppClock,
         liveActivity: (any LiveActivitySyncing)? = nil,
         reminders: (any ReminderScheduling)? = nil,
+        bottles: (any BottleRepository)? = nil,
         engine: SessionEngine = SessionEngine()
     ) {
         self.repository = repository
+        self.bottles = bottles
         self.clock = clock
         self.liveActivity = liveActivity ?? NoLiveActivities()
         self.reminders = reminders ?? NoReminders()
@@ -96,6 +86,12 @@ public final class FeedingSessionManager {
     /// The side to offer next: the opposite of the side used last. Left when there's no history.
     public var suggestedNextSide: Side {
         lastSide?.opposite ?? .left
+    }
+
+    /// What the Live Activity shows: the running or paused feed, or else the last finished one
+    /// (as time since it ended), or nothing.
+    var liveActivitySnapshot: SessionSnapshot? {
+        activeSession ?? lastCompletedSession
     }
 
     // MARK: - Commands
@@ -151,7 +147,8 @@ public final class FeedingSessionManager {
         try write { try repository.delete(sessionID: session.id) }
         recoveryPrompt = nil
         try? refresh()
-        enqueueEffects(activity: .sync(activeSession), reminders: true)
+        // Back to counting the time since the previous feed, if there was one.
+        enqueueEffects(activity: .sync(liveActivitySnapshot), reminders: true)
         return session
     }
 
@@ -166,8 +163,8 @@ public final class FeedingSessionManager {
         guard session.status == .completed else { throw FeedingSessionError.statusChangeNotAllowed }
         try write { try repository.delete(sessionID: sessionID) }
         try? refresh()
-        // "Last side" and reminders may now come from an earlier feed.
-        enqueueEffects(activity: .unchanged, reminders: true)
+        // "Last side", reminders and the since-last-feed count may now come from an earlier feed.
+        enqueueEffects(activity: .sync(liveActivitySnapshot), reminders: true)
         return session
     }
 
@@ -187,7 +184,7 @@ public final class FeedingSessionManager {
         try write { try repository.save(restored, modifiedAt: now) }
         recoveryPrompt = nil
         try? refresh()
-        enqueueEffects(activity: restored.status == .completed ? .unchanged : .sync(restored), reminders: true)
+        enqueueEffects(activity: .sync(restored.status == .completed ? liveActivitySnapshot : restored), reminders: true)
     }
 
     /// Saves a manually edited session after checking the same rules the engine enforces
@@ -207,7 +204,8 @@ public final class FeedingSessionManager {
         }
         try write { try repository.save(saved, modifiedAt: now) }
         try? refresh()
-        enqueueEffects(activity: saved.status == .completed ? .unchanged : .sync(saved), reminders: true)
+        // An edited end time moves the since-last-feed count too.
+        enqueueEffects(activity: .sync(saved.status == .completed ? liveActivitySnapshot : saved), reminders: true)
     }
 
     /// "Keep going": the parent confirmed the current state. Recovery won't ask about the same
@@ -238,51 +236,25 @@ public final class FeedingSessionManager {
         }
         if !applied {
             try? refresh()
-            enqueueEffects(activity: .sync(activeSession), reminders: false)
+            enqueueEffects(activity: .sync(liveActivitySnapshot), reminders: false)
         }
         await waitForPendingEffects()
     }
 
-    /// "Undo" on the Live Activity's "Feed complete" summary: reopens the session that ended,
-    /// if it is still the latest feed, ended within `undoEndWindow`, and no other feed has
-    /// started since.
-    ///
-    /// If this process saw the End, the feed goes back exactly as it was (a running side keeps
-    /// running, so the time since End counts, as with the in-app undo). Otherwise, for example
-    /// after the app was terminated, it can't tell whether the feed was running or paused, so it
-    /// reopens it **paused** rather than inventing feeding time.
-    ///
-    /// Anything refused is a silent no-op. The Live Activity is synced before this returns.
-    public func undoEnd(sessionID: UUID) async {
-        if let snapshot = snapshotToReopen(sessionID: sessionID), (try? restore(snapshot)) != nil {
-            lastEnd = nil
-        } else {
+    /// "Start" on the Live Activity's since-last-feed state, which was drawn for the finished feed
+    /// `sessionID` (a breastfeed or a bottle). Ignored unless that is still the latest feed
+    /// (`LatestFinishedFeed`) and none is running, so a tap on
+    /// an out-of-date activity doesn't start a feed. Either way the Live Activity is synced before
+    /// this returns, which corrects an out-of-date one.
+    public func applyRemoteStart(side: Side, sessionID: UUID) async {
+        try? refresh()
+        let latest = LatestFinishedFeed.of(breast: lastCompletedSession, bottle: latestBottle())
+        let current = activeSession == nil && latest?.id == sessionID
+        if !current || (try? perform(.start(side)))?.isNoOp != false {
             try? refresh()
-            enqueueEffects(activity: .sync(activeSession), reminders: false)
+            enqueueEffects(activity: .sync(liveActivitySnapshot), reminders: false)
         }
         await waitForPendingEffects()
-    }
-
-    private func snapshotToReopen(sessionID: UUID) -> SessionSnapshot? {
-        let now = clock.now
-        guard let stored = try? repository.session(id: sessionID),
-              stored.status == .completed,
-              let latest = try? repository.recentCompletedSessions(limit: 1).first, latest.id == sessionID,
-              (try? repository.openSessions())?.isEmpty == true
-        else { return nil }
-
-        if let record = lastEnd, record.before.id == sessionID, record.completedRevision == stored.revision {
-            guard now.timeIntervalSince(record.endedAt) <= Self.undoEndWindow else { return nil }
-            var before = record.before
-            before.revision = stored.revision
-            return before
-        }
-
-        guard let endedAt = stored.endedAt, now.timeIntervalSince(endedAt) <= Self.undoEndWindow else { return nil }
-        var reopened = stored
-        reopened.status = .paused
-        reopened.endedAt = nil
-        return reopened
     }
 
     // MARK: - Loading
@@ -300,7 +272,18 @@ public final class FeedingSessionManager {
     /// Used at launch and on every foreground (via `RecoveryCoordinator`).
     public func reload() async {
         try? refresh()
-        enqueueEffects(activity: .sync(activeSession), reminders: true)
+        enqueueEffects(activity: .sync(liveActivitySnapshot), reminders: true)
+        await waitForPendingEffects()
+    }
+
+    /// A bottle was logged, edited, deleted or restored. It may now be, or no longer be, the
+    /// latest feed, so the since-last-feed count on the Live Activity is brought up to date.
+    /// Bottles don't touch a running breastfeed; its activity is left as it is.
+    public func bottlesDidChange() async {
+        try? refresh()
+        if activeSession == nil {
+            enqueueEffects(activity: .sync(liveActivitySnapshot), reminders: false)
+        }
         await waitForPendingEffects()
     }
 
@@ -321,9 +304,6 @@ public final class FeedingSessionManager {
         try write { try repository.save(transition.snapshot, modifiedAt: instant.wall) }
 
         if transition.snapshot.status == .completed {
-            if let state {
-                lastEnd = EndRecord(before: state, completedRevision: transition.snapshot.revision, endedAt: instant.wall)
-            }
             activeSession = nil
             lastCompletedSession = transition.snapshot
         } else {
@@ -351,13 +331,22 @@ public final class FeedingSessionManager {
         let previous = effectsTail
         let active = activeSession
         let lastCompleted = lastCompletedSession
-        effectsTail = Task { @MainActor [liveActivity, reminders] in
+        // Read now, in command order. Only matters when no feed is running.
+        var lastBottle: BottleEntry?
+        if case .sync(let snapshot) = activity, snapshot?.status ?? .completed == .completed {
+            lastBottle = latestBottle()
+        }
+        effectsTail = Task { @MainActor [liveActivity, reminders, lastBottle] in
             await previous?.value
-            if case .sync(let snapshot) = activity { await liveActivity.sync(snapshot) }
+            if case .sync(let snapshot) = activity { await liveActivity.sync(snapshot, lastBottle: lastBottle) }
             if shouldReschedule {
                 await reminders.feedingDataDidChange(activeSession: active, lastCompletedSession: lastCompleted)
             }
         }
+    }
+
+    private func latestBottle() -> BottleEntry? {
+        (try? bottles?.recentBottles(limit: 1))?.first
     }
 
     private func read<T>(_ body: () throws -> T) throws -> T {
