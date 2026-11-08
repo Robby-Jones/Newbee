@@ -1,6 +1,6 @@
 # Layouts
 
-> Project: Newbee — native iOS 17+ app (SwiftUI, SwiftData, ActivityKit). NOT a web app: no React/Tailwind/CSS. Designs are iPhone screens (390×844 pt) and Live Activity surfaces. UI uses SF Pro / SF Pro Rounded, SF Symbols, system materials.
+> Project: Newbee — native iOS 18+ app (SwiftUI, SwiftData, ActivityKit). NOT a web app: no React/Tailwind/CSS. Designs are iPhone screens (390×844 pt) and Live Activity surfaces. UI uses SF Pro / SF Pro Rounded, SF Symbols, system materials.
 
 The app shell is a SwiftUI `TabView` with 4 tabs (Home, History, Insights, Settings), each a `NavigationStack` with a large title. Per-tab bottom chrome: undo toasts float above the Active Session Pill, which floats above the system tab bar. The breastfeeding timer is a full-screen cover; bottle logging and editing are sheets.
 

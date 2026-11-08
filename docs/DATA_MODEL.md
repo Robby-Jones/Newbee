@@ -106,12 +106,12 @@ A pumping session is a completed `FeedingSession` with `kind = pump`, `source = 
 
 ## 5. Indexing and performance
 
-- `#Index` needs iOS 18, and the deployment target is iOS 17, so V1 has no indexes. Expected volume is about 12 feeds/day (~4,400/year), which range fetches on `startedAt` handle without one. If profiling ever shows a need, raise the floor or add an index in a later schema version.
+- V1 has no `#Index` (it was written for an iOS 17 floor; the floor is now iOS 18, so indexes are available). Expected volume is about 12 feeds/day (~4,400/year), which range fetches on `startedAt` handle without one. If profiling ever shows a need, add an index in a later schema version.
 - Insights fetch the selected range once, map to value types, and compute off-main.
 
 ## 6. Deletion and integrity
 
-- Delete session → removes its segments and bottle details. Always go through `FeedingSession.deleteWithChildren(from:)`, because SwiftData's `.cascade` rule doesn't reliably delete children on iOS 17 (caught by the iOS 17 CI job). The `.cascade` rules stay in the schema as a second line of defence. Confirmation dialog plus undo toast (soft-hold the snapshot in memory for undo; re-insert on undo).
+- Delete session → removes its segments and bottle details. Always go through `FeedingSession.deleteWithChildren(from:)`, because SwiftData's `.cascade` rule didn't reliably delete children on iOS 17 (caught by the former iOS 17 CI job), and the explicit path is kept on iOS 18. The `.cascade` rules stay in the schema as a second line of defence. Confirmation dialog plus undo toast (soft-hold the snapshot in memory for undo; re-insert on undo).
 - "Delete all data" in Settings → delete every session through `deleteWithChildren`, then every `Baby` (don't rely on `.cascade`; see above), end any Live Activity, cancel all notifications, reset prefs except appearance. Requires typed confirmation.
 - Deleting the active session also ends its Live Activity and reminders through the manager.
 
