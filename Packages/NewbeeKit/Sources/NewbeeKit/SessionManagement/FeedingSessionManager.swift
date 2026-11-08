@@ -56,20 +56,6 @@ public final class FeedingSessionManager {
     @ObservationIgnored private var effectsTail: Task<Void, Never>?
     /// Session ID → when the parent answered "Keep going" (consumed by `RecoveryCoordinator`).
     @ObservationIgnored var recoveryAcknowledgements: [UUID: Date] = [:]
-    /// The last End, kept so "Undo" on the Live Activity summary can put the feed back exactly
-    /// as it was. In memory only: if the app was terminated in between, undo reopens the feed
-    /// paused instead (see `undoEnd(sessionID:)`).
-    @ObservationIgnored private var lastEnd: EndRecord?
-
-    private struct EndRecord {
-        var before: SessionSnapshot
-        var completedRevision: Int
-        var endedAt: Date
-    }
-
-    /// How long after End the Live Activity summary offers Undo. Matches the summary's time on
-    /// the Lock Screen.
-    public static let undoEndWindow: TimeInterval = 15 * 60
 
     public init(
         repository: any FeedingRepository,
@@ -96,6 +82,12 @@ public final class FeedingSessionManager {
     /// The side to offer next: the opposite of the side used last. Left when there's no history.
     public var suggestedNextSide: Side {
         lastSide?.opposite ?? .left
+    }
+
+    /// What the Live Activity shows: the running or paused feed, or else the last finished one
+    /// (as time since it ended), or nothing.
+    var liveActivitySnapshot: SessionSnapshot? {
+        activeSession ?? lastCompletedSession
     }
 
     // MARK: - Commands
@@ -151,7 +143,8 @@ public final class FeedingSessionManager {
         try write { try repository.delete(sessionID: session.id) }
         recoveryPrompt = nil
         try? refresh()
-        enqueueEffects(activity: .sync(activeSession), reminders: true)
+        // Back to counting the time since the previous feed, if there was one.
+        enqueueEffects(activity: .sync(liveActivitySnapshot), reminders: true)
         return session
     }
 
@@ -166,8 +159,8 @@ public final class FeedingSessionManager {
         guard session.status == .completed else { throw FeedingSessionError.statusChangeNotAllowed }
         try write { try repository.delete(sessionID: sessionID) }
         try? refresh()
-        // "Last side" and reminders may now come from an earlier feed.
-        enqueueEffects(activity: .unchanged, reminders: true)
+        // "Last side", reminders and the since-last-feed count may now come from an earlier feed.
+        enqueueEffects(activity: .sync(liveActivitySnapshot), reminders: true)
         return session
     }
 
@@ -187,7 +180,7 @@ public final class FeedingSessionManager {
         try write { try repository.save(restored, modifiedAt: now) }
         recoveryPrompt = nil
         try? refresh()
-        enqueueEffects(activity: restored.status == .completed ? .unchanged : .sync(restored), reminders: true)
+        enqueueEffects(activity: .sync(restored.status == .completed ? liveActivitySnapshot : restored), reminders: true)
     }
 
     /// Saves a manually edited session after checking the same rules the engine enforces
@@ -207,7 +200,8 @@ public final class FeedingSessionManager {
         }
         try write { try repository.save(saved, modifiedAt: now) }
         try? refresh()
-        enqueueEffects(activity: saved.status == .completed ? .unchanged : .sync(saved), reminders: true)
+        // An edited end time moves the since-last-feed count too.
+        enqueueEffects(activity: .sync(saved.status == .completed ? liveActivitySnapshot : saved), reminders: true)
     }
 
     /// "Keep going": the parent confirmed the current state. Recovery won't ask about the same
@@ -238,51 +232,20 @@ public final class FeedingSessionManager {
         }
         if !applied {
             try? refresh()
-            enqueueEffects(activity: .sync(activeSession), reminders: false)
+            enqueueEffects(activity: .sync(liveActivitySnapshot), reminders: false)
         }
         await waitForPendingEffects()
     }
 
-    /// "Undo" on the Live Activity's "Feed complete" summary: reopens the session that ended,
-    /// if it is still the latest feed, ended within `undoEndWindow`, and no other feed has
-    /// started since.
-    ///
-    /// If this process saw the End, the feed goes back exactly as it was (a running side keeps
-    /// running, so the time since End counts, as with the in-app undo). Otherwise, for example
-    /// after the app was terminated, it can't tell whether the feed was running or paused, so it
-    /// reopens it **paused** rather than inventing feeding time.
-    ///
-    /// Anything refused is a silent no-op. The Live Activity is synced before this returns.
-    public func undoEnd(sessionID: UUID) async {
-        if let snapshot = snapshotToReopen(sessionID: sessionID), (try? restore(snapshot)) != nil {
-            lastEnd = nil
-        } else {
+    /// "Start" on the Live Activity's since-last-feed state. Refused (a feed is already running,
+    /// e.g. started in the app since the activity was drawn) is a silent no-op. Either way the
+    /// Live Activity is synced before this returns.
+    public func applyRemoteStart(side: Side) async {
+        if (try? perform(.start(side)))?.isNoOp != false {
             try? refresh()
-            enqueueEffects(activity: .sync(activeSession), reminders: false)
+            enqueueEffects(activity: .sync(liveActivitySnapshot), reminders: false)
         }
         await waitForPendingEffects()
-    }
-
-    private func snapshotToReopen(sessionID: UUID) -> SessionSnapshot? {
-        let now = clock.now
-        guard let stored = try? repository.session(id: sessionID),
-              stored.status == .completed,
-              let latest = try? repository.recentCompletedSessions(limit: 1).first, latest.id == sessionID,
-              (try? repository.openSessions())?.isEmpty == true
-        else { return nil }
-
-        if let record = lastEnd, record.before.id == sessionID, record.completedRevision == stored.revision {
-            guard now.timeIntervalSince(record.endedAt) <= Self.undoEndWindow else { return nil }
-            var before = record.before
-            before.revision = stored.revision
-            return before
-        }
-
-        guard let endedAt = stored.endedAt, now.timeIntervalSince(endedAt) <= Self.undoEndWindow else { return nil }
-        var reopened = stored
-        reopened.status = .paused
-        reopened.endedAt = nil
-        return reopened
     }
 
     // MARK: - Loading
@@ -300,7 +263,7 @@ public final class FeedingSessionManager {
     /// Used at launch and on every foreground (via `RecoveryCoordinator`).
     public func reload() async {
         try? refresh()
-        enqueueEffects(activity: .sync(activeSession), reminders: true)
+        enqueueEffects(activity: .sync(liveActivitySnapshot), reminders: true)
         await waitForPendingEffects()
     }
 
@@ -321,9 +284,6 @@ public final class FeedingSessionManager {
         try write { try repository.save(transition.snapshot, modifiedAt: instant.wall) }
 
         if transition.snapshot.status == .completed {
-            if let state {
-                lastEnd = EndRecord(before: state, completedRevision: transition.snapshot.revision, endedAt: instant.wall)
-            }
             activeSession = nil
             lastCompletedSession = transition.snapshot
         } else {

@@ -46,17 +46,54 @@ struct LiveActivityPlannerTests {
         #expect(actions.isEmpty)
     }
 
-    @Test func endingShowsTheFinalSummaryThenDismisses() {
+    @Test func endingKeepsTheActivityAndCountsSinceTheFeedEnded() {
         let shown = State(snapshot: activeOnRight())
         let completed = completedSpecExample()
+        let idle = State(snapshot: completed)
         let actions = planner.plan(for: completed, existing: [record("a", state: shown)], activitiesEnabled: true, now: now)
-        #expect(actions == [
-            .end(id: "a", finalState: State(snapshot: completed), dismissal: .after(now + minutes(15))),
-        ])
+        #expect(actions == [.update(id: "a", idle, staleDate: idle.staleDate(after: minutes(45)))])
+        #expect(idle.lastFeedEndedAt == t0 + minutes(21))
     }
 
     @Test func endingWithNoActivityDoesNotRequestOne() {
         #expect(planner.plan(for: completedSpecExample(), existing: [], activitiesEnabled: true, now: now).isEmpty)
+    }
+
+    @Test func sinceLastFeedMovesToAnEarlierFeedWhenTheLatestIsDeleted() {
+        // The activity counted from the feed that was deleted; it now counts from the one before.
+        var earlier = completedSpecExample(revision: 7)
+        earlier.id = otherSessionID
+        let shown = record("a", state: State(snapshot: completedSpecExample(revision: 9)))
+        let state = State(snapshot: earlier)
+        let actions = planner.plan(for: earlier, existing: [shown], activitiesEnabled: true, now: now)
+        // Different session, so the lower revision doesn't block the update.
+        #expect(actions == [.update(id: "a", state, staleDate: state.staleDate(after: minutes(45)))])
+        #expect(state.sessionID == otherSessionID)
+    }
+
+    @Test func sinceLastFeedClearsExtraActivitiesAndExpiredOnes() {
+        let completed = completedSpecExample()
+        let idle = State(snapshot: completed)
+        let actions = planner.plan(
+            for: completed,
+            existing: [
+                record("expired", session: otherSessionID, state: State(snapshot: activeOnRight()), phase: .ended),
+                record("a", state: idle),
+                record("extra", session: otherSessionID, state: State(snapshot: activeOnRight())),
+            ],
+            activitiesEnabled: true, now: now
+        )
+        #expect(actions == [
+            .end(id: "expired", finalState: nil, dismissal: .immediate),
+            .end(id: "extra", finalState: nil, dismissal: .immediate),
+        ])
+    }
+
+    @Test func anExpiredSinceLastFeedActivityIsLeftToTimeOut() {
+        // The 8-hour limit ended it; it can't be updated and isn't requested again until the next feed.
+        let completed = completedSpecExample()
+        let expired = record("a", state: State(snapshot: completed), phase: .ended)
+        #expect(planner.plan(for: completed, existing: [expired], activitiesEnabled: true, now: now).isEmpty)
     }
 
     @Test func discardingEndsEverythingImmediately() {
@@ -112,20 +149,42 @@ struct LiveActivityPlannerTests {
         }
     }
 
-    @Test func undoingEndReplacesTheSummaryInsteadOfShowingTwoActivities() {
-        // End left a 15-minute summary on screen; the parent tapped Undo in the app.
-        let summary = record("a", state: State(snapshot: completedSpecExample(revision: 3)), phase: .ended)
+    @Test func undoingEndInTheAppPutsTheSameActivityBack() {
+        // End switched the activity to since-last-feed; the parent tapped Undo in the app.
+        let idle = record("a", state: State(snapshot: completedSpecExample(revision: 3)))
         let restored = activeOnRight(revision: 4)
         let state = State(snapshot: restored)
-        let actions = planner.plan(for: restored, existing: [summary], activitiesEnabled: true, now: now)
+        let actions = planner.plan(for: restored, existing: [idle], activitiesEnabled: true, now: now)
+        #expect(actions == [.update(id: "a", state, staleDate: state.staleDate(after: minutes(45)))])
+    }
+
+    @Test func theNextFeedReplacesTheSinceLastFeedActivityWithAFreshOne() {
+        // A fresh request restarts ActivityKit's 8-hour clock; the old one is named so the
+        // coordinator can end it after, or reuse it if the request is refused.
+        var previous = completedSpecExample()
+        previous.id = otherSessionID
+        let idle = record("old", session: otherSessionID, state: State(snapshot: previous))
+        let snapshot = activeOnRight()
+        let state = State(snapshot: snapshot)
+        let actions = planner.plan(for: snapshot, existing: [idle], activitiesEnabled: true, now: now)
         #expect(actions == [
-            .end(id: "a", finalState: nil, dismissal: .immediate),
-            .request(FeedingActivityAttributes(sessionID: sessionID, babyName: ""), state, staleDate: state.staleDate(after: minutes(45))),
+            .request(
+                FeedingActivityAttributes(sessionID: sessionID, babyName: ""), state,
+                staleDate: state.staleDate(after: minutes(45)), replacing: "old"
+            ),
         ])
     }
 
-    @Test func startingTheNextFeedRemovesThePreviousSummary() {
-        // Cluster feeding: a new feed starts while the last one's summary is still showing.
+    @Test func theNextFeedRemovesTheSinceLastFeedActivityWhenActivitiesAreOff() {
+        var previous = completedSpecExample()
+        previous.id = otherSessionID
+        let idle = record("old", session: otherSessionID, state: State(snapshot: previous))
+        let actions = planner.plan(for: activeOnRight(), existing: [idle], activitiesEnabled: false, now: now)
+        #expect(actions == [.end(id: "old", finalState: nil, dismissal: .immediate)])
+    }
+
+    @Test func startingTheNextFeedRemovesAnOldSummary() {
+        // An expired activity, or an older build's "Feed complete" summary, still on screen.
         var previous = completedSpecExample()
         previous.id = otherSessionID
         let summary = record("old", session: otherSessionID, state: State(snapshot: previous), phase: .ended)
@@ -140,10 +199,10 @@ struct LiveActivityPlannerTests {
         #expect(planner.plan(for: completedSpecExample(), existing: [gone], activitiesEnabled: true, now: now).isEmpty)
     }
 
-    @Test func repeatedSyncOfACompletedSessionKeepsItsOwnSummary() {
+    @Test func repeatedSyncOfTheSinceLastFeedStateIsANoOp() {
         let completed = completedSpecExample()
-        let summary = record("a", state: State(snapshot: completed), phase: .ended)
-        #expect(planner.plan(for: completed, existing: [summary], activitiesEnabled: true, now: now).isEmpty)
+        let idle = record("a", state: State(snapshot: completed))
+        #expect(planner.plan(for: completed, existing: [idle], activitiesEnabled: true, now: now).isEmpty)
     }
 
     @Test func respectsTheParentDismissingItUntilTheSessionChanges() {
@@ -151,14 +210,5 @@ struct LiveActivityPlannerTests {
         #expect(planner.plan(for: snapshot, existing: [], activitiesEnabled: true, dismissedAtRevision: 4, now: now).isEmpty)
         let changed = pausedAfterRight(revision: 5)
         #expect(planner.plan(for: changed, existing: [], activitiesEnabled: true, dismissedAtRevision: 4, now: now).count == 1)
-    }
-
-    @Test func customEndedSummaryDuration() {
-        let planner = LiveActivityPlanner(endedSummaryDuration: 0)
-        let actions = planner.plan(
-            for: completedSpecExample(), existing: [record("a", state: State(snapshot: activeOnRight()))],
-            activitiesEnabled: true, now: now
-        )
-        #expect(actions == [.end(id: "a", finalState: State(snapshot: completedSpecExample()), dismissal: .after(now))])
     }
 }

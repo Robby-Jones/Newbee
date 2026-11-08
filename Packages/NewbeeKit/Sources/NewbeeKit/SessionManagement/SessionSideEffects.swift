@@ -5,8 +5,9 @@ import Foundation
 ///
 /// The manager calls `sync` after every saved change, in command order, never concurrently:
 /// - an active or paused snapshot: start or update the activity;
-/// - a completed snapshot: end the activity showing the final summary;
-/// - `nil`: no session (for example after discard): end every activity.
+/// - a completed snapshot (the latest finished feed, when none is running): keep the activity
+///   and switch it to counting the time since that feed ended;
+/// - `nil`: no feeds at all: end every activity.
 @MainActor
 public protocol LiveActivitySyncing: AnyObject {
     func sync(_ snapshot: SessionSnapshot?) async

@@ -24,7 +24,7 @@ struct FeedingLiveActivity: Widget {
             let attributes = context.attributes
             return DynamicIsland {
                 DynamicIslandExpandedRegion(.leading) {
-                    IslandExpandedLeading(state: state)
+                    IslandExpandedLeading(state: state, isStale: context.isStale)
                 }
                 DynamicIslandExpandedRegion(.trailing) {
                     IslandExpandedTrailing(state: state, isStale: context.isStale)
@@ -36,11 +36,11 @@ struct FeedingLiveActivity: Widget {
             } compactLeading: {
                 IslandCompactLeading(state: state)
             } compactTrailing: {
-                IslandCompactTrailing(state: state)
+                IslandCompactTrailing(state: state, isStale: context.isStale)
             } minimal: {
                 IslandMinimal(state: state)
             }
-            .keylineTint(NBColor.side(state.currentSide))
+            .keylineTint(state.status == .ended ? NBColor.side(state.suggestedNextSide) : NBColor.side(state.currentSide))
         }
     }
 }

@@ -61,6 +61,13 @@ struct ContentStateMappingTests {
         #expect(state.totalAccumulated == minutes(21))
         #expect(state.pausedAt == t0 + minutes(21))
         #expect(!state.isRunning(.right))
+        #expect(state.lastFeedEndedAt == t0 + minutes(21))
+        #expect(state.sessionID == sessionID)
+    }
+
+    @Test func onlyAFinishedFeedHasASinceLastFeedStart() {
+        #expect(State(snapshot: activeOnRight()).lastFeedEndedAt == nil)
+        #expect(State(snapshot: pausedAfterRight()).lastFeedEndedAt == nil)
     }
 
     @Test func activeWithoutOpenSegmentIsShownPausedNotTickingFromAWrongStart() {
@@ -103,6 +110,20 @@ struct ContentStateMappingTests {
         #expect(State(snapshot: activeOnRight()).staleDate(after: minutes(45)) == t0 + minutes(12 + 45))
         // Paused: measured from the pause.
         #expect(State(snapshot: pausedAfterRight()).staleDate(after: minutes(45)) == t0 + minutes(17 + 45))
+        // Since last feed: the one-hour mark, where the count's format changes.
+        let idle = State(snapshot: completedSpecExample())
+        #expect(idle.staleDate(after: minutes(45)) == t0 + minutes(21 + 60))
+        #expect(idle.sinceLastFeedHourMark == t0 + minutes(21 + 60))
+    }
+
+    @Test func contentFromAnOlderBuildWithoutASessionIDStillDecodes() throws {
+        var json = try JSONSerialization.jsonObject(with: JSONEncoder().encode(State(snapshot: activeOnRight()))) as! [String: Any]
+        json.removeValue(forKey: "sessionID")
+        let decoded = try JSONDecoder().decode(State.self, from: JSONSerialization.data(withJSONObject: json))
+        #expect(decoded.sessionID == nil)
+        let attributes = FeedingActivityAttributes(sessionID: otherSessionID, babyName: "")
+        #expect(LiveActivityRecord.sessionID(attributes: attributes, state: decoded) == otherSessionID)
+        #expect(LiveActivityRecord.sessionID(attributes: attributes, state: State(snapshot: activeOnRight())) == sessionID)
     }
 
     @Test func payloadIsWellUnderTheFourKilobyteLimit() throws {

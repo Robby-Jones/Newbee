@@ -43,9 +43,59 @@ struct LiveActivityCoordinatorTests {
         completed.endedAt = clock.now
         completed.revision = 3
         await coordinator.sync(completed)
-        #expect(client.calls.last == .end(id: "activity-1", final: .ended, dismissal: .after(clock.now + 15 * 60)))
+        // The same activity stays and counts the time since the feed ended.
+        #expect(client.calls.last == .update(id: "activity-1", revision: 3))
+        #expect(client.activities[0].phase == .live)
+        #expect(client.activities[0].state.status == .ended)
+        #expect(client.activities[0].state.lastFeedEndedAt == clock.now)
         #expect(client.activities[0].state.totalAccumulated == 21 * 60)
         #expect(client.calls.count == 3)
+
+        // The next feed gets a fresh activity (a new 8-hour window), and only then is the old one removed.
+        clock.advance(by: 2 * 3600)
+        let nextID = UUID()
+        let next = SessionSnapshot(id: nextID, status: .active, segments: [Segment(side: .left, start: clock.now)], startedAt: clock.now, revision: 1)
+        await coordinator.sync(next)
+        #expect(Array(client.calls.suffix(2)) == [
+            .request(sessionID: nextID, revision: 1),
+            .end(id: "activity-1", final: nil, dismissal: .immediate),
+        ])
+        #expect(client.activities.filter { $0.phase != .dismissed }.map(\.id) == ["activity-2"])
+    }
+
+    @Test func startFromTheLockScreenReusesTheActivityWhenARequestIsRefused() async {
+        let coordinator = makeCoordinator()
+        let start = clock.now
+        await coordinator.sync(active(on: .left, revision: 1, since: start))
+        clock.advance(by: 600)
+        let completed = SessionSnapshot(
+            id: id, status: .completed, segments: [Segment(side: .left, start: start, end: clock.now)],
+            startedAt: start, endedAt: clock.now, revision: 2
+        )
+        await coordinator.sync(completed)
+
+        // Start tapped on the Lock Screen: the app runs in the background and can't request one.
+        client.refuseRequests = true
+        clock.advance(by: 3600)
+        let nextID = UUID()
+        let next = SessionSnapshot(id: nextID, status: .active, segments: [Segment(side: .right, start: clock.now)], startedAt: clock.now, revision: 1)
+        await coordinator.sync(next)
+        let visible = client.activities.filter { $0.phase != .dismissed }
+        #expect(visible.map(\.id) == ["activity-1"])
+        #expect(visible.first?.state.status == .active)
+        #expect(visible.first?.state.sessionID == nextID)
+        #expect(visible.first?.sessionID == nextID)
+
+        // Later syncs treat it as the new feed's activity.
+        client.clearCalls()
+        client.refuseRequests = false
+        clock.advance(by: 60)
+        var paused = next
+        paused.segments[0].end = clock.now
+        paused.status = .paused
+        paused.revision = 2
+        await coordinator.sync(paused)
+        #expect(client.calls == [.update(id: "activity-1", revision: 2)])
     }
 
     @Test func repeatedSyncOfTheSameSnapshotIsANoOp() async {
@@ -105,7 +155,7 @@ struct LiveActivityCoordinatorTests {
         #expect(client.activities.filter { $0.phase != .dismissed }.count == 1)
     }
 
-    @Test func undoOfEndLeavesOnlyOneActivityOnScreen() async {
+    @Test func undoOfEndInTheAppPutsTheSameActivityBack() async {
         let coordinator = makeCoordinator()
         let start = clock.now
         await coordinator.sync(active(on: .left, revision: 1, since: start))
@@ -114,13 +164,14 @@ struct LiveActivityCoordinatorTests {
             id: id, status: .completed, segments: [Segment(side: .left, start: start, end: clock.now)],
             startedAt: start, endedAt: clock.now, revision: 2
         )
-        await coordinator.sync(completed) // summary stays visible for 15 min
+        await coordinator.sync(completed) // now counting since this feed
         let restored = SessionSnapshot(
             id: id, status: .active, segments: [Segment(side: .left, start: start)], startedAt: start, revision: 3
         )
         await coordinator.sync(restored) // Undo in the app
         let visible = client.activities.filter { $0.phase != .dismissed }
         #expect(visible.count == 1)
+        #expect(visible.first?.id == "activity-1")
         #expect(visible.first?.state.status == .active)
     }
 
@@ -144,8 +195,11 @@ struct LiveActivityCoordinatorTests {
         let old = SessionSnapshot(id: otherID, status: .active, segments: [Segment(side: .left, start: clock.now)], startedAt: clock.now, revision: 1)
         await coordinator.sync(old)
         await coordinator.sync(active(on: .right, revision: 1, since: clock.now))
-        #expect(client.calls.contains(.end(id: "activity-1", final: nil, dismissal: .immediate)))
-        #expect(client.calls.last == .request(sessionID: id, revision: 1))
+        // The new one is requested first, so the Lock Screen is never empty in between.
+        #expect(Array(client.calls.suffix(2)) == [
+            .request(sessionID: id, revision: 1),
+            .end(id: "activity-1", final: nil, dismissal: .immediate),
+        ])
     }
 
     @Test func disabledActivitiesAreReportedAndNotRequested() async {

@@ -52,13 +52,20 @@ struct LiveActivityWiringTests {
         await manager.handleLiveActivityCommand(.end, sessionID: UUID())
         #expect(manager.activeSession?.status == .paused)
 
-        // End from the Lock Screen: summary shown, then Undo in the app.
+        // End from the Lock Screen: the same activity now counts since the feed ended.
         let beforeEnd = try #require(manager.activeSession)
         await manager.handleLiveActivityCommand(.end, sessionID: id)
         #expect(manager.activeSession == nil)
-        #expect(client.activities[0].phase == .ended)
+        #expect(client.activities[0].phase == .live)
+        #expect(client.activities[0].state.status == .ended)
+        #expect(client.activities[0].state.lastFeedEndedAt == manager.lastCompletedSession?.endedAt)
+
+        // Opening the app again keeps it.
+        await manager.reload()
+        #expect(client.activities[0].phase == .live)
         #expect(client.activities[0].state.status == .ended)
 
+        // Undo in the app puts the feed back on the same activity.
         try manager.restore(beforeEnd)
         await manager.waitForPendingEffects()
         let visible = client.activities.filter { $0.phase != .dismissed }
@@ -66,7 +73,7 @@ struct LiveActivityWiringTests {
         #expect(visible.first?.state.status == .paused)
     }
 
-    @Test func undoOnTheSummaryReopensTheFeedAndItsActivity() async throws {
+    @Test func startOnTheSinceLastFeedActivityBeginsTheNextFeed() async throws {
         let clock = TestClock()
         let client = FakeLiveActivityClient()
         let coordinator = LiveActivityCoordinator(client: client, clock: clock)
@@ -75,19 +82,25 @@ struct LiveActivityWiringTests {
 
         try manager.start(side: .left)
         await manager.waitForPendingEffects()
-        let id = try #require(manager.activeSession?.id)
+        let first = try #require(manager.activeSession?.id)
         clock.advance(by: 8 * 60)
-        await manager.handleLiveActivityCommand(.end, sessionID: id)
+        try manager.end()
+        await manager.waitForPendingEffects()
         #expect(client.activities[0].state.status == .ended)
 
-        clock.advance(by: 20)
-        await manager.handleLiveActivityCommand(.undoEnd, sessionID: id)
-        #expect(manager.activeSession?.id == id)
-        #expect(manager.activeSession?.status == .active)
+        clock.advance(by: 2 * 3600)
+        await manager.handleLiveActivityCommand(.start(.right), sessionID: first)
+        let next = try #require(manager.activeSession)
+        #expect(next.id != first)
+        #expect(next.openSegment?.side == .right)
         let visible = client.activities.filter { $0.phase != .dismissed }
         #expect(visible.count == 1)
         #expect(visible.first?.state.status == .active)
-        #expect(visible.first?.state.currentSide == .left)
+        #expect(visible.first?.sessionID == next.id)
+
+        // A second tap (or a stale activity) doesn't start another feed.
+        await manager.handleLiveActivityCommand(.start(.left), sessionID: first)
+        #expect(manager.activeSession == next)
     }
 
     @Test(arguments: [
@@ -101,7 +114,7 @@ struct LiveActivityWiringTests {
         #expect(SessionCommand(button) == engine)
     }
 
-    @Test func undoIsNotAnEngineCommand() {
-        #expect(SessionCommand(LiveActivityCommand.undoEnd) == nil)
+    @Test func startIsNotAnEngineCommandOnTheNamedSession() {
+        #expect(SessionCommand(LiveActivityCommand.start(.left)) == nil)
     }
 }

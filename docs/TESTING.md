@@ -38,7 +38,7 @@ Target: **≥ 95 % line coverage** on `SessionEngine` and `Analytics`.
 
 ## 4. UI tests (XCUITest, launch argument `-uiTesting` → in-memory store + fixed clock)
 
-Start feed → switch → pause → resume → end → verify summary; undo end; log bottle via preset; edit a historical entry's segments; delete with confirm + undo; calendar month navigation and day selection; dashboard updates after a log; history filter; recovery sheet appears with a seeded stale session; Dynamic Type XXXL smoke test of the timer screen.
+Start feed → switch → pause → resume → end → verify summary; undo end (in-app toast); log bottle via preset; edit a historical entry's segments; delete with confirm + undo; calendar month navigation and day selection; dashboard updates after a log; history filter; recovery sheet appears with a seeded stale session; Dynamic Type XXXL smoke test of the timer screen.
 
 ## 5. Physical device test plan (Robby's iPhone)
 
@@ -50,9 +50,10 @@ Run each case on an **iPhone 14 Pro or later** (Dynamic Island). Where marked �
 | D2 | Lock phone 5 min† | Lock Screen timer kept ticking; matches app on unlock ±1 s |
 | D3 | Switch side from Lock Screen ×5 rapidly† | Final side correct; no duplicate segments; app agrees |
 | D4 | Pause / resume from island expanded | State and timers frozen and resumed correctly |
-| D5 | End from Lock Screen† | Activity shows final summary, dismisses after the policy; session completed in History |
-| D5c | End from the Lock Screen, then tap **Undo end** on the summary (also from the island) | Feed is back on the same side and still running; app shows it running; only one activity visible |
-| D5b | Within 15 min of D5: tap Undo in the app, or start the next feed† | The "Feed complete" summary disappears at once; only one activity is on the Lock Screen / island |
+| D5 | End from Lock Screen† (and separately, End in the app) | The same activity stays and shows "Since last feed" counting up from 0:00 as h:mm, with Start Left / Start Right and a "Last feed L … · R … · ended …" line; session completed in History |
+| D5a | Leave D5 for over an hour (phone locked, app not opened) | The count goes from 0:59 to 1:00 and keeps ticking as h:mm (island compact too) |
+| D5b | After D5: tap Undo in the app, or start the next feed in the app† | Undo puts the feed back on the same activity; a new feed replaces it; only one activity is on the Lock Screen / island |
+| D5c | After D5: tap **Start** on the Lock Screen / island (phone unlocked) | A feed starts on that side; the app shows it running; one activity, showing the new feed, and its buttons work |
 | D6 | Double-tap End | One completed session, no errors |
 | D7 | Background app, open 3 other apps, return | Timer accurate |
 | D8 | Force-quit during active feed | Record what iOS does with the activity; reopening restores the session; activity reconciled |
@@ -67,7 +68,7 @@ Run each case on an **iPhone 14 Pro or later** (Dynamic Island). Where marked �
 | D16 | Dark mode, large Dynamic Type, VoiceOver on Lock Screen activity | Readable; buttons labelled |
 | D17 | Low Power Mode | Timer still accurate (rendered by system) |
 | D18 | Reminder fires after configured interval; suppressed in quiet hours | As configured |
-| D19 | With the phone locked (not just asleep), tap Switch, Pause, Resume, End and Undo end on the Lock Screen activity, without Face ID looking at you (cover the camera) | Each tap takes effect with no unlock prompt; on unlock the app agrees. Before the first unlock after a restart the buttons can't work, because the store is still encrypted |
+| D19 | With the phone locked (not just asleep), tap Switch, Pause, Resume, End and Start on the Lock Screen activity, without Face ID looking at you (cover the camera) | Each tap takes effect with no unlock prompt; on unlock the app agrees. Before the first unlock after a restart the buttons can't work, because the store is still encrypted |
 
 ## 6. CI (proposed)
 

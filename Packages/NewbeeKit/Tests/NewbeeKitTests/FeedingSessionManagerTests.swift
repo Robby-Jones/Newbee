@@ -300,96 +300,74 @@ struct FeedingSessionManagerTests {
         try manager.end()
         await manager.applyRemote(.end, sessionID: id)
         #expect(repository.sessions.count == 1)
-        #expect(activity.synced.last == .some(nil))
+        #expect(activity.synced.last == .some(manager.lastCompletedSession))
     }
 
-    // MARK: Undo End from the Live Activity summary
+    // MARK: Since last feed and Start from the Live Activity
 
-    @Test func undoEndPutsARunningFeedBackAsItWas() async throws {
+    @Test func endingKeepsSyncingTheFinishedFeedForTheSinceLastFeedCount() async throws {
         let manager = makeManager()
         try manager.start(side: .left)
         let id = manager.activeSession!.id
         clock.advance(by: 5 * 60)
         await manager.applyRemote(.end, sessionID: id)
-        #expect(manager.activeSession == nil)
-        clock.advance(by: 30)
-        await manager.undoEnd(sessionID: id)
-        let reopened = try #require(manager.activeSession)
-        #expect(reopened.id == id)
-        #expect(reopened.status == .active)
-        #expect(reopened.openSegment?.side == .left)
-        #expect(reopened.endedAt == nil)
-        #expect(approx(reopened.duration(on: .left, at: clock.now), 5 * 60 + 30))
-        #expect(activity.synced.last == .some(reopened))
+        let finished = try #require(manager.lastCompletedSession)
+        #expect(activity.synced.last == .some(finished))
+
+        // Every foreground re-syncs it, rather than clearing the activity.
+        await manager.reload()
+        #expect(activity.synced.last == .some(finished))
     }
 
-    @Test func undoEndKeepsAPausedFeedPaused() async throws {
+    @Test func discardingTheRunningFeedGoesBackToThePreviousFeed() async throws {
         let manager = makeManager()
+        try manager.start(side: .left)
+        clock.advance(by: 60)
+        try manager.end()
+        let previous = try #require(manager.lastCompletedSession)
+        clock.advance(by: 3600)
         try manager.start(side: .right)
-        let id = manager.activeSession!.id
-        clock.advance(by: 4 * 60)
-        try manager.pause()
-        clock.advance(by: 10 * 60)
-        await manager.applyRemote(.end, sessionID: id)
-        await manager.undoEnd(sessionID: id)
-        let reopened = try #require(manager.activeSession)
-        #expect(reopened.status == .paused)
-        #expect(approx(reopened.duration(on: .right, at: clock.now), 4 * 60))
+        _ = try manager.discardActive()
+        await manager.waitForPendingEffects()
+        #expect(activity.synced.last == .some(previous))
     }
 
-    @Test func undoEndAfterTheAppWasTerminatedReopensPaused() async throws {
-        let first = makeManager()
-        try first.start(side: .left)
-        let id = first.activeSession!.id
-        clock.advance(by: 6 * 60)
-        await first.applyRemote(.end, sessionID: id)
-
-        let relaunched = makeManager()
-        clock.advance(by: 60)
-        await relaunched.undoEnd(sessionID: id)
-        let reopened = try #require(relaunched.activeSession)
-        #expect(reopened.status == .paused)
-        #expect(reopened.endedAt == nil)
-        #expect(approx(reopened.duration(on: .left, at: clock.now), 6 * 60))
-    }
-
-    @Test func undoEndIsRefusedAfterTheWindow() async throws {
+    @Test func deletingTheLatestFeedCountsFromTheOneBefore() async throws {
         let manager = makeManager()
         try manager.start(side: .left)
-        let id = manager.activeSession!.id
         clock.advance(by: 60)
-        await manager.applyRemote(.end, sessionID: id)
-        clock.advance(by: FeedingSessionManager.undoEndWindow + 1)
-        await manager.undoEnd(sessionID: id)
-        #expect(manager.activeSession == nil)
-        #expect(try repository.session(id: id)?.status == .completed)
-    }
-
-    @Test func undoEndIsRefusedOnceTheNextFeedHasStarted() async throws {
-        let manager = makeManager()
-        try manager.start(side: .left)
-        let id = manager.activeSession!.id
-        clock.advance(by: 60)
-        await manager.applyRemote(.end, sessionID: id)
-        clock.advance(by: 60)
+        try manager.end()
+        let earlier = try #require(manager.lastCompletedSession)
+        clock.advance(by: 3600)
         try manager.start(side: .right)
-        let next = manager.activeSession
-        await manager.undoEnd(sessionID: id)
-        #expect(manager.activeSession == next)
-        #expect(try repository.session(id: id)?.status == .completed)
+        clock.advance(by: 60)
+        try manager.end()
+        let latest = try #require(manager.lastCompletedSession)
+        _ = try manager.deleteCompleted(sessionID: latest.id)
+        await manager.waitForPendingEffects()
+        #expect(activity.synced.last == .some(earlier))
     }
 
-    @Test func undoEndTwiceIsHarmless() async throws {
+    @Test func remoteStartBeginsAFeedOnThatSide() async throws {
         let manager = makeManager()
         try manager.start(side: .left)
-        let id = manager.activeSession!.id
         clock.advance(by: 60)
-        await manager.applyRemote(.end, sessionID: id)
-        await manager.undoEnd(sessionID: id)
-        let reopened = manager.activeSession
-        await manager.undoEnd(sessionID: id)
-        #expect(manager.activeSession == reopened)
+        try manager.end()
+        clock.advance(by: 2 * 3600)
+        await manager.applyRemoteStart(side: .right)
+        let started = try #require(manager.activeSession)
+        #expect(started.openSegment?.side == .right)
+        #expect(activity.synced.last == .some(started))
+    }
+
+    @Test func remoteStartWhileAFeedIsRunningChangesNothingButResyncs() async throws {
+        let manager = makeManager()
+        try manager.start(side: .left)
+        let running = manager.activeSession
+        await manager.applyRemoteStart(side: .right)
+        #expect(manager.activeSession == running)
         #expect(repository.sessions.count == 1)
+        #expect(activity.synced.last == .some(running))
     }
 }
 

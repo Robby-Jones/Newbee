@@ -32,7 +32,8 @@ final class FakeLiveActivityClient: LiveActivityClient {
         if refuseRequests { throw Refused() }
         let id = "activity-\(nextID)"
         nextID += 1
-        activities.append(LiveActivityRecord(id: id, sessionID: attributes.sessionID, state: state, phase: .live))
+        let session = LiveActivityRecord.sessionID(attributes: attributes, state: state)
+        activities.append(LiveActivityRecord(id: id, sessionID: session, state: state, phase: .live))
         calls.append(.request(sessionID: attributes.sessionID, revision: state.revision))
         return id
     }
@@ -41,6 +42,8 @@ final class FakeLiveActivityClient: LiveActivityClient {
         await Task.yield() // ActivityKit suspends here; exposes interleaving bugs.
         guard let index = activities.firstIndex(where: { $0.id == id }) else { return }
         activities[index].state = state
+        // Like ActivityKitClient: the record follows the session its content names.
+        if let session = state.sessionID { activities[index].sessionID = session }
         calls.append(.update(id: id, revision: state.revision))
     }
 
@@ -48,7 +51,7 @@ final class FakeLiveActivityClient: LiveActivityClient {
         await Task.yield()
         guard let index = activities.firstIndex(where: { $0.id == id }) else { return }
         if let finalState { activities[index].state = finalState }
-        // A summary with a later dismissal stays visible in the ended state; immediate removes it.
+        // A later dismissal stays visible in the ended state; immediate removes it.
         activities[index].phase = dismissal == .immediate ? .dismissed : .ended
         calls.append(.end(id: id, final: finalState?.status, dismissal: dismissal))
     }
