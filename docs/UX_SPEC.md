@@ -27,7 +27,7 @@ a list/calendar switch, and Apple Fitness puts its calendar inside History. So:
 - Settings is a tab, the only route to it. The Home gear and the Tools link are gone.
 
 **Global elements**
-- **Active Session Pill**: when a breastfeeding session is active or paused, a compact pill floats above the tab bar on *every* tab ("● L 12:05 · total 18:42", side-tinted). Tap opens the timer sheet. Built with `safeAreaInset(edge: .bottom)` on iOS 17; adopt the system tab-bar accessory API on newer iOS via availability checks.
+- **Active Session Pill**: when a breastfeeding session is active or paused, a compact pill floats above the tab bar on *every* tab ("● L 12:05 · total 18:42", side-tinted). Tap opens the timer sheet. Built with `safeAreaInset(edge: .bottom)`; adopt the system tab-bar accessory API on newer iOS via availability checks.
 - **Settings** is its own tab, with no second entry point.
 
 **Modal presentation choices** (keeps navigation depth at most 2)

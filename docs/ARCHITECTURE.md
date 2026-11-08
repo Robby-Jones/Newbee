@@ -12,7 +12,7 @@ Covers deliverable 4 (technical architecture) and 8 (folder structure), plus the
 | Language | Swift 6 language mode, strict concurrency | `@MainActor` default isolation for UI targets |
 | UI | SwiftUI | UIKit only where SwiftUI lacks an API (for example the PDF context) |
 | Pattern | MVVM with `@Observable` view models | No Combine except `NotificationCenter` bridging |
-| Min iOS | **17.0** (changed from 18.0 on 2026-11-07) | Availability checks for 17.2+ and 18+ APIs; CI tests on an iOS 17 simulator |
+| Min iOS | **18.0** (17.0 from 2026-11-07, back to 18.0 on 2026-11-08) | Availability checks only for APIs newer than 18; CI tests on an iOS 18 simulator |
 | Persistence | SwiftData, `VersionedSchema` + `SchemaMigrationPlan` from v1 | CloudKit-compatible schema rules |
 | Charts | Swift Charts | `SectorMark` (donut) available |
 | Live Activities | ActivityKit + WidgetKit extension | |

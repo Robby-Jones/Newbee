@@ -1,6 +1,6 @@
 # Page dependency trees
 
-> Project: Newbee — native iOS 17+ app (SwiftUI, SwiftData, ActivityKit). NOT a web app: no React/Tailwind/CSS. Designs are iPhone screens (390×844 pt) and Live Activity surfaces. UI uses SF Pro / SF Pro Rounded, SF Symbols, system materials.
+> Project: Newbee — native iOS 18+ app (SwiftUI, SwiftData, ActivityKit). NOT a web app: no React/Tailwind/CSS. Designs are iPhone screens (390×844 pt) and Live Activity surfaces. UI uses SF Pro / SF Pro Rounded, SF Symbols, system materials.
 
 ## Live Activity (Lock Screen + Dynamic Island)
 Entry: `NewbeeWidgets/LiveActivity/FeedingLiveActivity.swift`

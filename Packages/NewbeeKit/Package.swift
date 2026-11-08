@@ -5,7 +5,7 @@ import PackageDescription
 
 let package = Package(
     name: "NewbeeKit",
-    platforms: [.iOS(.v17), .macOS(.v14)],
+    platforms: [.iOS(.v18), .macOS(.v14)],
     products: [
         .library(name: "NewbeeKit", targets: ["NewbeeKit"]),
     ],

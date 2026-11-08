@@ -111,13 +111,13 @@ Roughly in order of value:
 1. **"Pause" semantics.** The spec lists Not Started → Active → Paused → Completed, but the Live Activity also needs "which side was active when paused". Decision: pausing closes the current segment and keeps `lastSide`; resuming opens a new segment on the same side. Resuming on the *other* side is just "switch while paused".
 2. **`BreastfeedingDetails` entity vs "avoid redundant calculated values".** Per-side durations and the starting breast can all be derived from segments. Decision: **drop the separate entity** and derive these values. This removes a whole class of data-drift bugs. Cached totals can be added later only if profiling demands them.
 3. **"Device restarted, where recovery is possible."** With absolute timestamps, recovery is *always* possible for the data. Only the Live Activity UI is lost if iOS doesn't restore it, and it comes back on next foreground.
-4. **Live Activity interactivity "where supported".** With the iOS 17 deployment target, every supported device gets Live Activity buttons. Dynamic Island needs iPhone 14 Pro or newer; other iPhones get the Lock Screen presentation and banner only.
+4. **Live Activity interactivity "where supported".** With the iOS 18 deployment target, every supported device gets Live Activity buttons. Dynamic Island needs iPhone 14 Pro or newer; other iPhones get the Lock Screen presentation and banner only.
 5. **AppPreferences in SwiftData vs UserDefaults.** Decision: use **UserDefaults in the App Group**, because preferences are needed by the widget extension, are tiny, and shouldn't sync blindly with feeding data.
 6. **Five tabs plus a settings home.** Decision: 5 tabs as suggested. Settings is reached from a gear on Home and from Tools. *Revised 2026-11-07:* four tabs (Home, History with a calendar mode, Insights, Settings); see UX_SPEC §1.
 
 ### 4.3 Decisions (answered by Robby, 2026-11-07)
 
-1. **Minimum iOS: 17.0.** Robby first chose 18.0, then lowered it to 17.0 on 2026-11-07 to reach more devices. The cost: no SwiftData `#Index`, and iOS 18 features such as a Control Center control need availability checks. CI runs an extra iOS 17 simulator job.
+1. **Minimum iOS: 18.0.** Robby first chose 18.0, lowered it to 17.0 on 2026-11-07 to reach more devices, then raised it back to 18.0 on 2026-11-08. iOS 18 APIs such as SwiftData `#Index` and a Control Center control need no availability checks. CI runs an extra iOS 18 simulator job.
 2. **Apple Developer Program: yes**, Robby has a paid membership.
 3. **Name and bundle ID:** display name **Newbee**, bundle ID `com.<team>.newbee`. The exact team prefix is set during Phase 4 signing.
 4. **iCloud sync: after the first release.** The schema stays CloudKit-ready.

@@ -34,8 +34,8 @@ jobs:
         include:
           - label: latest iOS
             ios_major: ""
-          - label: iOS 17 minimum
-            ios_major: "17"
+          - label: iOS 18 minimum
+            ios_major: "18"
     steps:
       - uses: actions/checkout@v4
       - name: Select Xcode

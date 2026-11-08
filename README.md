@@ -1,6 +1,6 @@
 # Newbee
 
-Newborn feeding tracker + insights app for iOS 17+. SwiftUI, SwiftData, ActivityKit (Live Activities and Dynamic Island).
+Newborn feeding tracker + insights app for iOS 18+. SwiftUI, SwiftData, ActivityKit (Live Activities and Dynamic Island).
 
 Planning docs: [docs/README.md](docs/README.md). Progress: [docs/CHECKLIST.md](docs/CHECKLIST.md).
 

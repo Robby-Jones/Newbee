@@ -1,7 +1,7 @@
 # Newbee design system
 
 ## Product
-Newbee is a native iPhone app (iOS 17+, SwiftUI) for tracking a newborn's feeds: a breastfeeding timer that can't lose time, quick bottle logging, history, insights and reminders. Users are tired parents, often one-handed, often in the dark at 3 a.m. Private by default: everything stays on the phone.
+Newbee is a native iPhone app (iOS 18+, SwiftUI) for tracking a newborn's feeds: a breastfeeding timer that can't lose time, quick bottle logging, history, insights and reminders. Users are tired parents, often one-handed, often in the dark at 3 a.m. Private by default: everything stays on the phone.
 
 Jobs to be done:
 - See at a glance when the baby last ate, how long ago, and which side to start on.
