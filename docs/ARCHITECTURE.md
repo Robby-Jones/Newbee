@@ -97,7 +97,7 @@ Covers deliverable 4 (technical architecture) and 8 (folder structure), plus the
 - The SwiftData implementation lives in the app. An in-memory implementation lives in tests.
 
 ### `ExportService`
-- CSV (NewbeeKit, pure) and PDF (app, `ImageRenderer`). Output goes to a temp file, then `ShareLink`.
+- CSV (NewbeeKit, pure) and PDF: `FeedReport` (NewbeeKit, pure numbers) drawn by `FeedReportPDF` (app, `ImageRenderer` into a US Letter PDF context). Output goes to a temp file, then the share sheet.
 
 ### `PreferencesStore`
 - `UserDefaults(suiteName: appGroup)` wrapped in a typed `@Observable` store.
@@ -149,7 +149,7 @@ Newbee/
 │   │   │   ├── SessionEngine/      # SessionEngine, Command, EngineError, Reconciler
 │   │   │   ├── Clock/              # AppClock, SystemClock, TestClock
 │   │   │   ├── Analytics/          # DailySummary, IntervalStats, Rolling24h, Comparisons
-│   │   │   ├── Export/             # CSVWriter
+│   │   │   ├── Export/             # FeedCSV, FeedReport (PDF report numbers)
 │   │   │   └── Utilities/          # DateInterval+Day, Duration formatting, Volume conversion
 │   │   └── Tests/NewbeeKitTests/
 │   └── NewbeeShared/               # iOS-only; linked by app + widget

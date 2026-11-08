@@ -470,6 +470,7 @@ private struct DataSection: View {
     @Environment(BottleLogUIModel.self) private var bottleModel: BottleLogUIModel?
     @Environment(PumpLogUIModel.self) private var pumpModel: PumpLogUIModel?
     @State private var sharing: SharedFile?
+    @State private var exportingReport = false
     @State private var confirmingDelete = false
     @State private var errorMessage: String?
 
@@ -483,6 +484,14 @@ private struct DataSection: View {
             .disabled(actions == nil)
             .accessibilityIdentifier("settings.export")
 
+            Button {
+                exportingReport = true
+            } label: {
+                Label("Export feeding report (PDF)", systemImage: "doc.richtext")
+            }
+            .disabled(actions == nil)
+            .accessibilityIdentifier("settings.exportPDF")
+
             Button(role: .destructive) {
                 confirmingDelete = true
             } label: {
@@ -494,11 +503,16 @@ private struct DataSection: View {
         } header: {
             Text("Your data")
         } footer: {
-            Text("Feeds are stored only on this iPhone and are included in its iCloud or computer backup. Export a CSV to share with your pediatrician or keep a copy.")
+            Text("Feeds are stored only on this iPhone and are included in its iCloud or computer backup. Share a PDF report with your pediatrician, or export a CSV to keep a copy.")
         }
         .sheet(item: $sharing) { file in
             ShareSheet(url: file.url)
                 .presentationDetents([.medium, .large])
+        }
+        .sheet(isPresented: $exportingReport) {
+            if let actions {
+                ExportReportSheet(export: actions.exportPDF)
+            }
         }
         .sheet(isPresented: $confirmingDelete) {
             DeleteAllDataSheet { try await deleteAll() }

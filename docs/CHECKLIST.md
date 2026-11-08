@@ -54,7 +54,7 @@ Legend: `[x]` done · `[ ]` pending · `[!]` blocked (reason noted). Updated by 
 - [ ] Reminders + quiet hours
 - [x] ~~Tools~~ (dropped 2026-11-07: duplicated Home, History and Insights)
 - [x] Navigation simplified to 4 tabs; Calendar is a mode of History; Settings is a tab
-- [ ] CSV / PDF export
+- [x] CSV / PDF export (PDF: summary page, chart and day-by-day log, US Letter, Settings → Your data)
 - [ ] Settings + onboarding + delete all data
 
 ## Phase 6: Testing & refinement
