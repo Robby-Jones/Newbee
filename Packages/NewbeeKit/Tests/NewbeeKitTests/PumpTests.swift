@@ -81,6 +81,13 @@ struct PumpLogTests {
         #expect(log.newDraft(unit: .fluidOunces).left == BottleAmount(2, .fluidOunces))
     }
 
+    @Test func draftCanEndEarlierButNotLater() {
+        let earlier = clock.now.addingTimeInterval(-3 * 86_400)
+        #expect(log.newDraft(unit: .milliliters, endingAt: earlier).startedAt == earlier.addingTimeInterval(-PumpLog.defaultDuration))
+        let future = log.newDraft(unit: .milliliters, endingAt: clock.now.addingTimeInterval(3600))
+        #expect(future.startedAt == clock.now.addingTimeInterval(-PumpLog.defaultDuration))
+    }
+
     @Test func nextDraftRepeatsTheLastSession() throws {
         try log.save(PumpDraft(
             left: BottleAmount(3, .fluidOunces),

@@ -25,6 +25,8 @@ struct HistoryView: View {
     @State private var filter: FeedFilter = .all
     @State private var editing: EditTarget?
     @State private var pendingDelete: HistoryItem?
+    /// The day picked in Calendar mode; new entries added there default to it.
+    @State private var calendarDay: Date? = Calendar.current.startOfDay(for: .now)
 
     var body: some View {
         // A plain stack rather than a top safe-area inset: an inset over the scroll view
@@ -34,7 +36,7 @@ struct HistoryView: View {
             Group {
                 switch mode {
                 case .list: list
-                case .calendar: CalendarView()
+                case .calendar: CalendarView(selectedDay: $calendarDay)
                 }
             }
             .frame(maxHeight: .infinity)
@@ -42,6 +44,10 @@ struct HistoryView: View {
         .background(NBColor.canvas)
         .navigationTitle("History")
         .toolbar { toolbar }
+        .onChange(of: mode) { _, mode in
+            // The calendar opens on today, as before.
+            if mode == .calendar { calendarDay = Calendar.current.startOfDay(for: .now) }
+        }
         .navigationDestination(for: DayRoute.self) { route in
             DayFeedsView(day: route.day)
         }
@@ -50,8 +56,8 @@ struct HistoryView: View {
                 switch target {
                 case .breast(let snapshot):
                     BreastFeedEditSheet(model: model, original: snapshot)
-                case .newBreast:
-                    BreastFeedEditSheet(model: model, original: nil, suggestedSide: model.controller.suggestedNextSide)
+                case .newBreast(let endingAt):
+                    BreastFeedEditSheet(model: model, original: nil, suggestedSide: model.controller.suggestedNextSide, now: endingAt)
                 }
             }
         }
@@ -208,19 +214,24 @@ struct HistoryView: View {
             ToolbarItem(placement: .topBarTrailing) {
                 Menu {
                     if model != nil {
-                        Button("Breastfeed", systemImage: "heart") { editing = .newBreast }
+                        Button("Breastfeed", systemImage: "heart") { editing = .newBreast(endingAt: newEntryTime()) }
                     }
                     if let bottleModel {
-                        Button("Bottle", systemImage: "waterbottle") { bottleModel.presentNew() }
+                        Button("Bottle", systemImage: "waterbottle") { bottleModel.presentNew(at: newEntryTime()) }
                     }
                     if let pumpModel {
-                        Button("Pumping", systemImage: PumpText.symbolName) { pumpModel.presentNew() }
+                        Button("Pumping", systemImage: PumpText.symbolName) { pumpModel.presentNew(endingAt: newEntryTime()) }
                     }
                 } label: {
                     Label("Add feed", systemImage: "plus")
                 }
             }
         }
+    }
+
+    /// Now, or in Calendar mode with another day selected, that day at the current time.
+    private func newEntryTime() -> Date {
+        ManualEntryTime.reference(onDay: mode == .calendar ? calendarDay : nil, now: .now)
     }
 
     @ViewBuilder
@@ -254,7 +265,7 @@ extension HistoryView {
 /// What the edit sheet is showing.
 private enum EditTarget: Identifiable {
     case breast(SessionSnapshot)
-    case newBreast
+    case newBreast(endingAt: Date)
 
     var id: String {
         switch self {

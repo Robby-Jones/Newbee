@@ -59,8 +59,9 @@ final class BottleLogUIModel {
 
     // MARK: - Presentation
 
-    func presentNew() {
-        editor = EditorRequest(draft: log.newDraft(unit: unit))
+    /// Opens the sheet on a new bottle at `time` (default: now).
+    func presentNew(at time: Date? = nil) {
+        editor = EditorRequest(draft: log.newDraft(unit: unit, at: time))
     }
 
     /// Opens the sheet on an existing bottle feed (for example from a History row).

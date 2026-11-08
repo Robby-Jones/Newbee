@@ -50,8 +50,9 @@ final class PumpLogUIModel {
 
     // MARK: - Presentation
 
-    func presentNew() {
-        editor = EditorRequest(draft: log.newDraft(unit: unit))
+    /// Opens the sheet on a new session ending at `time` (default: now).
+    func presentNew(endingAt time: Date? = nil) {
+        editor = EditorRequest(draft: log.newDraft(unit: unit, endingAt: time))
     }
 
     /// Opens the sheet on an existing session (for example from a History row).
