@@ -507,7 +507,10 @@ private struct BarTotalMark<Y: Plottable>: ChartContent {
         PointMark(x: x, y: y)
             .symbolSize(0)
             .foregroundStyle(.clear)
-            .annotation(position: .top, spacing: 2) {
+            // The y axis already leaves room above the tallest bar (`BarLabels.axisTop`), so
+            // tell Charts not to resolve overflow itself: its automatic mode re-pads the scale,
+            // which moves the label, which re-pads the scale, and the app stops responding.
+            .annotation(position: .top, spacing: 2, overflowResolution: .init(x: .fit(to: .chart), y: .disabled)) {
                 BarValueLabel(text: text, density: density)
             }
     }
@@ -556,7 +559,7 @@ private struct SegmentValueLabel: View {
             .font(.system(size: density == .roomy ? 10 : 8, weight: .semibold).monospacedDigit())
             .foregroundStyle(color)
             .lineLimit(1)
-            .minimumScaleFactor(0.7)
+            .fixedSize()
     }
 }
 
