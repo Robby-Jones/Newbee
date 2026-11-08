@@ -14,8 +14,13 @@ public struct CalendarDayCell: Sendable, Hashable, Identifiable {
     public var usedLeft: Bool
     public var usedRight: Bool
     public var hadBottle: Bool
+    /// Pumping sessions that started on the day. Pumping isn't a feed, so it never changes the
+    /// feed count or the intensity.
+    public var pumpCount: Int = 0
 
     public var id: Date { day }
+
+    public var hadPump: Bool { pumpCount > 0 }
 
     /// Background strength for the cell, 0 (no feeds) to 4 (a very busy day), in five subtle steps.
     public var intensity: Int { FeedCalendar.intensity(forFeedCount: feedCount) }
@@ -29,8 +34,11 @@ public struct CalendarMonth: Sendable, Hashable {
     public var weeks: [[CalendarDayCell]]
     /// Feeds that started in the month.
     public var totals: FeedTotals
+    /// Pumping sessions that started in the month.
+    public var pumps: PumpSummary = PumpSummary(entries: [])
 
-    public var isEmpty: Bool { totals.feedCount == 0 }
+    /// No feeds and no pumping in the month.
+    public var isEmpty: Bool { totals.feedCount == 0 && pumps.isEmpty }
 }
 
 /// Builds the Calendar tab's month grid and day summaries. Pure, so it is testable on Linux.
@@ -66,15 +74,18 @@ public enum FeedCalendar {
     }
 
     /// The month containing `month`, padded to whole weeks. Days outside the month carry their
-    /// own feeds too, so the padding never looks emptier than it was.
+    /// own feeds too, so the padding never looks emptier than it was. `pumps` only add a marker
+    /// to their day and a month total: they never count as feeds.
     public static func month(
         _ month: Date,
         entries: [FeedEntry],
+        pumps: [PumpEntry] = [],
         now: Date,
         calendar: Calendar = .current
     ) -> CalendarMonth {
         let interval = monthInterval(containing: month, calendar: calendar)
         let byDay = Dictionary(grouping: entries) { calendar.startOfDay(for: $0.start) }
+        let pumpsByDay = Dictionary(grouping: pumps) { calendar.startOfDay(for: $0.startedAt) }
         let today = calendar.startOfDay(for: now)
 
         // Back up to the first weekday on or before the 1st.
@@ -97,7 +108,8 @@ public enum FeedCalendar {
                     feedCount: feeds.count,
                     usedLeft: feeds.contains { $0.duration(on: .left) > 0 },
                     usedRight: feeds.contains { $0.duration(on: .right) > 0 },
-                    hadBottle: feeds.contains { $0.kind == .bottle }
+                    hadBottle: feeds.contains { $0.kind == .bottle },
+                    pumpCount: pumpsByDay[day]?.count ?? 0
                 ))
                 // Step by calendar day (not 86 400 s) so DST changes don't skip or repeat a day.
                 cursor = calendar.date(byAdding: .day, value: 1, to: day) ?? day.addingTimeInterval(86_400)
@@ -107,7 +119,15 @@ public enum FeedCalendar {
 
         // DateInterval.contains includes the end, so compare by hand (half-open).
         let inMonth = entries.filter { $0.start >= interval.start && $0.start < interval.end }
-        return CalendarMonth(month: interval.start, weeks: weeks, totals: FeedTotals(inMonth))
+        let pumpsInMonth = pumps.filter { $0.startedAt >= interval.start && $0.startedAt < interval.end }
+        return CalendarMonth(month: interval.start, weeks: weeks, totals: FeedTotals(inMonth), pumps: PumpSummary(entries: pumpsInMonth))
+    }
+
+    /// Pumping sessions that started on `day`, oldest first.
+    public static func dayPumps(_ day: Date, pumps: [PumpEntry], calendar: Calendar = .current) -> [PumpEntry] {
+        let start = calendar.startOfDay(for: day)
+        let end = calendar.date(byAdding: .day, value: 1, to: start) ?? start.addingTimeInterval(86_400)
+        return pumps.filter { $0.startedAt >= start && $0.startedAt < end }.sorted { $0.startedAt < $1.startedAt }
     }
 
     /// Feeds that started on `day`, oldest first, and their totals.

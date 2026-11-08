@@ -66,6 +66,28 @@ struct FeedCalendarTests {
         #expect(month.totals.bottleML == 150)
     }
 
+    @Test func pumpsMarkTheirDayButAreNotFeeds() {
+        let pumps = [
+            PumpEntry(startedAt: at(6), leftML: 60, rightML: 40),
+            PumpEntry(startedAt: at(14), leftML: 50, rightML: 0),
+            PumpEntry(startedAt: at(9, day: -1), leftML: 30, rightML: 30),
+            // Padding day in October: marked, but not in the month total.
+            PumpEntry(startedAt: utc.date(from: DateComponents(year: 2026, month: 10, day: 30, hour: 8))!, leftML: 80, rightML: 0),
+        ]
+        let month = FeedCalendar.month(midnight, entries: [], pumps: pumps, now: at(15), calendar: utc)
+        let cells = month.weeks.flatMap { $0 }
+        let today = cells.first { $0.isToday }!
+        #expect(today.pumpCount == 2 && today.hadPump)
+        #expect(today.feedCount == 0 && today.intensity == 0)
+        #expect(cells.first { $0.day == at(0, day: -1) }!.pumpCount == 1)
+        #expect(cells.first { !$0.isInMonth && $0.dayNumber == 30 }!.hadPump)
+        #expect(month.pumps.count == 3)
+        #expect(month.pumps.totalML == 210)
+        #expect(month.totals.feedCount == 0)
+        #expect(!month.isEmpty)
+        #expect(FeedCalendar.dayPumps(midnight, pumps: pumps, calendar: utc).map(\.startedAt) == [at(6), at(14)])
+    }
+
     @Test func intensityHasFiveSteps() {
         #expect([0, 1, 4, 5, 7, 8, 10, 11, 20].map(FeedCalendar.intensity(forFeedCount:)) == [0, 1, 1, 2, 2, 3, 3, 4, 4])
     }
@@ -240,5 +262,33 @@ struct InsightsReportTests {
     @Test func earliestNeededCoversThePreviousPeriod() {
         #expect(InsightsRange.month.earliestNeeded(endingAt: at(12), calendar: utc) == at(0, day: -59))
         #expect(InsightsRange.day.earliestNeeded(endingAt: at(12), calendar: utc) == at(0, day: -14))
+    }
+}
+
+@Suite("Bar labels")
+struct BarLabelsTests {
+    @Test func densityFollowsBarCount() {
+        #expect(BarLabels.density(barCount: 7) == .roomy)
+        #expect(BarLabels.density(barCount: 14) == .compact)
+        #expect(BarLabels.density(barCount: 24) == .dense)
+        #expect(BarLabels.density(barCount: 30) == .dense)
+    }
+
+    @Test func segmentLabelsSkipSingleTinyAndDense() {
+        // Two segments, both big enough.
+        #expect(BarLabels.showsSegmentLabel(5, in: [5, 3], tallest: 10, density: .roomy))
+        #expect(BarLabels.showsSegmentLabel(3, in: [5, 3], tallest: 10, density: .compact))
+        // Too small next to the tallest bar.
+        #expect(!BarLabels.showsSegmentLabel(1, in: [8, 1], tallest: 10, density: .roomy))
+        // Only one segment: the total says it already.
+        #expect(!BarLabels.showsSegmentLabel(8, in: [8, 0, 0], tallest: 10, density: .roomy))
+        // Zero, and dense charts.
+        #expect(!BarLabels.showsSegmentLabel(0, in: [8, 0], tallest: 10, density: .roomy))
+        #expect(!BarLabels.showsSegmentLabel(5, in: [5, 5], tallest: 10, density: .dense))
+    }
+
+    @Test func axisLeavesRoomForTotals() {
+        #expect(BarLabels.axisTop(tallest: 10) > 10)
+        #expect(BarLabels.axisTop(tallest: 0) == 1)
     }
 }

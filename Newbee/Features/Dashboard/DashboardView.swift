@@ -343,6 +343,7 @@ private struct QuickActionCircle: View {
 /// Today's totals in one compact card, and the rolling 24-hour line.
 private struct TodaySection: View {
     let summary: DashboardSummary
+    @Environment(BottleLogUIModel.self) private var bottleModel: BottleLogUIModel?
 
     var body: some View {
         VStack(alignment: .leading, spacing: NBSpacing.m) {
@@ -353,7 +354,7 @@ private struct TodaySection: View {
                 HStack(alignment: .top, spacing: NBSpacing.s) {
                     stat(String(localized: "Feeds"), "drop.fill", NBColor.accent, "\(summary.today.feedCount)")
                     stat(String(localized: "Breast"), "heart.fill", NBColor.leftInk, DurationText.short(summary.today.breastDuration))
-                    stat(String(localized: "Bottles"), "waterbottle.fill", NBColor.bottleBreastMilkInk, FeedText.volume(ml: summary.today.bottleML))
+                    stat(String(localized: "Bottles"), "waterbottle.fill", NBColor.bottleBreastMilkInk, FeedText.volume(ml: summary.today.bottleML, unit: bottleModel?.unit ?? .milliliters))
                     stat(String(localized: "Avg gap"), "clock.fill", NBColor.rightInk, summary.today.averageInterval.map(DurationText.short) ?? "–")
                 }
             }
