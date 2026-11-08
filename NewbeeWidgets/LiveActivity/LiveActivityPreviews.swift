@@ -61,6 +61,16 @@ extension FeedingActivityAttributes.ContentState {
             pausedAt: .now.addingTimeInterval(-8100), revision: 4
         )
     }
+
+    /// A 90 mL bottle that ended 40 minutes ago, after a breastfeed that ended on the right.
+    static var previewSinceBottle: Self {
+        Self(
+            status: .ended, currentSide: .right, sessionStart: .now.addingTimeInterval(-3000),
+            currentSegmentStart: nil, leftAccumulated: 0, rightAccumulated: 0,
+            pausedAt: .now.addingTimeInterval(-2400), revision: 0,
+            lastBottle: BottleAmount(90, .milliliters)
+        )
+    }
 }
 
 #Preview("Lock Screen", as: .content, using: FeedingActivityAttributes.previewNamed) {
@@ -71,6 +81,7 @@ extension FeedingActivityAttributes.ContentState {
     FeedingActivityAttributes.ContentState.previewPaused
     FeedingActivityAttributes.ContentState.previewEnded
     FeedingActivityAttributes.ContentState.previewSinceLastFeedLong
+    FeedingActivityAttributes.ContentState.previewSinceBottle
 }
 
 #Preview("Island expanded", as: .dynamicIsland(.expanded), using: FeedingActivityAttributes.preview) {

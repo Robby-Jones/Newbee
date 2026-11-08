@@ -45,6 +45,31 @@ extension FeedingActivityAttributes.ContentState {
         }
     }
 
+    /// The since-last-feed count from a bottle. `currentSide` is the last breastfeed's side
+    /// (`.left` if none), so Start still suggests the other one.
+    public init(bottle: BottleEntry, lastBreastSide: Side?) {
+        self.init(
+            status: .ended,
+            currentSide: lastBreastSide ?? .left,
+            sessionStart: bottle.startedAt,
+            currentSegmentStart: nil,
+            leftAccumulated: 0,
+            rightAccumulated: 0,
+            pausedAt: bottle.endedAt,
+            revision: 0,
+            sessionID: bottle.id,
+            lastBottle: BottleAmount(milliliters: bottle.amountML).converted(to: bottle.enteredUnit)
+        )
+    }
+
+    /// The since-last-feed count for whichever feed is the latest.
+    public init(latest: LatestFinishedFeed, lastBreastSide: Side?) {
+        switch latest {
+        case .breast(let session): self.init(snapshot: session)
+        case .bottle(let bottle): self.init(bottle: bottle, lastBreastSide: lastBreastSide)
+        }
+    }
+
     /// When the timers stopped for a paused or completed snapshot.
     private static func freezeTime(of snapshot: SessionSnapshot) -> Date {
         if snapshot.status == .completed, let ended = snapshot.endedAt { return ended }

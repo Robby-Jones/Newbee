@@ -27,8 +27,9 @@ public struct FeedingActivityAttributes: Codable, Hashable, Sendable {
         public enum Status: String, Codable, Hashable, Sendable {
             case active
             case paused
-            /// No feed is running. The activity counts up the time since this feed ended
-            /// (`pausedAt`), and still carries the finished feed's side times.
+            /// No feed is running. The activity counts up the time since the latest feed ended
+            /// (`pausedAt`). For a breastfeed it still carries the side times; for a bottle,
+            /// `lastBottle` is set and the side times are zero.
             case ended
         }
 
@@ -49,6 +50,9 @@ public struct FeedingActivityAttributes: Codable, Hashable, Sendable {
         /// (since-last-feed after the newest feed was deleted, or a feed started from the Lock
         /// Screen when a new activity couldn't be requested). `nil` in content from older builds.
         public var sessionID: UUID?
+        /// The amount, while counting from a bottle (then `sessionID` is the bottle's id).
+        /// `nil` otherwise, and in content from older builds.
+        public var lastBottle: BottleAmount?
 
         public init(
             status: Status,
@@ -59,7 +63,8 @@ public struct FeedingActivityAttributes: Codable, Hashable, Sendable {
             rightAccumulated: TimeInterval,
             pausedAt: Date?,
             revision: Int,
-            sessionID: UUID? = nil
+            sessionID: UUID? = nil,
+            lastBottle: BottleAmount? = nil
         ) {
             self.status = status
             self.currentSide = currentSide
@@ -70,6 +75,7 @@ public struct FeedingActivityAttributes: Codable, Hashable, Sendable {
             self.pausedAt = pausedAt
             self.revision = revision
             self.sessionID = sessionID
+            self.lastBottle = lastBottle
         }
 
         public func accumulated(on side: Side) -> TimeInterval {

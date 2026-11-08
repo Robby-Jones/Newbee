@@ -5,11 +5,12 @@ import Observation
 import os
 
 /// Makes the system's Live Activities match the session manager's snapshot
-/// (docs/LIVE_ACTIVITIES.md §5). `sync(_:)` is the only entry point.
+/// (docs/LIVE_ACTIVITIES.md §5). `sync(_:lastBottle:)` is the only entry point.
 ///
-/// - The session manager calls it after every saved command: the active or paused snapshot,
-///   or, when no feed is running, the latest finished one (the activity then counts the time
-///   since it ended), or `nil` when there are no feeds.
+/// - The session manager calls it after every saved command and every bottle change: the active
+///   or paused snapshot, or, when no feed is running, the latest finished breastfeed and the latest
+///   bottle (the activity then counts the time since the newer of the two ended). With no feeds
+///   at all, both are `nil`.
 /// - Recovery calls it on launch and every foreground, which re-requests a running feed's
 ///   activity lost to a reboot or the 8-hour limit and ends leftovers.
 ///
@@ -55,22 +56,24 @@ final class LiveActivityCoordinator {
         self.init(client: ActivityKitClient())
     }
 
-    /// Brings the Live Activity in line with `snapshot`. Safe to call repeatedly; returns once
-    /// every ActivityKit call for this and earlier syncs has finished.
-    func sync(_ snapshot: SessionSnapshot?) async {
+    /// Brings the Live Activity in line with `snapshot` (and `lastBottle` when no feed is
+    /// running). Safe to call repeatedly; returns once every ActivityKit call for this and
+    /// earlier syncs has finished.
+    func sync(_ snapshot: SessionSnapshot?, lastBottle: BottleEntry?) async {
         let previous = tail
         let task = Task { [weak self] in
             await previous?.value
-            await self?.reconcile(snapshot)
+            await self?.reconcile(snapshot, lastBottle: lastBottle)
         }
         tail = task
         await task.value
     }
 
-    private func reconcile(_ snapshot: SessionSnapshot?) async {
+    private func reconcile(_ snapshot: SessionSnapshot?, lastBottle: BottleEntry?) async {
         activitiesEnabled = client.areActivitiesEnabled
         let actions = planner.plan(
             for: snapshot,
+            lastBottle: lastBottle,
             existing: client.records(),
             activitiesEnabled: activitiesEnabled,
             dismissedAtRevision: snapshot.flatMap { dismissedRevisions[$0.id] },

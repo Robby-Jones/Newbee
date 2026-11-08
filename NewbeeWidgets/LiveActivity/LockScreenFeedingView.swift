@@ -22,6 +22,8 @@ import WidgetKit
 ///  [   ▶ Left   ] [   ▶ Right   ]
 ///  Last feed L 12:05 · R 9:00 · ended 3:40 PM
 /// ```
+///
+/// When the latest feed is a bottle, the last line is "Last feed bottle 90 mL · ended 3:40 PM".
 struct LockScreenFeedingView: View {
     let attributes: FeedingActivityAttributes
     let state: FeedingState
@@ -49,7 +51,19 @@ struct LockScreenFeedingView: View {
 
     @ViewBuilder
     private var endedFooter: some View {
-        if let endedAt = state.lastFeedEndedAt {
+        if let endedAt = state.lastFeedEndedAt, let bottle = state.lastBottle {
+            // A bottle with no duration ended when it started.
+            let when = endedAt > state.sessionStart ? "ended" : "at"
+            Text("Last feed bottle \(bottle.formatted) · \(when) \(endedAt, style: .time)")
+                .font(.footnote)
+                .foregroundStyle(.secondary)
+                .lineLimit(1)
+                .minimumScaleFactor(0.8)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .accessibilityLabel(
+                    "Last feed: bottle, \(bottle.formatted), \(when) \(endedAt.formatted(date: .omitted, time: .shortened))"
+                )
+        } else if let endedAt = state.lastFeedEndedAt {
             let left = LiveActivityFormat.clock(state.leftAccumulated)
             let right = LiveActivityFormat.clock(state.rightAccumulated)
             Text("Last feed L \(left) · R \(right) · ended \(endedAt, style: .time)")

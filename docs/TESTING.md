@@ -54,6 +54,7 @@ Run each case on an **iPhone 14 Pro or later** (Dynamic Island). Where marked �
 | D5a | Leave D5 for over an hour (phone locked, app not opened) | The count goes from 00:59 to 01:00 and keeps ticking as hh:mm (island compact and expanded too) |
 | D5b | After D5: tap Undo in the app, or start the next feed in the app† | Undo puts the feed back on the same activity; a new feed replaces it; only one activity is on the Lock Screen / island |
 | D5c | After D5: tap **Start** on the Lock Screen / island (phone unlocked) | A feed starts on that side; the app shows it running; one activity, showing the new feed, and its buttons work |
+| D5d | After D5: log a bottle now in the app, then edit its time to before the breastfeed, then back, then delete it | Logged: the count restarts from the bottle's end and the line reads "Last feed bottle … · ended …". Moved earlier: back to the breastfeed's count and L/R line. Deleted: back to the breastfeed. Start on the bottle's count starts a feed |
 | D6 | Double-tap End | One completed session, no errors |
 | D7 | Background app, open 3 other apps, return | Timer accurate |
 | D8 | Force-quit during active feed | Record what iOS does with the activity; reopening restores the session; activity reconciled |

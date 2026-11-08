@@ -132,4 +132,20 @@ struct ContentStateMappingTests {
         let decoded = try JSONDecoder().decode(State.self, from: data)
         #expect(decoded == State(snapshot: activeOnRight()))
     }
+
+    @Test func aBottleMapsToTheSinceLastFeedCountFromItsEnd() throws {
+        let bottle = BottleEntry(
+            id: bottleID, startedAt: t0, contents: .formula, amountML: BottleAmount(3, .fluidOunces).milliliters,
+            enteredUnit: .fluidOunces, durationSeconds: minutes(15)
+        )
+        let state = State(bottle: bottle, lastBreastSide: .left)
+        #expect(state.status == .ended)
+        #expect(state.lastFeedEndedAt == t0 + minutes(15))
+        #expect(state.sinceLastFeedHourMark == t0 + minutes(75))
+        #expect(state.lastBottle == BottleAmount(3, .fluidOunces))
+        #expect(state.lastBottle?.formatted == "3 oz")
+        #expect(state.sessionID == bottleID)
+        let decoded = try JSONDecoder().decode(State.self, from: JSONEncoder().encode(state))
+        #expect(decoded == state)
+    }
 }

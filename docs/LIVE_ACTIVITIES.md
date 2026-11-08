@@ -102,11 +102,20 @@ side pills and controls are one shared view (`ActivitySidesAndControls`). Minima
   The content's `staleDate` is the one-hour mark, so the system redraws the activity there and the
   view switches phase without the app running. ("Still feeding?" never shows in this state.) The
   strings are pinned by `SinceLastFeedFormatTests` on the simulator.
-- The manager syncs `activeSession ?? lastCompletedSession`, so every foreground keeps the count
-  right. Deleting or editing the latest feed moves the count to the new latest; discarding a
-  running feed goes back to counting from the previous one.
+- **Bottles count too.** The count runs from the latest feed of either kind, by start time, with
+  a breastfeed winning a tie (`LatestFinishedFeed`, the same rule reminders use). A bottle that
+  ends later than the last breastfeed only takes over if it also *started* later; a bottle logged
+  now with an earlier time doesn't. For a bottle, `ContentState.lastBottle` holds the amount, the
+  footnote reads "Last feed bottle 90 mL · ended 3:40 PM" ("at" when no duration was entered), and
+  `currentSide` stays the last breastfeed's side so Start still suggests the other breast.
+- The manager syncs `activeSession ?? lastCompletedSession` plus the latest bottle, so every
+  foreground keeps the count right. Logging, editing, deleting or undoing a bottle calls
+  `manager.bottlesDidChange()` (from the bottle model's `onChange`). Adding, editing or deleting
+  the latest feed of either kind moves the count to whichever feed is now the latest; discarding a
+  running feed goes back to counting from the previous one. A bottle never changes a running feed.
 - **Start** (`StartFeedingIntent` → `manager.applyRemoteStart(side:)`) begins the next feed. A
-  no-op if a feed is already running.
+  no-op if a feed is already running, or if the activity shows a feed (breast or bottle) that is
+  no longer the latest.
 - **Time limit.** ActivityKit ends an activity 8 h after it was requested, then may leave it on
   the Lock Screen up to 4 h more. To get the most out of that window:
   - Every new feed requests a **fresh** activity (a new 8 h window) and only then ends the old

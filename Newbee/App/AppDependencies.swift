@@ -101,7 +101,10 @@ final class AppDependencies {
                 planner: LiveActivityPlanner(staleAfter: policy.effectiveThreshold)
             )
         }
-        let manager = FeedingSessionManager(repository: repository, clock: clock, liveActivity: activity, reminders: reminders)
+        // Bottles too: the Live Activity counts from the latest feed of either kind.
+        let manager = FeedingSessionManager(
+            repository: repository, clock: clock, liveActivity: activity, reminders: reminders, bottles: bottleRepository
+        )
         recoveryPolicy = policy
         self.liveActivity = activity
         sessionManager = manager

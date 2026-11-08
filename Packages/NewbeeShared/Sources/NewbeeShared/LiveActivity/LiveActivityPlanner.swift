@@ -90,7 +90,9 @@ public struct LiveActivityPlanner: Sendable {
 
     /// - Parameters:
     ///   - snapshot: The active session; when no feed is running, the most recent completed
-    ///     session (shown as time since it ended); `nil` when there is neither.
+    ///     session, or `nil` when there is none.
+    ///   - lastBottle: The most recent bottle, if any. Used only when no feed is running: the
+    ///     count runs from the newer of it and `snapshot` (`LatestFinishedFeed`).
     ///   - existing: Every activity of ours the system currently reports.
     ///   - activitiesEnabled: `ActivityAuthorizationInfo().areActivitiesEnabled`.
     ///   - dismissedAtRevision: If the parent swiped this session's activity away, the revision it
@@ -99,6 +101,7 @@ public struct LiveActivityPlanner: Sendable {
     ///   - now: Current time.
     public func plan(
         for snapshot: SessionSnapshot?,
+        lastBottle: BottleEntry? = nil,
         existing: [LiveActivityRecord],
         activitiesEnabled: Bool,
         dismissedAtRevision: Int? = nil,
@@ -108,18 +111,20 @@ public struct LiveActivityPlanner: Sendable {
         let live = existing.filter { $0.phase == .live }
         let ended = existing.filter { $0.phase == .ended }
 
-        guard let snapshot else {
-            // No feed at all (e.g. the only one was deleted): nothing to show.
-            return live.map(Self.removeNow)
+        guard let snapshot, snapshot.status != .completed else {
+            guard let latest = LatestFinishedFeed.of(breast: snapshot, bottle: lastBottle) else {
+                // No feed at all (e.g. the only one was deleted): nothing to show.
+                return live.map(Self.removeNow)
+            }
+            let state = FeedingActivityAttributes.ContentState(latest: latest, lastBreastSide: snapshot?.lastSide)
+            return planSinceLastFeed(
+                feedID: latest.id, state: state, staleDate: state.staleDate(after: staleAfter), live: live, ended: ended
+            )
         }
 
         let state = FeedingActivityAttributes.ContentState(snapshot: snapshot)
         let staleDate = state.staleDate(after: staleAfter)
         let mine = live.filter { $0.sessionID == snapshot.id }
-
-        if snapshot.status == .completed {
-            return planSinceLastFeed(snapshot: snapshot, state: state, staleDate: staleDate, live: live, ended: ended)
-        }
 
         // Active or paused. Anything left in the ended state (the 8-hour limit, or an older
         // build's summary) is now wrong.
@@ -154,29 +159,30 @@ public struct LiveActivityPlanner: Sendable {
         return actions
     }
 
-    /// No feed is running: the activity that showed the feed (or, if that feed was deleted, any
-    /// activity still running) switches to the time since `snapshot` ended. Never requests one:
+    /// No feed is running: the activity that showed the latest feed `feedID` (or, if it was another
+    /// feed, such as one since deleted or a bottle logged after it, any activity still running)
+    /// switches to the time since that feed ended. Never requests one:
     /// opening the app shouldn't put an activity back that the parent swiped away or that
     /// reached the time limit; the next feed brings it back.
     private func planSinceLastFeed(
-        snapshot: SessionSnapshot,
+        feedID: UUID,
         state: FeedingActivityAttributes.ContentState,
         staleDate: Date,
         live: [LiveActivityRecord],
         ended: [LiveActivityRecord]
     ) -> [LiveActivityAction] {
-        let mine = live.filter { $0.sessionID == snapshot.id }
+        let mine = live.filter { $0.sessionID == feedID }
         guard let keep = Self.newest(mine) ?? Self.mostRecentFeed(live) else {
             // Nothing running. An ended activity (the 8-hour limit) may still be on the Lock
             // Screen. It can't be updated, so one already counting from this feed's end is left
             // to time out; any other is showing the wrong thing and goes now.
             return ended
-                .filter { $0.sessionID != snapshot.id || $0.state.lastFeedEndedAt != state.lastFeedEndedAt }
+                .filter { $0.sessionID != feedID || $0.state.lastFeedEndedAt != state.lastFeedEndedAt }
                 .map(Self.removeNow)
         }
         var actions = ended.map(Self.removeNow)
         actions += live.filter { $0.id != keep.id }.map(Self.removeNow)
-        actions += Self.update(keep, to: state, staleDate: staleDate, sameSession: keep.sessionID == snapshot.id)
+        actions += Self.update(keep, to: state, staleDate: staleDate, sameSession: keep.sessionID == feedID)
         return actions
     }
 

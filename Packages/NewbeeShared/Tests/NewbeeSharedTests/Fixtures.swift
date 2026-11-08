@@ -7,6 +7,8 @@ typealias State = FeedingActivityAttributes.ContentState
 let t0 = Date(timeIntervalSince1970: 1_800_000_000)
 let sessionID = UUID(uuidString: "11111111-1111-1111-1111-111111111111")!
 let otherSessionID = UUID(uuidString: "22222222-2222-2222-2222-222222222222")!
+let bottleID = UUID(uuidString: "33333333-3333-3333-3333-333333333333")!
+let otherBottleID = UUID(uuidString: "44444444-4444-4444-4444-444444444444")!
 
 func minutes(_ m: Double) -> TimeInterval { m * 60 }
 

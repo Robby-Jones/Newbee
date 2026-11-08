@@ -268,4 +268,154 @@ struct LiveActivityPlannerTests {
         let changed = pausedAfterRight(revision: 5)
         #expect(planner.plan(for: changed, existing: [], activitiesEnabled: true, dismissedAtRevision: 4, now: now).count == 1)
     }
+
+    // MARK: Bottles
+
+    /// 90 mL, started `start` minutes after t0 and lasting `duration` minutes.
+    func bottle(at start: Double, for duration: Double? = 10, id: UUID = bottleID) -> BottleEntry {
+        BottleEntry(
+            id: id, startedAt: t0 + minutes(start), contents: .formula, amountML: 90,
+            durationSeconds: duration.map(minutes)
+        )
+    }
+
+    func idle(_ actions: [LiveActivityAction]) -> State? {
+        guard actions.count == 1, case let .update(id: "a", state, staleDate: _) = actions[0] else { return nil }
+        return state
+    }
+
+    @Test func aBottleAfterTheLastBreastfeedTakesOverTheCount() throws {
+        let completed = completedSpecExample()
+        let shown = record("a", state: State(snapshot: completed))
+        let later = bottle(at: 60)
+        let state = try #require(idle(planner.plan(
+            for: completed, lastBottle: later, existing: [shown], activitiesEnabled: true, now: now
+        )))
+        #expect(state.sessionID == bottleID)
+        #expect(state.lastFeedEndedAt == t0 + minutes(70))
+        #expect(state.lastBottle == BottleAmount(90, .milliliters))
+        #expect(state.totalAccumulated == 0)
+        // Start still suggests the other breast from the last breastfeed (it ended on the right).
+        #expect(state.currentSide == .right)
+        #expect(state == State(bottle: later, lastBreastSide: .right))
+    }
+
+    @Test func aBottleWithNoDurationCountsFromItsStart() throws {
+        let shown = record("a", state: State(snapshot: completedSpecExample()))
+        let state = try #require(idle(planner.plan(
+            for: completedSpecExample(), lastBottle: bottle(at: 60, for: nil), existing: [shown], activitiesEnabled: true, now: now
+        )))
+        #expect(state.lastFeedEndedAt == t0 + minutes(60))
+    }
+
+    @Test func aBottleOlderThanTheLastBreastfeedChangesNothing() {
+        let completed = completedSpecExample()
+        let shown = record("a", state: State(snapshot: completed))
+        // Logged afterwards, but with an earlier time: it isn't the latest feed.
+        #expect(planner.plan(
+            for: completed, lastBottle: bottle(at: -90), existing: [shown], activitiesEnabled: true, now: now
+        ).isEmpty)
+        // Started at the same moment: the breastfeed wins, as for reminders.
+        #expect(planner.plan(
+            for: completed, lastBottle: bottle(at: 0), existing: [shown], activitiesEnabled: true, now: now
+        ).isEmpty)
+    }
+
+    @Test func deletingTheBottleGoesBackToTheBreastfeed() throws {
+        let completed = completedSpecExample()
+        let shown = record("a", state: State(bottle: bottle(at: 60), lastBreastSide: .right))
+        let state = try #require(idle(planner.plan(for: completed, lastBottle: nil, existing: [shown], activitiesEnabled: true, now: now)))
+        #expect(state == State(snapshot: completed))
+    }
+
+    @Test func deletingTheBottleGoesBackToAnOlderBottle() throws {
+        // The repository's next latest bottle is passed in; it may still be newer than the breastfeed.
+        let shown = record("a", state: State(bottle: bottle(at: 60), lastBreastSide: .right))
+        let older = bottle(at: 40, id: otherBottleID)
+        let state = try #require(idle(planner.plan(
+            for: completedSpecExample(), lastBottle: older, existing: [shown], activitiesEnabled: true, now: now
+        )))
+        #expect(state.sessionID == otherBottleID)
+        #expect(state.lastFeedEndedAt == t0 + minutes(50))
+    }
+
+    @Test func editingTheBottlesTimeMovesTheCount() throws {
+        let completed = completedSpecExample()
+        let shown = record("a", state: State(bottle: bottle(at: 60), lastBreastSide: .right))
+        // Moved later: same bottle, new end.
+        let moved = try #require(idle(planner.plan(
+            for: completed, lastBottle: bottle(at: 90, for: 15), existing: [shown], activitiesEnabled: true, now: now
+        )))
+        #expect(moved.sessionID == bottleID)
+        #expect(moved.lastFeedEndedAt == t0 + minutes(105))
+        // Moved before the breastfeed: the breastfeed is the latest again.
+        let back = try #require(idle(planner.plan(
+            for: completed, lastBottle: bottle(at: -60), existing: [shown], activitiesEnabled: true, now: now
+        )))
+        #expect(back == State(snapshot: completed))
+    }
+
+    @Test func aBreastfeedAddedAfterTheBottleTakesTheCountBack() throws {
+        // e.g. a breastfeed added from History with a later start than the bottle.
+        let shown = record("a", state: State(bottle: bottle(at: 60), lastBreastSide: .right))
+        var added = completedSpecExample()
+        added.id = otherSessionID
+        added.startedAt = t0 + minutes(80)
+        added.segments = [Segment(side: .left, start: t0 + minutes(80), end: t0 + minutes(95))]
+        added.endedAt = t0 + minutes(95)
+        let state = try #require(idle(planner.plan(
+            for: added, lastBottle: bottle(at: 60), existing: [shown], activitiesEnabled: true, now: now
+        )))
+        #expect(state.sessionID == otherSessionID)
+        #expect(state.lastFeedEndedAt == t0 + minutes(95))
+        #expect(state.lastBottle == nil)
+    }
+
+    @Test func withOnlyBottlesTheCountFollowsTheLatestBottle() throws {
+        let shown = record("a", state: State(bottle: bottle(at: 60), lastBreastSide: nil))
+        #expect(planner.plan(for: nil, lastBottle: bottle(at: 60), existing: [shown], activitiesEnabled: true, now: now).isEmpty)
+        let state = try #require(idle(planner.plan(
+            for: nil, lastBottle: bottle(at: 30, id: otherBottleID), existing: [shown], activitiesEnabled: true, now: now
+        )))
+        #expect(state.sessionID == otherBottleID)
+        #expect(state.currentSide == .left)
+        // The last bottle deleted too: no feeds left.
+        #expect(planner.plan(for: nil, lastBottle: nil, existing: [shown], activitiesEnabled: true, now: now) == [
+            .end(id: "a", finalState: nil, dismissal: .immediate),
+        ])
+    }
+
+    @Test func aBottleNeverRequestsAnActivityOnItsOwn() {
+        #expect(planner.plan(for: completedSpecExample(), lastBottle: bottle(at: 60), existing: [], activitiesEnabled: true, now: now).isEmpty)
+    }
+
+    @Test func aBottleDoesntChangeARunningFeed() {
+        let snapshot = activeOnRight()
+        let shown = record("a", state: State(snapshot: snapshot))
+        #expect(planner.plan(for: snapshot, lastBottle: bottle(at: 60), existing: [shown], activitiesEnabled: true, now: now).isEmpty)
+    }
+
+    @Test func theNextFeedReplacesACountSinceABottle() {
+        let shown = record("a", state: State(bottle: bottle(at: 60), lastBreastSide: .right))
+        var next = activeOnRight(revision: 1)
+        next.id = otherSessionID
+        let actions = planner.plan(for: next, lastBottle: bottle(at: 60), existing: [shown], activitiesEnabled: true, now: now)
+        let state = State(snapshot: next)
+        #expect(actions == [
+            .request(
+                FeedingActivityAttributes(sessionID: otherSessionID, babyName: ""), state,
+                staleDate: state.staleDate(after: minutes(45)), replacing: "a"
+            ),
+        ])
+    }
+
+    @Test func anExpiredCountSinceTheSameBottleIsLeftToTimeOut() {
+        let b = bottle(at: 60)
+        let expired = record("a", session: bottleID, state: State(bottle: b, lastBreastSide: .right), phase: .ended)
+        #expect(planner.plan(for: completedSpecExample(), lastBottle: b, existing: [expired], activitiesEnabled: true, now: now).isEmpty)
+        // Edited since: it shows the wrong time, so it goes.
+        #expect(planner.plan(
+            for: completedSpecExample(), lastBottle: bottle(at: 70), existing: [expired], activitiesEnabled: true, now: now
+        ) == [.end(id: "a", finalState: nil, dismissal: .immediate)])
+    }
 }
