@@ -77,7 +77,7 @@ struct LogBottleSheet: View {
                 }
             }
         }
-        .presentationDetents([.medium, .large])
+        .presentationDetents([.fraction(0.75), .large])
         .presentationDragIndicator(.visible)
         .onChange(of: amountText) { _, text in
             draft.amount = BottleAmount.parse(text, unit: draft.amount.unit) ?? BottleAmount(0, draft.amount.unit)
