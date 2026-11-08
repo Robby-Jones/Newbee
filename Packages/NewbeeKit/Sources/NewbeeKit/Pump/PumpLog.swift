@@ -34,9 +34,10 @@ public final class PumpLog {
     /// 60 mL (2 oz) a side for 15 minutes.
     ///
     /// The start is set back by the duration so the session ends now: people log pumping after
-    /// they're done.
-    public func newDraft(unit: VolumeUnit) -> PumpDraft {
-        let now = clock.now
+    /// they're done. Pass `time` to end it earlier instead (for example on a day picked in
+    /// History's calendar); it's never later than now.
+    public func newDraft(unit: VolumeUnit, endingAt time: Date? = nil) -> PumpDraft {
+        let now = min(time ?? clock.now, clock.now)
         let last = try? repository.recentPumps(limit: 1).first
         let fallback = BottlePresets.defaults(for: unit)[0]
         let left = last.map { BottleAmount(milliliters: $0.leftML).converted(to: unit) } ?? fallback

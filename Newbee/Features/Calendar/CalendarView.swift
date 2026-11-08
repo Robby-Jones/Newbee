@@ -10,16 +10,24 @@ import SwiftUI
 /// glance. **Month** is the grid with side and bottle dots, shaded by how busy each day was.
 /// Either way the selected day's summary sits underneath.
 ///
-/// `HistoryView` owns the title and the `DayRoute` destination.
+/// `HistoryView` owns the title, the `DayRoute` destination, and the selected day.
 struct CalendarView: View {
     enum Scope: Hashable {
         case week, month
     }
 
     @State private var scope: Scope = .week
-    @State private var month: Date = FeedCalendar.startOfMonth(.now)
-    @State private var weekStart: Date = CalendarView.startOfWeek(containing: .now)
-    @State private var selectedDay: Date? = Calendar.current.startOfDay(for: .now)
+    @State private var month: Date
+    @State private var weekStart: Date
+    /// Owned by `HistoryView` so its Add menu can default new entries to this day.
+    @Binding var selectedDay: Date?
+
+    init(selectedDay: Binding<Date?>) {
+        _selectedDay = selectedDay
+        let anchor = selectedDay.wrappedValue ?? .now
+        _month = State(initialValue: FeedCalendar.startOfMonth(anchor))
+        _weekStart = State(initialValue: CalendarView.startOfWeek(containing: anchor))
+    }
 
     var body: some View {
         // Each period's query lives in a child view so it's rebuilt when the period changes.
@@ -760,14 +768,15 @@ private struct PeriodSummary: View {
 }
 
 #Preview("With feeds") {
+    @Previewable @State var day: Date? = Calendar.current.startOfDay(for: .now)
     let container = try! PersistenceController.makeContainer(.inMemory)
     HistoryPreviewData.insert(into: container.mainContext)
-    return NavigationStack { CalendarView().navigationDestination(for: DayRoute.self) { DayFeedsView(day: $0.day) } }
+    return NavigationStack { CalendarView(selectedDay: $day).navigationDestination(for: DayRoute.self) { DayFeedsView(day: $0.day) } }
         .modelContainer(container)
         .environment(BottleLogUIModel.preview())
 }
 
 #Preview("Empty") {
-    NavigationStack { CalendarView() }
+    NavigationStack { CalendarView(selectedDay: .constant(.now)) }
         .modelContainer(try! PersistenceController.makeContainer(.inMemory))
 }

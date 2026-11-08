@@ -27,11 +27,11 @@ public final class BottleLog {
 
     // MARK: - Drafts
 
-    /// A new entry for right now, pre-filled from the last bottle (same contents and amount,
+    /// A new entry at `time` (default and latest: now), pre-filled from the last bottle (same contents and amount,
     /// shown in `unit`) so a repeat feed is one tap on Save. With no history: breast milk and the
     /// middle preset.
-    public func newDraft(unit: VolumeUnit) -> BottleDraft {
-        let now = clock.now
+    public func newDraft(unit: VolumeUnit, at time: Date? = nil) -> BottleDraft {
+        let now = min(time ?? clock.now, clock.now)
         let last = try? repository.recentBottles(limit: 1).first
         let amount = last.map { BottleAmount(milliliters: $0.amountML).converted(to: unit) }
             ?? BottlePresets.defaults(for: unit)[1]
