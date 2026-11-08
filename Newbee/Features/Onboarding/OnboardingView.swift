@@ -254,11 +254,14 @@ private struct PhotoPickerBubble: View {
     @State private var errorMessage: String?
 
     var body: some View {
+        // Read on the main actor here: the picker's label closure is Sendable.
+        let image = store.image
+        let badge = isLoading ? "hourglass" : "camera.fill"
         VStack(spacing: NBSpacing.s) {
             PhotosPicker(selection: $selection, matching: .images) {
-                BabyAvatar(image: store.image, size: 112)
+                BabyAvatar(image: image, size: 112)
                     .overlay(alignment: .bottomTrailing) {
-                        Image(systemName: isLoading ? "hourglass" : "camera.fill")
+                        Image(systemName: badge)
                             .font(.subheadline.weight(.semibold))
                             .foregroundStyle(.white)
                             .frame(width: 36, height: 36)

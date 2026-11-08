@@ -8,14 +8,16 @@ import Testing
 @Suite("Onboarding")
 struct OnboardingTests {
     @Test func emptyDraftCreatesNoBaby() throws {
-        let context = try makeInMemoryContainer().mainContext
+        let container = try makeInMemoryContainer()
+        let context = container.mainContext
         try OnboardingProfile.save(.init(name: "   "), in: context)
         #expect(try context.fetchCount(FetchDescriptor<Baby>()) == 0)
         #expect(!OnboardingProfile.hasExistingData(in: context))
     }
 
     @Test func savesTrimmedNameAndBirthDate() throws {
-        let context = try makeInMemoryContainer().mainContext
+        let container = try makeInMemoryContainer()
+        let context = container.mainContext
         let born = Calendar.current.startOfDay(for: Date(timeIntervalSince1970: 1_800_000_000))
         try OnboardingProfile.save(.init(name: "  Ava ", hasBirthDate: true, birthDate: born), in: context)
         let babies = try context.fetch(FetchDescriptor<Baby>())
@@ -25,7 +27,8 @@ struct OnboardingTests {
     }
 
     @Test func updatesExistingBabyWithoutClearingIt() throws {
-        let context = try makeInMemoryContainer().mainContext
+        let container = try makeInMemoryContainer()
+        let context = container.mainContext
         let born = Date(timeIntervalSince1970: 1_800_000_000)
         context.insert(Baby(name: "Ava", birthDate: born))
         try context.save()
@@ -38,7 +41,8 @@ struct OnboardingTests {
     }
 
     @Test func existingFeedsSkipOnboarding() throws {
-        let context = try makeInMemoryContainer().mainContext
+        let container = try makeInMemoryContainer()
+        let context = container.mainContext
         #expect(!OnboardingProfile.hasExistingData(in: context))
         context.insert(FeedingSession(kind: .bottle, status: .completed, startedAt: .now, source: .manual))
         try context.save()
