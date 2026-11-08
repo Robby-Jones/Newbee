@@ -3,7 +3,8 @@ import NewbeeShared
 import SwiftData
 import SwiftUI
 
-/// Every finished feed, breast and bottle (docs/UX_SPEC.md §3.6), as a day-grouped list or a
+/// Every finished feed, breast and bottle (docs/UX_SPEC.md §3.6), plus pumping sessions, as a
+/// day-grouped list or a
 /// month calendar (§3.5). One place for looking back, like the history screens in Huckleberry
 /// and Apple Fitness.
 ///
@@ -16,12 +17,14 @@ struct HistoryView: View {
 
     @Environment(FeedingSessionUIModel.self) private var model: FeedingSessionUIModel?
     @Environment(BottleLogUIModel.self) private var bottleModel: BottleLogUIModel?
+    @Environment(PumpLogUIModel.self) private var pumpModel: PumpLogUIModel?
     @Query(FeedingSession.completedFeeds()) private var sessions: [FeedingSession]
+    @Query(FeedingSession.completedPumps()) private var pumpSessions: [FeedingSession]
 
     @State private var mode: Mode = .list
     @State private var filter: FeedFilter = .all
     @State private var editing: EditTarget?
-    @State private var pendingDelete: FeedEntry?
+    @State private var pendingDelete: HistoryItem?
 
     var body: some View {
         Group {
@@ -48,19 +51,23 @@ struct HistoryView: View {
             }
         }
         .confirmationDialog(
-            "Delete this feed?",
+            pendingDelete.map(deleteTitle) ?? "",
             isPresented: Binding(get: { pendingDelete != nil }, set: { if !$0 { pendingDelete = nil } }),
             titleVisibility: .visible,
             presenting: pendingDelete
-        ) { entry in
-            Button("Delete feed", role: .destructive) { delete(entry) }
+        ) { item in
+            Button("Delete", role: .destructive) { delete(item) }
         } message: { _ in
             Text("You can undo for a few seconds afterwards.")
         }
     }
 
     private var list: some View {
-        let days = FeedTimeline.days(from: sessions.compactMap(\.feedEntry), filter: filter)
+        let days = HistoryTimeline.days(
+            feeds: sessions.compactMap(\.feedEntry),
+            pumps: pumpSessions.compactMap(\.pumpEntry),
+            filter: filter
+        )
         return List {
             if days.isEmpty {
                 emptyState
@@ -69,8 +76,8 @@ struct HistoryView: View {
             } else {
                 ForEach(days) { day in
                     Section {
-                        ForEach(day.rows) { row in
-                            rowView(row)
+                        ForEach(day.items) { item in
+                            rowView(item)
                         }
                     } header: {
                         Text(FeedText.dayTitle(day.day))
@@ -87,31 +94,53 @@ struct HistoryView: View {
 
     // MARK: - Rows
 
-    private func rowView(_ row: TimelineRow) -> some View {
-        let entry = row.entry
-        let canEdit = entry.kind == .bottle ? bottleModel != nil : model != nil
+    private func rowView(_ item: HistoryItem) -> some View {
+        let canEdit = canEdit(item)
         return Button {
-            edit(entry)
+            edit(item)
         } label: {
-            FeedRow(row: row)
+            switch item {
+            case .feed(let row): FeedRow(row: row)
+            case .pump(let entry): PumpRow(entry: entry)
+            }
         }
         .buttonStyle(.plain)
         .listRowBackground(Color.clear)
         .swipeActions(edge: .trailing, allowsFullSwipe: false) {
             if canEdit {
-                Button("Delete", systemImage: "trash", role: .destructive) { pendingDelete = entry }
+                Button("Delete", systemImage: "trash", role: .destructive) { pendingDelete = item }
             }
         }
         .swipeActions(edge: .leading) {
             if canEdit {
-                Button("Edit", systemImage: "pencil") { edit(entry) }
+                Button("Edit", systemImage: "pencil") { edit(item) }
                     .tint(NBColor.accent)
             }
         }
-        .accessibilityHint(canEdit ? Text("Opens the feed to edit") : Text(""))
+        .accessibilityHint(canEdit ? Text("Opens it to edit") : Text(""))
     }
 
-    private func edit(_ entry: FeedEntry) {
+    private func canEdit(_ item: HistoryItem) -> Bool {
+        switch item {
+        case .pump: pumpModel != nil
+        case .feed(let row): row.entry.kind == .bottle ? bottleModel != nil : model != nil
+        }
+    }
+
+    private func deleteTitle(_ item: HistoryItem) -> String {
+        if case .pump = item { return String(localized: "Delete this pumping session?") }
+        return String(localized: "Delete this feed?")
+    }
+
+    private func edit(_ item: HistoryItem) {
+        let entry: FeedEntry
+        switch item {
+        case .pump(let pump):
+            pumpModel?.presentEdit(sessionID: pump.id)
+            return
+        case .feed(let row):
+            entry = row.entry
+        }
         if entry.kind == .bottle {
             bottleModel?.presentEdit(sessionID: entry.id)
             return
@@ -121,8 +150,16 @@ struct HistoryView: View {
     }
 
     /// Breastfeeds go through the session manager (keeps "last side" right); bottles through
-    /// the bottle log. Both offer undo.
-    private func delete(_ entry: FeedEntry) {
+    /// the bottle log; pumping through the pump log. All offer undo.
+    private func delete(_ item: HistoryItem) {
+        let entry: FeedEntry
+        switch item {
+        case .pump(let pump):
+            pumpModel?.delete(id: pump.id)
+            return
+        case .feed(let row):
+            entry = row.entry
+        }
         if entry.kind == .bottle {
             bottleModel?.delete(id: entry.id)
         } else {
@@ -153,6 +190,7 @@ struct HistoryView: View {
                         Label("All feeds", systemImage: "list.bullet").tag(FeedFilter.all)
                         Label("Breastfeeds", systemImage: "heart").tag(FeedFilter.breast)
                         Label("Bottles", systemImage: "waterbottle").tag(FeedFilter.bottle)
+                        Label("Pumping", systemImage: PumpText.symbolName).tag(FeedFilter.pump)
                     }
                 } label: {
                     Label("Filter", systemImage: filter == .all
@@ -162,7 +200,7 @@ struct HistoryView: View {
                 .accessibilityIdentifier("history.filter")
             }
         }
-        if model != nil || bottleModel != nil {
+        if model != nil || bottleModel != nil || pumpModel != nil {
             ToolbarItem(placement: .topBarTrailing) {
                 Menu {
                     if model != nil {
@@ -170,6 +208,9 @@ struct HistoryView: View {
                     }
                     if let bottleModel {
                         Button("Bottle", systemImage: "waterbottle") { bottleModel.presentNew() }
+                    }
+                    if let pumpModel {
+                        Button("Pumping", systemImage: PumpText.symbolName) { pumpModel.presentNew() }
                     }
                 } label: {
                     Label("Add feed", systemImage: "plus")
@@ -180,18 +221,28 @@ struct HistoryView: View {
 
     @ViewBuilder
     private var emptyState: some View {
-        if sessions.isEmpty {
+        if sessions.isEmpty && pumpSessions.isEmpty {
             ContentUnavailableView(
                 "Your feeds will appear here",
                 systemImage: "list.bullet",
-                description: Text("Finished breastfeeds and bottles show up in this timeline, newest first.")
+                description: Text("Finished breastfeeds, bottles and pumping sessions show up in this timeline, newest first.")
             )
         } else {
             ContentUnavailableView(
-                filter == .bottle ? "No bottle feeds yet" : "No breastfeeds yet",
+                emptyFilterTitle,
                 systemImage: "line.3.horizontal.decrease.circle",
                 description: Text("Choose All feeds in the filter menu to see every feed.")
             )
+        }
+    }
+}
+
+extension HistoryView {
+    fileprivate var emptyFilterTitle: LocalizedStringKey {
+        switch filter {
+        case .bottle: "No bottle feeds yet"
+        case .pump: "No pumping sessions yet"
+        default: "No breastfeeds yet"
         }
     }
 }
@@ -216,6 +267,7 @@ private enum EditTarget: Identifiable {
         .modelContainer(container)
         .environment(FeedingSessionUIModel(controller: PreviewSessionController.idleFixture()))
         .environment(BottleLogUIModel.preview())
+        .environment(PumpLogUIModel.preview())
 }
 
 #Preview("Empty") {

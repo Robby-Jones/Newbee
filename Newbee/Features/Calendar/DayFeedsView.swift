@@ -3,13 +3,16 @@ import NewbeeShared
 import SwiftData
 import SwiftUI
 
-/// Every feed on one day, pushed from the Calendar's "Open day". Tap a feed to edit it.
+/// Every feed on one day, pushed from the Calendar's "Open day", with that day's pumping
+/// sessions underneath. Tap an entry to edit it.
 struct DayFeedsView: View {
     let day: Date
 
     @Environment(FeedingSessionUIModel.self) private var model: FeedingSessionUIModel?
     @Environment(BottleLogUIModel.self) private var bottleModel: BottleLogUIModel?
+    @Environment(PumpLogUIModel.self) private var pumpModel: PumpLogUIModel?
     @Query private var sessions: [FeedingSession]
+    @Query private var pumpSessions: [FeedingSession]
     @State private var editing: SessionSnapshot?
 
     init(day: Date) {
@@ -17,17 +20,19 @@ struct DayFeedsView: View {
         let end = Calendar.current.date(byAdding: .day, value: 1, to: start) ?? start.addingTimeInterval(86_400)
         self.day = start
         _sessions = Query(FeedingSession.completedFeeds(from: start, to: end))
+        _pumpSessions = Query(FeedingSession.completedPumps(from: start, to: end))
     }
 
     var body: some View {
         let entries = sessions.compactMap(\.feedEntry)
         let rows = FeedTimeline.days(from: entries).first?.rows ?? []
         let totals = FeedTotals(entries)
+        let pumps = pumpSessions.compactMap(\.pumpEntry)
         List {
-            if rows.isEmpty {
+            if rows.isEmpty && pumps.isEmpty {
                 ContentUnavailableView("No feeds on this day", systemImage: "calendar")
                     .listRowBackground(Color.clear)
-            } else {
+            } else if !rows.isEmpty {
                 Section {
                     let left = entries.reduce(0) { $0 + $1.duration(on: .left) }
                     let right = entries.reduce(0) { $0 + $1.duration(on: .right) }
@@ -52,6 +57,9 @@ struct DayFeedsView: View {
                     }
                 }
             }
+            if !pumps.isEmpty {
+                pumpSection(pumps)
+            }
         }
         .listStyle(.plain)
         .scrollContentBackground(.hidden)
@@ -62,6 +70,36 @@ struct DayFeedsView: View {
             if let model {
                 BreastFeedEditSheet(model: model, original: snapshot)
             }
+        }
+    }
+
+    /// "Pumping · 2 sessions · 240 mL", then each session. Pumped milk isn't counted in the
+    /// feed totals above.
+    private func pumpSection(_ pumps: [PumpEntry]) -> some View {
+        let summary = PumpSummary(entries: pumps)
+        let unit = pumpModel?.unit ?? bottleModel?.unit ?? .milliliters
+        return Section {
+            ForEach(pumps) { pump in
+                Button {
+                    pumpModel?.presentEdit(sessionID: pump.id)
+                } label: {
+                    PumpRow(entry: pump)
+                }
+                .buttonStyle(.plain)
+                .listRowBackground(Color.clear)
+                .accessibilityHint(pumpModel != nil ? Text("Opens the session to edit") : Text(""))
+            }
+        } header: {
+            HStack {
+                Label("Pumping", systemImage: PumpText.symbolName)
+                    .foregroundStyle(NBColor.pump)
+                Spacer()
+                Text(FeedText.volume(ml: summary.totalML, unit: unit))
+                    .monospacedDigit()
+            }
+            .font(.subheadline.weight(.semibold))
+            .textCase(nil)
+            .accessibilityElement(children: .combine)
         }
     }
 
@@ -85,4 +123,5 @@ struct DayFeedsView: View {
         .modelContainer(container)
         .environment(FeedingSessionUIModel(controller: PreviewSessionController.idleFixture()))
         .environment(BottleLogUIModel.preview())
+        .environment(PumpLogUIModel.preview())
 }

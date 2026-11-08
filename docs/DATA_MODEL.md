@@ -29,7 +29,7 @@ One feeding event of any kind.
 |---|---|---|
 | `id` | `UUID` | |
 | `baby` | `Baby?` | |
-| `kindRaw` | `String` = `"breast"` | `breast`, `bottle`, `pump` *(future)*, `combo` *(future)* |
+| `kindRaw` | `String` = `"breast"` | `breast`, `bottle`, `pump` (V2), `combo` *(future)* |
 | `statusRaw` | `String` = `"completed"` | `active`, `paused`, `completed`. "Not started" is never persisted. |
 | `startedAt` | `Date` | for breast: first segment start; for bottle: entered time |
 | `endedAt` | `Date?` | nil while active or paused |
@@ -70,8 +70,18 @@ The spec's example (2:15 L 12 min → R 9 min → end 2:36) is stored as 1 sessi
 | `enteredUnitRaw` | `String` = `"ml"` | `ml`, `oz` |
 | `durationSeconds` | `Double?` | optional; or derive from session start/end |
 
-### Future (no V1 table, designed now)
-- **`PumpDetails`** (`leftML`, `rightML`, reuses `FeedingSegment` for timing): `kind = pump`.
+### `PumpDetails` (V2)
+| Field | Type | Notes |
+|---|---|---|
+| `session` | `FeedingSession?` | inverse of `FeedingSession.pump` |
+| `leftML` | `Double` = `0` | canonical; either side may be 0, total > 0, each side ≤ 500 |
+| `rightML` | `Double` = `0` | canonical |
+| `enteredUnitRaw` | `String` = `"ml"` | `ml`, `oz` |
+| `durationSeconds` | `Double?` | optional, 1 min – 2 h |
+
+A pumping session is a completed `FeedingSession` with `kind = pump`, `source = manual`, `PumpDetails` and no segments; `endedAt = startedAt + duration`. It is entered by hand like a bottle (the earlier plan to time it with `FeedingSegment`s was dropped for manual entry). **Pumping is not a feed**: `completedFeeds` queries exclude `kind = pump`, so it never counts toward feed totals, gaps, reminders, Insights or the suggested side. `completedPumps` reads pumping sessions.
+
+### Future (designed now)
 - **Combination feed**: one session with `kind = combo`, both segments *and* `BottleDetails`. No restructuring needed.
 - **Diaper/sleep logs**: separate `@Model`s on `Baby`, not overloading `FeedingSession`.
 
@@ -85,7 +95,7 @@ The spec's example (2:15 L 12 min → R 9 min → end 2:36) is stored as 1 sessi
 2. `active` ⇔ exactly one open segment. `paused` ⇔ zero open segments and ≥1 closed segment. `completed` ⇔ zero open segments and `endedAt != nil`.
 3. Segments within a session don't overlap and are ordered by `startedAt`. Each `endedAt ≥ startedAt`.
 4. `session.startedAt == first segment.startedAt` for breast sessions; `endedAt ≥ last segment.endedAt`.
-5. Bottle sessions have `BottleDetails` and no segments (until `combo`).
+5. Bottle sessions have `BottleDetails` and no segments (until `combo`); pump sessions have `PumpDetails` and no segments.
 6. Editing re-validates 2 to 4; violations are surfaced in the editor and never saved.
 
 ## 4. Time handling
@@ -108,4 +118,5 @@ The spec's example (2:15 L 12 min → R 9 min → end 2:36) is stored as 1 sessi
 ## 7. Migration plan
 
 - `NewbeeSchemaV1` ships at 1.0. Every model change adds `NewbeeSchemaV(n+1)` plus a stage in `NewbeeMigrationPlan`.
+- **V2** adds `PumpDetails` and `FeedingSession.pump`. V1 → V2 is a lightweight stage (new entity plus an optional relationship). V1 stays in the code, frozen, so older stores can migrate. `PumpPersistenceTests.versionOneStoreMigrates` writes a V1 store and opens it with V2.
 - A test loads a V1 fixture store and migrates it (see `TESTING.md`).

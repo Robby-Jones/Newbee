@@ -25,6 +25,10 @@ struct NotesEditor: View {
         String(localized: "Finished it"), String(localized: "Left some"), String(localized: "Spit up"),
         String(localized: "Fussy"), String(localized: "Sleepy"),
     ]
+    static let pumpTags = [
+        String(localized: "Froze it"), String(localized: "In the fridge"), String(localized: "Low supply"),
+        String(localized: "Engorged"), String(localized: "Sore"),
+    ]
 
     var body: some View {
         VStack(alignment: .leading, spacing: NBSpacing.m) {

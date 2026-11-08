@@ -98,17 +98,25 @@ public struct BottleSummary: Sendable, Hashable {
     }
 }
 
-/// History filter chips: All · Breast · Bottle.
+/// History filter: All · Breast · Bottle · Pumping.
 public enum FeedFilter: String, Sendable, CaseIterable, Hashable {
     case all
     case breast
     case bottle
+    /// Pumping sessions only. They aren't feeds, so no `FeedEntry` matches.
+    case pump
 
     public func includes(_ entry: FeedEntry) -> Bool {
         switch self {
         case .all: true
         case .breast: entry.kind == .breast
         case .bottle: entry.kind == .bottle
+        case .pump: false
         }
+    }
+
+    /// Whether pumping sessions show under this filter.
+    public var includesPumping: Bool {
+        self == .all || self == .pump
     }
 }

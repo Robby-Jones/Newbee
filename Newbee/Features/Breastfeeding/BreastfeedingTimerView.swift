@@ -90,7 +90,7 @@ private struct TimerContent: View {
                     .font(.body.weight(.semibold))
                     .frame(minHeight: NBLayout.minHitTarget)
             }
-            .accessibilityHint("The feed keeps running")
+            .accessibilityHint(display.phase == .notStarted ? "Back to Home" : "The feed keeps running")
             Spacer()
             if display.phase != .notStarted {
                 Button("Edit start") {

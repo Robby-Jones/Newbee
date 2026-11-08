@@ -4,8 +4,8 @@ import SwiftData
 import SwiftUI
 
 /// Home (docs/UX_SPEC.md §3.2), laid out like the home screens of popular baby trackers: who
-/// the baby is, how long since the last feed, three big round buttons to start a feed on either
-/// side or log a bottle, today's totals and the latest entries. Answers the 3 a.m. questions in
+/// the baby is, how long since the last feed, three big round buttons (Breastfeed, Bottle,
+/// Pumping), today's totals and the latest entries. Answers the 3 a.m. questions in
 /// one glance; everything older lives in History and Insights.
 struct DashboardView: View {
     @Environment(FeedingSessionUIModel.self) private var sessionModel: FeedingSessionUIModel?
@@ -29,7 +29,7 @@ struct DashboardView: View {
                     } else {
                         LastFeedCard(summary: summary, now: now)
                     }
-                    QuickActions(entries: entries, now: now)
+                    QuickActions(now: now)
                     TodaySection(summary: summary)
                     RecentSection(entries: Array(entries.filter { $0.start <= now }.prefix(3)))
                 }
@@ -116,7 +116,7 @@ private struct LastFeedCard: View {
                 } else {
                     Text("No feeds yet")
                         .font(.title2.weight(.bold))
-                    Text("Tap Left, Right or Bottle below to log the first one.")
+                    Text("Tap Breastfeed or Bottle below to log the first one.")
                         .font(.subheadline)
                         .foregroundStyle(.secondary)
                         .multilineTextAlignment(.center)
@@ -176,17 +176,17 @@ private struct ActiveFeedCard: View {
     }
 }
 
-/// Left, Right and Bottle as big round buttons with when each was last used.
+/// Breastfeed, Bottle and Pumping as big round buttons with when each was last used.
 ///
-/// With no feed running, Left and Right start one on that side (the suggested side is filled
-/// and tagged) and open the timer. While a feed runs they just open the timer, so a tap on Home
-/// never switches sides by accident.
+/// Breastfeed opens the alternating Left / Right timer, where the parent picks the side (the
+/// suggested one is marked there). While a feed runs it just reopens the timer, so a tap on
+/// Home never switches sides by accident.
 private struct QuickActions: View {
-    let entries: [FeedEntry]
     let now: Date
 
     @Environment(FeedingSessionUIModel.self) private var sessionModel: FeedingSessionUIModel?
     @Environment(BottleLogUIModel.self) private var bottleModel: BottleLogUIModel?
+    @Environment(PumpLogUIModel.self) private var pumpModel: PumpLogUIModel?
     @Environment(\.dynamicTypeSize) private var dynamicTypeSize
 
     var body: some View {
@@ -195,48 +195,48 @@ private struct QuickActions: View {
             : AnyLayout(HStackLayout(alignment: .top, spacing: NBSpacing.m))
         layout {
             if let sessionModel {
-                ForEach(Side.allCases, id: \.self) { side in
-                    sideAction(side, model: sessionModel)
-                }
+                breastfeedAction(sessionModel)
             }
             if let bottleModel {
                 bottleAction(bottleModel)
             }
+            if let pumpModel {
+                pumpAction(pumpModel)
+            }
         }
         .frame(maxWidth: .infinity)
         .padding(.top, NBSpacing.s)
-        .onAppear { bottleModel?.refresh() }
+        .onAppear {
+            bottleModel?.refresh()
+            pumpModel?.refresh()
+        }
     }
 
-    private func sideAction(_ side: Side, model: FeedingSessionUIModel) -> some View {
+    private func breastfeedAction(_ model: FeedingSessionUIModel) -> some View {
         let active = model.activeSession
-        let running = active?.status == .active && active?.openSegment?.side == side
-        let suggested = active == nil && model.controller.suggestedNextSide == side
-        let caption: String = if active != nil {
-            running ? String(localized: "Feeding") : String(localized: "Open timer")
+        let running = active?.status == .active
+        let caption: String = if let active {
+            active.status == .active ? String(localized: "Feeding") : String(localized: "Paused")
         } else {
-            lastUsed(side).map { DashboardView.compactAgo(now.timeIntervalSince($0)) } ?? String(localized: "Not yet")
+            String(localized: "Next: \(model.controller.suggestedNextSide.title)")
         }
+        let tint = active?.openSegment.map { NBColor.side($0.side) } ?? NBColor.left
         return QuickActionCircle(
-            title: side.title,
-            systemImage: active == nil ? "play.fill" : "timer",
-            tint: NBColor.side(side),
-            filled: suggested || running,
-            badge: suggested ? String(localized: "Suggested") : nil,
+            title: String(localized: "Breastfeed"),
+            systemImage: active == nil ? "heart.fill" : "timer",
+            tint: tint,
+            filled: running,
+            badge: nil,
             caption: caption
         ) {
-            if active == nil {
-                model.startFromHome(side: side)
-            } else {
-                model.openTimer()
-            }
+            model.openTimer()
         }
-        .accessibilityLabel(String(localized: "\(side.title) side"))
-        .accessibilityValue(suggested ? "\(String(localized: "suggested")), \(caption)" : caption)
+        .accessibilityLabel(String(localized: "Breastfeed"))
+        .accessibilityValue(caption)
         .accessibilityHint(active == nil
-            ? String(localized: "Starts a feed on the \(side.title.lowercased()) side")
+            ? String(localized: "Opens the Left and Right timer")
             : String(localized: "Opens the feeding timer"))
-        .accessibilityIdentifier("sideButton.\(side.rawValue)")
+        .accessibilityIdentifier("breastfeedButton")
     }
 
     private func bottleAction(_ model: BottleLogUIModel) -> some View {
@@ -257,12 +257,21 @@ private struct QuickActions: View {
         .accessibilityIdentifier("logBottleButton")
     }
 
-    /// When `side` was last fed from, from finished feeds.
-    private func lastUsed(_ side: Side) -> Date? {
-        entries
-            .filter { $0.start <= now && $0.duration(on: side) > 0 }
-            .map(\.start)
-            .max()
+    private func pumpAction(_ model: PumpLogUIModel) -> some View {
+        let caption = model.latest.map { DashboardView.compactAgo(now.timeIntervalSince($0.startedAt)) }
+            ?? String(localized: "Not yet")
+        return QuickActionCircle(
+            title: String(localized: "Pumping"),
+            systemImage: PumpText.symbolName,
+            tint: NBColor.pump,
+            filled: false,
+            badge: nil,
+            caption: caption
+        ) {
+            model.presentNew()
+        }
+        .accessibilityLabel(String(localized: "Log pumping, \(model.todayLine)"))
+        .accessibilityIdentifier("logPumpButton")
     }
 }
 
@@ -413,6 +422,7 @@ private struct RecentSection: View {
         .modelContainer(container)
         .environment(FeedingSessionUIModel(controller: PreviewSessionController.idleFixture()))
         .environment(BottleLogUIModel.preview())
+        .environment(PumpLogUIModel.preview())
 }
 
 #Preview("Empty") {

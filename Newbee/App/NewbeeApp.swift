@@ -14,6 +14,10 @@ struct NewbeeApp: App {
         // A bottle counts as the last feed for reminders.
         onChange: { Task { await AppDependencies.shared.reminders.reschedule() } }
     )
+    @State private var pumpModel = PumpLogUIModel(
+        log: AppDependencies.shared.pumpLog,
+        preferences: AppDependencies.shared.preferences
+    )
     @Environment(\.scenePhase) private var scenePhase
 
     init() {
@@ -27,7 +31,7 @@ struct NewbeeApp: App {
         WindowGroup {
             if let container = dependencies.modelContainer {
                 let recovery = dependencies.recovery
-                RootView(sessionModel: sessionModel, bottleModel: bottleModel)
+                RootView(sessionModel: sessionModel, bottleModel: bottleModel, pumpModel: pumpModel)
                     .modelContainer(container)
                     .environment(dependencies.preferences)
                     .environment(dependencies.reminders)
@@ -39,8 +43,9 @@ struct NewbeeApp: App {
                     .onChange(of: scenePhase) { _, phase in
                         if phase == .active {
                             Task { await recovery.reconcile() }
-                            // Today's bottle total rolls over at midnight.
+                            // Today's bottle and pumping totals roll over at midnight.
                             bottleModel.refresh()
+                            pumpModel.refresh()
                             // Picks up permission changes made in iOS Settings.
                             Task { await dependencies.reminders.reschedule() }
                         }

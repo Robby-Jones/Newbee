@@ -31,11 +31,13 @@ extension FeedingSession {
         }
     }
 
-    /// Finished feeds of every kind, newest first. `limit` keeps Home's query small.
+    /// Finished feeds of every kind, newest first. `limit` keeps Home's query small. Pumping
+    /// sessions aren't feeds and are left out (see `completedPumps`).
     static func completedFeeds(limit: Int? = nil) -> FetchDescriptor<FeedingSession> {
         let completed = SessionStatus.completed.rawValue
+        let pump = FeedingKind.pump.rawValue
         var descriptor = FetchDescriptor<FeedingSession>(
-            predicate: #Predicate { $0.statusRaw == completed },
+            predicate: #Predicate { $0.statusRaw == completed && $0.kindRaw != pump },
             sortBy: [SortDescriptor(\.startedAt, order: .reverse)]
         )
         descriptor.fetchLimit = limit
