@@ -9,6 +9,11 @@ name: TestFlight
 #   ASC_ISSUER_ID   App Store Connect API issuer ID
 #   ASC_KEY_P8      Full contents of the AuthKey_XXXX.p8 file
 # Without them the job skips instead of failing.
+#
+# Strongly recommended, so CI reuses one certificate instead of creating a new one per run
+# (Apple caps how many a team can have). Setup steps: docs/CI_SIGNING.md.
+#   SIGNING_CERT_P12_BASE64   Base64 of an exported Apple Development certificate (.p12)
+#   SIGNING_CERT_PASSWORD     Password chosen when exporting that .p12
 
 on:
   push:
@@ -76,6 +81,53 @@ jobs:
           </plist>
           EOF
 
+      # A fresh runner has an empty keychain, so without this Xcode creates a brand new Apple
+      # Development certificate on every archive. With the certificate's private key in the
+      # keychain, Xcode reuses that certificate and only refreshes provisioning profiles.
+      - name: Install signing certificate
+        if: steps.secrets.outputs.ready == 'true'
+        env:
+          SIGNING_CERT_P12_BASE64: ${{ secrets.SIGNING_CERT_P12_BASE64 }}
+          SIGNING_CERT_PASSWORD: ${{ secrets.SIGNING_CERT_PASSWORD }}
+        run: |
+          if [ -z "$SIGNING_CERT_P12_BASE64" ]; then
+            echo "::warning::SIGNING_CERT_P12_BASE64 is not set, so Xcode will create a new Apple Development certificate for this build. Apple caps the number per team; see docs/CI_SIGNING.md to set up a reusable one."
+            exit 0
+          fi
+
+          KEYCHAIN="$RUNNER_TEMP/newbee-signing.keychain-db"
+          KEYCHAIN_PASSWORD="$(uuidgen)"
+          P12_PATH="$RUNNER_TEMP/newbee-signing.p12"
+
+          security create-keychain -p "$KEYCHAIN_PASSWORD" "$KEYCHAIN"
+          security set-keychain-settings -lut 21600 "$KEYCHAIN"
+          security unlock-keychain -p "$KEYCHAIN_PASSWORD" "$KEYCHAIN"
+
+          # Apple's intermediate certificate, so the identity validates even if the runner lacks it.
+          if curl -fsSL https://www.apple.com/certificateauthority/AppleWWDRCAG3.cer -o "$RUNNER_TEMP/AppleWWDRCAG3.cer"; then
+            security import "$RUNNER_TEMP/AppleWWDRCAG3.cer" -k "$KEYCHAIN" -T /usr/bin/codesign || true
+          fi
+
+          printf '%s' "$SIGNING_CERT_P12_BASE64" | base64 --decode > "$P12_PATH"
+          security import "$P12_PATH" -k "$KEYCHAIN" -f pkcs12 -P "$SIGNING_CERT_PASSWORD" \
+            -T /usr/bin/codesign -T /usr/bin/security -T /usr/bin/xcodebuild
+          rm -f "$P12_PATH"
+          # Let codesign use the key without a GUI prompt.
+          security set-key-partition-list -S apple-tool:,apple:,codesign: -s -k "$KEYCHAIN_PASSWORD" "$KEYCHAIN" > /dev/null
+          # Put the keychain first in the search list so Xcode finds the identity.
+          security list-keychains -d user -s "$KEYCHAIN" $(security list-keychains -d user | xargs)
+
+          # Stop here rather than let Xcode create another certificate if the secret is wrong.
+          IDENTITIES="$(security find-identity -v -p codesigning "$KEYCHAIN")"
+          echo "$IDENTITIES"
+          if ! grep -q '"Apple Development' <<<"$IDENTITIES"; then
+            echo "::error::No valid Apple Development identity in SIGNING_CERT_P12_BASE64. It may be the wrong certificate type, missing its private key, or expired. See docs/CI_SIGNING.md."
+            exit 1
+          fi
+          if ! security find-certificate -c "Apple Development" -p "$KEYCHAIN" | openssl x509 -noout -checkend 2592000 > /dev/null; then
+            echo "::warning::The CI signing certificate expires within 30 days. Renew it with the steps in docs/CI_SIGNING.md."
+          fi
+
       - name: Generate project
         if: steps.secrets.outputs.ready == 'true'
         run: xcodegen generate
@@ -112,6 +164,10 @@ jobs:
             | xcbeautify --renderer github-actions
           echo "::notice::Uploaded build $BUILD_NUMBER. It appears in TestFlight after Apple finishes processing (usually 5-15 minutes)."
 
-      - name: Remove API key
+      - name: Remove API key and signing keychain
         if: always()
-        run: rm -f "$RUNNER_TEMP"/AuthKey_*.p8
+        run: |
+          rm -f "$RUNNER_TEMP"/AuthKey_*.p8 "$RUNNER_TEMP"/newbee-signing.p12
+          if [ -f "$RUNNER_TEMP/newbee-signing.keychain-db" ]; then
+            security delete-keychain "$RUNNER_TEMP/newbee-signing.keychain-db"
+          fi

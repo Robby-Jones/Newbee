@@ -34,6 +34,9 @@ One-time setup:
    with the **Admin** role (needed for cloud-managed signing) and download the `.p8`.
 4. Repository secrets: `APPLE_TEAM_ID`, `ASC_KEY_ID`, `ASC_ISSUER_ID`, `ASC_KEY_P8` (the `.p8` contents).
 5. App Store Connect → TestFlight: add yourself to an internal testing group.
+6. Repository secrets `SIGNING_CERT_P12_BASE64` and `SIGNING_CERT_PASSWORD`: one reusable Apple
+   Development certificate, so CI doesn't create a new one per build and hit Apple's limit.
+   Step-by-step: [docs/CI_SIGNING.md](docs/CI_SIGNING.md).
 
 Without the secrets the workflow skips instead of failing.
 
