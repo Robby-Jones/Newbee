@@ -314,7 +314,7 @@ struct ActivitySidesAndControls: View {
     var body: some View {
         // The content's session: it differs from the attributes' when the activity was carried
         // over to another feed.
-        let sessionID = state.sessionID ?? attributes.sessionID
+        let sessionID = LiveActivityRecord.sessionID(attributes: attributes, state: state)
         HStack(spacing: NBSpacing.s) {
             if state.status == .ended {
                 StartSidePill(sessionID: sessionID, state: state, side: .left)
