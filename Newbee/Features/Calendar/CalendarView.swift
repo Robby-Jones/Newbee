@@ -120,7 +120,7 @@ private struct CalendarLegend: View {
             LegendDot(color: NBColor.bottleBreastMilk, label: "Bottle")
         }
         .font(.caption)
-        .foregroundStyle(.secondary)
+        .foregroundStyle(NBColor.secondaryText)
         .frame(maxWidth: .infinity)
         .accessibilityElement(children: .combine)
     }
@@ -172,7 +172,7 @@ private struct CalendarWeekView: View {
                 } else if entries.isEmpty {
                     Text("No feeds this week")
                         .font(.headline)
-                        .foregroundStyle(.secondary)
+                        .foregroundStyle(NBColor.secondaryText)
                         .frame(maxWidth: .infinity)
                         .padding(.top, NBSpacing.l)
                 } else {
@@ -296,7 +296,7 @@ private struct WeekTimeline: View {
             VStack(spacing: 2) {
                 Text(day.formatted(.dateTime.weekday(.narrow)))
                     .font(.caption2.weight(.semibold))
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(NBColor.secondaryText)
                 Text(day.formatted(.dateTime.day()))
                     .font(.subheadline.weight(isToday || isSelected ? .bold : .regular).monospacedDigit())
                     .foregroundStyle(isSelected ? Color.white : (isToday ? NBColor.accent : Color.primary))
@@ -319,7 +319,7 @@ private struct WeekTimeline: View {
             ForEach(Self.axisHours, id: \.self) { hour in
                 Text(Self.hourLabel(hour))
                     .font(.caption2.monospacedDigit())
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(NBColor.secondaryText)
                     .lineLimit(1)
                     .minimumScaleFactor(0.7)
                     .offset(y: chartHeight * CGFloat(hour) / 24 - 1)
@@ -488,7 +488,7 @@ private struct CalendarMonthView: View {
                 } else if grid.isEmpty {
                     Text("No feeds this month")
                         .font(.headline)
-                        .foregroundStyle(.secondary)
+                        .foregroundStyle(NBColor.secondaryText)
                         .frame(maxWidth: .infinity)
                         .padding(.top, NBSpacing.l)
                 } else {
@@ -572,7 +572,7 @@ private struct MonthGrid: View {
             ForEach(Array(Self.weekdaySymbols().enumerated()), id: \.offset) { _, symbol in
                 Text(symbol)
                     .font(.caption2.weight(.semibold))
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(NBColor.secondaryText)
                     .frame(maxWidth: .infinity)
                     .accessibilityHidden(true)
             }
@@ -670,7 +670,7 @@ private struct DaySummaryCard: View {
                 if entries.isEmpty {
                     Text("No feeds recorded on this day.")
                         .font(.subheadline)
-                        .foregroundStyle(.secondary)
+                        .foregroundStyle(NBColor.secondaryText)
                 } else {
                     DayTotalsRow(totals: totals, unit: unit)
                     let left = entries.reduce(0) { $0 + $1.duration(on: .left) }
@@ -680,7 +680,7 @@ private struct DaySummaryCard: View {
                             SegmentBar(left: left, right: right)
                             Text("L \(DurationText.short(left)) · R \(DurationText.short(right))")
                                 .font(.footnote.monospacedDigit())
-                                .foregroundStyle(.secondary)
+                                .foregroundStyle(NBColor.secondaryText)
                         }
                     }
                     Divider()
@@ -691,7 +691,7 @@ private struct DaySummaryCard: View {
                     if rows.count > 6 {
                         Text("and \(rows.count - 6) more")
                             .font(.footnote)
-                            .foregroundStyle(.secondary)
+                            .foregroundStyle(NBColor.secondaryText)
                     }
                     NavigationLink(value: DayRoute(day: day)) {
                         Label("Open day", systemImage: "list.bullet")
@@ -741,7 +741,7 @@ struct MiniStat: View {
                 .lineLimit(1)
             Text(label)
                 .font(.caption)
-                .foregroundStyle(.secondary)
+                .foregroundStyle(NBColor.secondaryText)
         }
         .accessibilityElement(children: .combine)
     }
@@ -761,7 +761,7 @@ private struct PeriodSummary: View {
                 DayTotalsRow(totals: totals, unit: unit)
                 Text("Tap a day to see its feeds.")
                     .font(.footnote)
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(NBColor.secondaryText)
             }
         }
     }

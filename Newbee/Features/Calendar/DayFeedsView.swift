@@ -92,7 +92,7 @@ struct DayFeedsView: View {
         } header: {
             HStack {
                 Label("Pumping", systemImage: PumpText.symbolName)
-                    .foregroundStyle(NBColor.pump)
+                    .foregroundStyle(NBColor.pumpInk)
                 Spacer()
                 Text(FeedText.volume(ml: summary.totalML, unit: unit))
                     .monospacedDigit()

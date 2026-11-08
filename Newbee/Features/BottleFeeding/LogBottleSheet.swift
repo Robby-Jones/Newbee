@@ -113,7 +113,7 @@ struct LogBottleSheet: View {
                             .accessibilityIdentifier("bottle.amount")
                         Text(draft.amount.unit.symbol)
                             .font(.title3.weight(.semibold))
-                            .foregroundStyle(.secondary)
+                            .foregroundStyle(NBColor.secondaryText)
                     }
                     .frame(maxWidth: .infinity)
                     stepButton(1, systemImage: "plus", label: "More")

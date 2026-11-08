@@ -58,6 +58,14 @@ extension FeedEntry {
         }
     }
 
+    /// `tint` as an icon color: darker in light mode so it stays readable (see NBColor).
+    var ink: Color {
+        switch details {
+        case .breast(_, _, _, let last): last.map(NBColor.sideInk) ?? NBColor.leftInk
+        case .bottle(let bottle): bottle.contents == .formula ? NBColor.bottleFormulaInk : NBColor.bottleBreastMilkInk
+        }
+    }
+
     var symbolName: String {
         switch details {
         case .breast: "heart.fill"
@@ -76,7 +84,7 @@ struct FeedRow: View {
         HStack(alignment: .top, spacing: NBSpacing.m) {
             Text(entry.start, format: .dateTime.hour().minute())
                 .font(.subheadline.monospacedDigit())
-                .foregroundStyle(.secondary)
+                .foregroundStyle(NBColor.secondaryText)
                 .frame(minWidth: 64, alignment: .leading)
 
             Capsule()
@@ -87,7 +95,7 @@ struct FeedRow: View {
             VStack(alignment: .leading, spacing: NBSpacing.xs) {
                 HStack(spacing: NBSpacing.s) {
                     Image(systemName: entry.symbolName)
-                        .foregroundStyle(entry.tint)
+                        .foregroundStyle(entry.ink)
                         .accessibilityHidden(true)
                     Text(FeedText.title(entry))
                         .font(.body.weight(.semibold))
@@ -100,7 +108,7 @@ struct FeedRow: View {
                     if let sides = FeedText.sides(entry) {
                         Text(sides)
                             .font(.footnote.monospacedDigit())
-                            .foregroundStyle(.secondary)
+                            .foregroundStyle(NBColor.secondaryText)
                     }
                 }
                 if !entry.notes.isEmpty {
@@ -113,7 +121,7 @@ struct FeedRow: View {
                             .accessibilityHidden(true)
                     }
                     .font(.footnote)
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(NBColor.secondaryText)
                     .padding(.horizontal, NBSpacing.s)
                     .padding(.vertical, 6)
                     .frame(maxWidth: .infinity, alignment: .leading)
@@ -122,7 +130,7 @@ struct FeedRow: View {
                 if let gap = row.sincePrevious {
                     Label(String(localized: "\(DurationText.short(gap)) after the previous feed"), systemImage: "arrow.down")
                         .font(.caption)
-                        .foregroundStyle(.tertiary)
+                        .foregroundStyle(NBColor.secondaryText)
                         .labelStyle(.titleAndIcon)
                 }
             }
@@ -142,7 +150,7 @@ struct ReviewBadge: View {
             .padding(.horizontal, 6)
             .padding(.vertical, 2)
             .background(Color.orange.opacity(0.2), in: .capsule)
-            .foregroundStyle(Color.orange)
+            .foregroundStyle(NBColor.reviewInk)
             .accessibilityLabel("Needs review")
     }
 }

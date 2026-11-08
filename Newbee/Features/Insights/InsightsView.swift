@@ -126,7 +126,7 @@ private struct InsightCard<Content: View>: View {
                         .accessibilityAddTraits(.isHeader)
                     Text(summary)
                         .font(.subheadline)
-                        .foregroundStyle(.secondary)
+                        .foregroundStyle(NBColor.secondaryText)
                         .fixedSize(horizontal: false, vertical: true)
                 }
                 content
@@ -143,7 +143,7 @@ private struct InsightsFooter: View {
         let base = String(localized: "Based on your recorded feeds. Not medical advice.")
         Text(includesEstimated ? base + " " + String(localized: "Includes estimated entries.") : base)
             .font(.caption)
-            .foregroundStyle(.secondary)
+            .foregroundStyle(NBColor.secondaryText)
             .frame(maxWidth: .infinity)
             .multilineTextAlignment(.center)
             .padding(.top, NBSpacing.s)
@@ -154,7 +154,7 @@ private struct SparseNote: View {
     var body: some View {
         Label("Insights get more useful after a couple of days of tracking. Here's what there is so far.", systemImage: "sparkles")
             .font(.footnote)
-            .foregroundStyle(.secondary)
+            .foregroundStyle(NBColor.secondaryText)
             .padding(NBSpacing.m)
             .frame(maxWidth: .infinity, alignment: .leading)
             .background(NBColor.accent.opacity(0.08), in: RoundedRectangle(cornerRadius: NBRadius.control, style: .continuous))
@@ -179,7 +179,7 @@ private struct FeedsCard: View {
                 if report.range != .day {
                     RuleMark(y: .value("Average", average))
                         .lineStyle(StrokeStyle(lineWidth: 1, dash: [4, 3]))
-                        .foregroundStyle(.secondary)
+                        .foregroundStyle(NBColor.secondaryText)
                 }
             }
             .chartForegroundStyleScale([String(localized: "Breast"): NBColor.accent, String(localized: "Bottle"): NBColor.bottleBreastMilk])
@@ -255,7 +255,7 @@ private struct IntervalsCard: View {
             .accessibilityLabel(summary)
             Text("Each dot is a feed: when it started, and how long after the previous one.")
                 .font(.caption)
-                .foregroundStyle(.secondary)
+                .foregroundStyle(NBColor.secondaryText)
         }
     }
 
@@ -310,7 +310,7 @@ private struct BreastCard: View {
                     }
                     Text("Started on L \(breast.startedLeft)× · R \(breast.startedRight)×")
                         .font(.caption)
-                        .foregroundStyle(.secondary)
+                        .foregroundStyle(NBColor.secondaryText)
                 }
             }
         }
@@ -415,10 +415,10 @@ private struct HeatmapCard: View {
                     }
                 }
                 .font(.caption2)
-                .foregroundStyle(.secondary)
+                .foregroundStyle(NBColor.secondaryText)
                 Text("Each row is a day (oldest at the top), each column an hour.")
                     .font(.caption)
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(NBColor.secondaryText)
             }
             .accessibilityElement(children: .ignore)
             .accessibilityLabel(summary)

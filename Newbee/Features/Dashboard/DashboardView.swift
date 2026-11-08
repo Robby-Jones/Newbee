@@ -79,7 +79,7 @@ private struct ProfileHeader: View {
             if let birthDate = baby?.birthDate {
                 Text(BabyAge.text(from: birthDate, now: now))
                     .font(.subheadline)
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(NBColor.secondaryText)
             }
         }
         .frame(maxWidth: .infinity)
@@ -101,7 +101,7 @@ private struct LastFeedCard: View {
                     Text("Last fed")
                         .font(.caption.weight(.semibold))
                         .textCase(.uppercase)
-                        .foregroundStyle(.secondary)
+                        .foregroundStyle(NBColor.secondaryText)
                     Text(since < 60 ? String(localized: "Just now") : DurationText.short(since))
                         .font(.system(size: 44, weight: .bold, design: .rounded))
                         .monospacedDigit()
@@ -111,14 +111,14 @@ private struct LastFeedCard: View {
                         .accessibilityLabel(FeedText.ago(since))
                     Text(detail(last))
                         .font(.subheadline)
-                        .foregroundStyle(.secondary)
+                        .foregroundStyle(NBColor.secondaryText)
                         .multilineTextAlignment(.center)
                 } else {
                     Text("No feeds yet")
                         .font(.title2.weight(.bold))
                     Text("Tap Breastfeed or Bottle below to log the first one.")
                         .font(.subheadline)
-                        .foregroundStyle(.secondary)
+                        .foregroundStyle(NBColor.secondaryText)
                         .multilineTextAlignment(.center)
                 }
             }
@@ -159,11 +159,11 @@ private struct ActiveFeedCard: View {
                         }
                         .font(.caption.weight(.semibold))
                         .textCase(.uppercase)
-                        .foregroundStyle(.secondary)
+                        .foregroundStyle(NBColor.secondaryText)
                         TimerText(display.total, size: 44, relativeTo: .largeTitle)
                         Text("L \(DurationText.clock(display.left)) · R \(DurationText.clock(display.right))")
                             .font(.subheadline.monospacedDigit())
-                            .foregroundStyle(.secondary)
+                            .foregroundStyle(NBColor.secondaryText)
                     }
                     .frame(maxWidth: .infinity)
                     .padding(.vertical, NBSpacing.s)
@@ -220,11 +220,12 @@ private struct QuickActions: View {
         } else {
             String(localized: "Next: \(model.controller.suggestedNextSide.title)")
         }
-        let tint = active?.openSegment.map { NBColor.side($0.side) } ?? NBColor.left
+        let side = active?.openSegment?.side ?? .left
         return QuickActionCircle(
             title: String(localized: "Breastfeed"),
             systemImage: active == nil ? "heart.fill" : "timer",
-            tint: tint,
+            tint: NBColor.side(side),
+            ink: NBColor.sideInk(side),
             filled: running,
             badge: nil,
             caption: caption
@@ -246,6 +247,7 @@ private struct QuickActions: View {
             title: String(localized: "Bottle"),
             systemImage: "waterbottle.fill",
             tint: NBColor.bottleBreastMilk,
+            ink: NBColor.bottleBreastMilkInk,
             filled: false,
             badge: nil,
             caption: caption
@@ -264,6 +266,7 @@ private struct QuickActions: View {
             title: String(localized: "Pumping"),
             systemImage: PumpText.symbolName,
             tint: NBColor.pump,
+            ink: NBColor.pumpInk,
             filled: false,
             badge: nil,
             caption: caption
@@ -279,7 +282,10 @@ private struct QuickActions: View {
 private struct QuickActionCircle: View {
     let title: String
     let systemImage: String
+    /// Fill and outline color.
     let tint: Color
+    /// Icon color on the card (a darker `tint` in light mode, for contrast).
+    let ink: Color
     let filled: Bool
     let badge: String?
     let caption: String
@@ -293,7 +299,7 @@ private struct QuickActionCircle: View {
                 VStack(spacing: NBSpacing.xs) {
                     Image(systemName: systemImage)
                         .font(.title2.weight(.semibold))
-                        .foregroundStyle(filled ? NBColor.onSide : tint)
+                        .foregroundStyle(filled ? NBColor.onSide : ink)
                     Text(title)
                         .font(.subheadline.weight(.semibold))
                         .foregroundStyle(filled ? NBColor.onSide : Color.primary)
@@ -306,7 +312,7 @@ private struct QuickActionCircle: View {
                         Circle().fill(tint)
                     } else {
                         Circle().fill(NBColor.card)
-                            .overlay { Circle().strokeBorder(tint.opacity(0.6), lineWidth: 2) }
+                            .overlay { Circle().strokeBorder(tint, lineWidth: 2) }
                     }
                 }
                 .overlay(alignment: .top) {
@@ -323,7 +329,7 @@ private struct QuickActionCircle: View {
                 }
                 Text(caption)
                     .font(.footnote)
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(NBColor.secondaryText)
                     .lineLimit(1)
                     .minimumScaleFactor(0.8)
             }
@@ -346,14 +352,14 @@ private struct TodaySection: View {
             Card(padding: NBSpacing.m) {
                 HStack(alignment: .top, spacing: NBSpacing.s) {
                     stat(String(localized: "Feeds"), "drop.fill", NBColor.accent, "\(summary.today.feedCount)")
-                    stat(String(localized: "Breast"), "heart.fill", NBColor.left, DurationText.short(summary.today.breastDuration))
-                    stat(String(localized: "Bottles"), "waterbottle.fill", NBColor.bottleBreastMilk, FeedText.volume(ml: summary.today.bottleML))
-                    stat(String(localized: "Avg gap"), "clock.fill", NBColor.right, summary.today.averageInterval.map(DurationText.short) ?? "–")
+                    stat(String(localized: "Breast"), "heart.fill", NBColor.leftInk, DurationText.short(summary.today.breastDuration))
+                    stat(String(localized: "Bottles"), "waterbottle.fill", NBColor.bottleBreastMilkInk, FeedText.volume(ml: summary.today.bottleML))
+                    stat(String(localized: "Avg gap"), "clock.fill", NBColor.rightInk, summary.today.averageInterval.map(DurationText.short) ?? "–")
                 }
             }
             Text(last24Line)
                 .font(.footnote)
-                .foregroundStyle(.secondary)
+                .foregroundStyle(NBColor.secondaryText)
         }
     }
 
@@ -372,7 +378,7 @@ private struct TodaySection: View {
                 .contentTransition(.numericText())
             Text(label)
                 .font(.caption)
-                .foregroundStyle(.secondary)
+                .foregroundStyle(NBColor.secondaryText)
                 .lineLimit(1)
                 .minimumScaleFactor(0.8)
         }

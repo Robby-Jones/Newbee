@@ -54,16 +54,28 @@ a list/calendar switch, and Apple Fitness puts its calendar inside History. So:
 |---|---|---|---|
 | `bg.canvas` | App background | warm off-white `#FAF8F5` | `#0F0F12` |
 | `bg.card` | Cards | `#FFFFFF` | `#1B1B20` |
-| `text.primary / secondary` | | system label colors | |
-| `accent` | Primary actions | soft indigo `#6B6FD6` | `#8E91F0` |
+| `text.primary` | | system label color | |
+| `secondaryText` | Secondary text (replaces system `.secondary`, which is ~3.3:1 on the canvas) | `#66666C` | `#A1A1AA` |
+| `accent` | Primary actions, text, fill under white text | indigo `#5054C2` | `#8E91F0` |
 | `side.left` | Left breast | lavender `#9C8CE0` | `#B3A6F0` |
 | `side.right` | Right breast | teal `#4FB3A9` | `#6FCFC4` |
 | `feed.bottle.breastMilk` | Bottle (EBM) | peach `#F2A37B` | `#F5B593` |
 | `feed.bottle.formula` | Bottle (formula) | butter `#E8C25A` | `#EDD07A` |
 | `state.paused` | Paused | system gray | |
-| `state.destructive` | Delete/End emphasis | muted rose `#D9667A` | `#E88092` |
+| `state.destructive` | Delete/End emphasis | rose `#AE2F4B` | `#E88092` |
 
-Exact values are refined in Phase 3. Side and feed colors are always paired with a letter or icon.
+Side, feed and pump colors are soft pastels for fills, chart marks and borders; text on them uses `onSide` (`#1B1B20`). When one of these colors is the text or icon color itself, use its ink variant, which reaches at least 4.5:1 on the canvas, the card and a light tint of itself:
+
+| Ink token | Light | Dark |
+|---|---|---|
+| `leftInk` | `#6A58C4` | `#B3A6F0` |
+| `rightInk` | `#26706A` | `#6FCFC4` |
+| `bottleBreastMilkInk` | `#A9522A` | `#F5B593` |
+| `bottleFormulaInk` | `#846510` | `#EDD07A` |
+| `pumpInk` | `#A8436A` | `#F0A8C2` |
+| `reviewInk` (Review badge) | `#8F5200` | `#FF9F0A` |
+
+Side and feed colors are always paired with a letter or icon.
 
 ### Typography
 - SF Pro **Rounded** for numerals and headings; SF Pro for body.

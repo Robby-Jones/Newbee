@@ -37,7 +37,7 @@ struct SessionSummaryView: View {
                             .font(NBFont.timer(size: 44))
                         Text("\(session.startedAt, format: .dateTime.hour().minute()) – \(end, format: .dateTime.hour().minute())")
                             .font(.subheadline)
-                            .foregroundStyle(.secondary)
+                            .foregroundStyle(NBColor.secondaryText)
                     }
                     .padding(.top, NBSpacing.xl)
                     .accessibilityElement(children: .combine)
@@ -53,7 +53,7 @@ struct SessionSummaryView: View {
                                     Spacer()
                                     Text(DurationText.short(time))
                                         .font(.body.monospacedDigit())
-                                        .foregroundStyle(.secondary)
+                                        .foregroundStyle(NBColor.secondaryText)
                                 }
                                 .accessibilityElement(children: .ignore)
                                 .accessibilityLabel(String(localized: "\(side.title) side, \(DurationText.spoken(time))"))
@@ -61,7 +61,7 @@ struct SessionSummaryView: View {
                             if let first = session.startingSide {
                                 Text("Started on the \(first.title.lowercased()). Next time, start on the \(session.lastSide?.opposite.title.lowercased() ?? first.opposite.title.lowercased()).")
                                     .font(.footnote)
-                                    .foregroundStyle(.secondary)
+                                    .foregroundStyle(NBColor.secondaryText)
                             }
                         }
                     }
