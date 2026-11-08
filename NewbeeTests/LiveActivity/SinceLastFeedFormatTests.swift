@@ -1,6 +1,7 @@
 import Foundation
 import SwiftUI
 import Testing
+import XCTest
 @testable import Newbee
 
 /// The since-last-feed clock uses iOS 18's live-updating `SystemFormatStyle`, whose exact output
@@ -13,28 +14,43 @@ struct SinceLastFeedFormatTests {
         ended.addingTimeInterval(TimeInterval(hours * 3600 + minutes * 60 + seconds))
     }
 
-    @Test(arguments: [
-        (0, 0, 0, "0:00"),
-        (0, 0, 59, "0:00"),
-        (0, 5, 0, "0:05"),
-        (0, 45, 30, "0:45"),
-        (0, 59, 59, "0:59"),
-        (1, 0, 0, "1:00"),
-        (1, 23, 45, "1:23"),
-        (12, 5, 0, "12:05"),
-    ])
-    func showsHoursAndMinutes(hours: Int, minutes: Int, seconds: Int, expected: String) {
-        let text = SinceLastFeedFormat.text(since: ended, at: at(hours, minutes, seconds))
-        #expect(text == expected, "\(diagnostics(at: at(hours, minutes, seconds)))")
-    }
-
     @Test func switchesToHoursAtTheHourMarkOrWhenTheSystemMarksItStale() {
         #expect(!SinceLastFeedFormat.showsHours(since: ended, isStale: false, now: at(0, 59, 59)))
         #expect(SinceLastFeedFormat.showsHours(since: ended, isStale: false, now: at(1, 0)))
         #expect(SinceLastFeedFormat.showsHours(since: ended, isStale: true, now: at(0, 10)))
     }
 
-    /// Raw output of the candidate styles, printed when an expectation fails.
+}
+
+/// XCTest rather than Swift Testing so CI's log shows the failure message with the real strings.
+final class SinceLastFeedClockStringTests: XCTestCase {
+    let ended = Date(timeIntervalSince1970: 1_800_000_000)
+
+    func at(_ hours: Int, _ minutes: Int, _ seconds: Int = 0) -> Date {
+        ended.addingTimeInterval(TimeInterval(hours * 3600 + minutes * 60 + seconds))
+    }
+
+    func testShowsHoursAndMinutes() {
+        let cases: [(Int, Int, Int, String)] = [
+            (0, 0, 0, "0:00"),
+            (0, 0, 59, "0:00"),
+            (0, 5, 0, "0:05"),
+            (0, 45, 30, "0:45"),
+            (0, 59, 59, "0:59"),
+            (1, 0, 0, "1:00"),
+            (1, 23, 45, "1:23"),
+            (12, 5, 0, "12:05"),
+        ]
+        for (h, m, s, expected) in cases {
+            let date = at(h, m, s)
+            XCTAssertEqual(
+                SinceLastFeedFormat.text(since: ended, at: date), expected,
+                "at \(h)h\(m)m\(s)s: \(diagnostics(at: date))"
+            )
+        }
+    }
+
+    /// Raw output of the candidate styles, shown when an assertion fails.
     private func diagnostics(at date: Date) -> String {
         func render(_ style: SystemFormatStyle.Stopwatch) -> String { String(style.format(date).characters) }
         let candidates: [(String, SystemFormatStyle.Stopwatch)] = [
