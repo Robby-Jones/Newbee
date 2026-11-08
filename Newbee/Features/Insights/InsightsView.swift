@@ -11,22 +11,24 @@ struct InsightsView: View {
     @State private var range: InsightsRange = .week
 
     var body: some View {
-        // The query depends on the range, so it lives in a child view rebuilt per range.
-        InsightsContent(range: range)
-            .id(range)
-            .safeAreaInset(edge: .top, spacing: 0) {
-                Picker("Range", selection: $range) {
-                    ForEach(InsightsRange.allCases) { range in
-                        Text(range.title).tag(range)
-                    }
+        // The picker sits in a plain stack rather than a top safe-area inset: an inset over the
+        // scroll view covered the large navigation title.
+        VStack(spacing: 0) {
+            Picker("Range", selection: $range) {
+                ForEach(InsightsRange.allCases) { range in
+                    Text(range.title).tag(range)
                 }
-                .pickerStyle(.segmented)
-                .padding(.horizontal, NBSpacing.l)
-                .padding(.vertical, NBSpacing.s)
-                .background(.bar)
             }
-            .background(NBColor.canvas)
-            .navigationTitle("Insights")
+            .pickerStyle(.segmented)
+            .padding(.horizontal, NBSpacing.l)
+            .padding(.vertical, NBSpacing.s)
+
+            // The query depends on the range, so it lives in a child view rebuilt per range.
+            InsightsContent(range: range)
+                .id(range)
+        }
+        .background(NBColor.canvas)
+        .navigationTitle("Insights")
     }
 }
 
@@ -82,9 +84,6 @@ private struct InsightsContent: View {
                         )
                         .padding(.top, NBSpacing.xl)
                     } else {
-                        if report.isSparse {
-                            SparseNote()
-                        }
                         FeedsCard(report: report)
                         if !report.intervals.isEmpty {
                             IntervalsCard(report: report)
@@ -97,6 +96,9 @@ private struct InsightsContent: View {
                         }
                         if range != .day, !report.isEmpty {
                             HeatmapCard(report: report)
+                        }
+                        if report.isSparse {
+                            SparseNote()
                         }
                         InsightsFooter(includesEstimated: report.includesEstimated)
                     }

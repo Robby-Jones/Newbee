@@ -80,7 +80,7 @@ struct LogPumpSheet: View {
                 }
             }
         }
-        .presentationDetents([.medium, .large])
+        .presentationDetents([.fraction(0.75), .large])
         .presentationDragIndicator(.visible)
         .onChange(of: leftText) { _, text in parse(text, side: .left) }
         .onChange(of: rightText) { _, text in parse(text, side: .right) }
@@ -152,29 +152,61 @@ struct LogPumpSheet: View {
     private var timeCard: some View {
         Card {
             VStack(alignment: .leading, spacing: NBSpacing.m) {
-                DatePicker("Started", selection: $draft.startedAt, in: ...Date.now, displayedComponents: [.date, .hourAndMinute])
+                DatePicker("Time", selection: finishedAt, in: ...Date.now, displayedComponents: [.date, .hourAndMinute])
                     .accessibilityIdentifier("pump.time")
+                if abs(finishedAt.wrappedValue.timeIntervalSinceNow) > 60 {
+                    Button("Set to now") { finishedAt.wrappedValue = .now }
+                        .font(.subheadline.weight(.semibold))
+                }
                 Divider()
-                Toggle("Duration", isOn: $hasDuration.animation())
+                Toggle("Duration", isOn: durationToggle.animation())
                     .accessibilityIdentifier("pump.hasDuration")
                 if hasDuration {
-                    Stepper(value: $durationMinutes, in: 1...Int(model.log.rules.maximumDuration / 60)) {
+                    Stepper(value: durationStepper, in: 1...Int(model.log.rules.maximumDuration / 60)) {
                         Text(DurationText.short(TimeInterval(durationMinutes * 60)))
                             .monospacedDigit()
                     }
                     .accessibilityIdentifier("pump.duration")
                 }
-                if hasDuration, abs(finalDraft.endedAtOrStart.timeIntervalSinceNow) > 60 {
-                    Button("Ended just now") {
-                        draft.startedAt = Date.now.addingTimeInterval(-TimeInterval(durationMinutes * 60))
-                    }
-                    .font(.subheadline.weight(.semibold))
-                } else if !hasDuration, abs(draft.startedAt.timeIntervalSinceNow) > 60 {
-                    Button("Set to now") { draft.startedAt = .now }
-                        .font(.subheadline.weight(.semibold))
-                }
             }
         }
+    }
+
+    /// Seconds the duration controls currently add after the start.
+    private var currentDuration: TimeInterval {
+        hasDuration ? TimeInterval(durationMinutes * 60) : 0
+    }
+
+    /// The time shown in the sheet is when the session finished (people log pumping once
+    /// they're done), so a new entry reads "now". The start is that minus the duration.
+    private var finishedAt: Binding<Date> {
+        Binding(
+            get: { draft.startedAt.addingTimeInterval(currentDuration) },
+            set: { draft.startedAt = $0.addingTimeInterval(-currentDuration) }
+        )
+    }
+
+    /// Changing the duration keeps the finish time and moves the start.
+    private var durationStepper: Binding<Int> {
+        Binding(
+            get: { durationMinutes },
+            set: { minutes in
+                let end = finishedAt.wrappedValue
+                durationMinutes = minutes
+                if hasDuration { draft.startedAt = end.addingTimeInterval(-TimeInterval(minutes * 60)) }
+            }
+        )
+    }
+
+    private var durationToggle: Binding<Bool> {
+        Binding(
+            get: { hasDuration },
+            set: { isOn in
+                let end = finishedAt.wrappedValue
+                hasDuration = isOn
+                draft.startedAt = end.addingTimeInterval(isOn ? -TimeInterval(durationMinutes * 60) : 0)
+            }
+        )
     }
 
     private var notesCard: some View {
@@ -256,13 +288,6 @@ struct LogPumpSheet: View {
 
     private static func text(for amount: BottleAmount) -> String {
         amount.value > 0 ? amount.formattedValue : ""
-    }
-}
-
-private extension PumpDraft {
-    /// When the session ends with the current duration controls, for the "Ended just now" button.
-    var endedAtOrStart: Date {
-        startedAt.addingTimeInterval(durationSeconds ?? 0)
     }
 }
 

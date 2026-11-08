@@ -27,13 +27,18 @@ struct HistoryView: View {
     @State private var pendingDelete: HistoryItem?
 
     var body: some View {
-        Group {
-            switch mode {
-            case .list: list
-            case .calendar: CalendarView()
+        // A plain stack rather than a top safe-area inset: an inset over the scroll view
+        // covered the large navigation title.
+        VStack(spacing: 0) {
+            modePicker
+            Group {
+                switch mode {
+                case .list: list
+                case .calendar: CalendarView()
+                }
             }
+            .frame(maxHeight: .infinity)
         }
-        .safeAreaInset(edge: .top, spacing: 0) { modePicker }
         .background(NBColor.canvas)
         .navigationTitle("History")
         .toolbar { toolbar }
@@ -178,7 +183,6 @@ struct HistoryView: View {
         .accessibilityIdentifier("history.mode")
         .padding(.horizontal, NBSpacing.l)
         .padding(.vertical, NBSpacing.s)
-        .background(.bar)
     }
 
     @ToolbarContentBuilder
