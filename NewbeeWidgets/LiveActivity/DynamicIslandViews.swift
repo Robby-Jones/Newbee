@@ -8,14 +8,15 @@ import WidgetKit
 
 // MARK: Expanded
 
-/// The total, where the side badge and name used to be.
+/// The total, or the time since the last feed once it has ended.
 struct IslandExpandedLeading: View {
     let state: FeedingState
+    let isStale: Bool
 
     var body: some View {
-        TotalTimerText(state: state)
+        HeadlineTimerText(state: state, isStale: isStale)
             .font(NBFont.timer(size: 26))
-            .foregroundStyle(state.status == .active ? Color.white : Color.secondary)
+            .foregroundStyle(state.status == .paused ? Color.secondary : Color.white)
             .multilineTextAlignment(.leading)
             .frame(maxWidth: 120, alignment: .leading)
             .padding(.leading, NBSpacing.xs)
@@ -47,24 +48,39 @@ struct IslandCompactLeading: View {
                 .foregroundStyle(NBColor.side(state.currentSide))
                 .accessibilityLabel("Paused")
         case .ended:
-            Image(systemName: "checkmark")
+            Image(systemName: "clock")
                 .font(.caption.weight(.bold))
-                .foregroundStyle(NBColor.side(state.currentSide))
-                .accessibilityLabel("Feed complete")
+                .foregroundStyle(Color.secondary)
+                .accessibilityLabel("Since last feed")
         }
     }
 }
 
 struct IslandCompactTrailing: View {
     let state: FeedingState
+    let isStale: Bool
 
     var body: some View {
-        TotalTimerText(state: state)
+        HeadlineTimerText(state: state, isStale: isStale)
             .font(.system(size: 15, weight: .semibold, design: .rounded))
-            .foregroundStyle(state.status == .active ? NBColor.side(state.currentSide) : Color.secondary)
+            .foregroundStyle(foreground)
             .multilineTextAlignment(.trailing)
             // Timer text otherwise claims all available width and pushes the island wide.
-            .frame(maxWidth: state.totalAccumulated >= 3600 ? 60 : 46)
+            .frame(maxWidth: maxWidth)
+    }
+
+    private var foreground: Color {
+        switch state.status {
+        case .active: NBColor.side(state.currentSide)
+        case .paused: Color.secondary
+        case .ended: Color.white
+        }
+    }
+
+    /// "02:15" since last feed fits the narrow width (it sizes itself); a feed over an hour
+    /// needs "1:02:03".
+    private var maxWidth: CGFloat {
+        state.status != .ended && state.totalAccumulated >= 3600 ? 60 : 50
     }
 }
 
@@ -88,10 +104,10 @@ struct IslandMinimal: View {
                     .font(.system(size: 8, weight: .bold))
                     .foregroundStyle(color)
             case .ended:
-                Circle().strokeBorder(color, lineWidth: 2)
-                Image(systemName: "checkmark")
-                    .font(.system(size: 8, weight: .bold))
-                    .foregroundStyle(color)
+                Circle().strokeBorder(Color.secondary, lineWidth: 2)
+                Image(systemName: "clock")
+                    .font(.system(size: 9, weight: .bold))
+                    .foregroundStyle(Color.secondary)
             }
         }
         .frame(width: 22, height: 22)

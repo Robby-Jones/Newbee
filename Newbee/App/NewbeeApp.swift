@@ -11,8 +11,11 @@ struct NewbeeApp: App {
     @State private var bottleModel = BottleLogUIModel(
         log: AppDependencies.shared.bottleLog,
         preferences: AppDependencies.shared.preferences,
-        // A bottle counts as the last feed for reminders.
-        onChange: { Task { await AppDependencies.shared.reminders.reschedule() } }
+        // A bottle counts as the last feed for reminders and the Live Activity's count.
+        onChange: {
+            Task { await AppDependencies.shared.reminders.reschedule() }
+            Task { await AppDependencies.shared.sessionManager.bottlesDidChange() }
+        }
     )
     @State private var pumpModel = PumpLogUIModel(
         log: AppDependencies.shared.pumpLog,

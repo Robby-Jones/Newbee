@@ -126,6 +126,12 @@ struct BottleLogTests {
         #expect(log.newDraft(unit: .milliliters).amount == BottleAmount(118, .milliliters))
     }
 
+    @Test func draftCanStartEarlierButNotLater() {
+        let earlier = clock.now.addingTimeInterval(-3 * 86_400)
+        #expect(log.newDraft(unit: .milliliters, at: earlier).startedAt == earlier)
+        #expect(log.newDraft(unit: .milliliters, at: clock.now.addingTimeInterval(3600)).startedAt == clock.now)
+    }
+
     @Test func saveStoresCanonicalMillilitersAndTheEnteredUnit() throws {
         let result = try log.save(BottleDraft(contents: .breastMilk, amount: BottleAmount(2, .fluidOunces), startedAt: clock.now))
         #expect(result.previous == nil)

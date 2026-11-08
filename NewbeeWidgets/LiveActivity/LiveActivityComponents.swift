@@ -10,15 +10,19 @@ extension Side {
 }
 
 extension FeedingState {
-    /// One-line status, e.g. "Feeding on left", "Paused", "Feed complete".
+    /// One-line status, e.g. "Feeding on left", "Paused", "Since last feed".
     func statusLine(isStale: Bool) -> String {
         if isStale && status != .ended { return "Still feeding? Open Newbee" }
         switch status {
         case .active: return "Feeding on \(currentSide.displayName.lowercased())"
         case .paused: return "Paused"
-        case .ended: return "Feed complete"
+        case .ended: return "Since last feed"
         }
     }
+
+    /// The side to offer for the next feed: the other side from the one the last feed ended on,
+    /// as the app suggests.
+    var suggestedNextSide: Side { currentSide.opposite }
 }
 
 /// "L" / "R" in a side-colored circle. Color is never the only signal.
@@ -63,6 +67,48 @@ struct TotalTimerText: View {
     }
 }
 
+/// Time since the last feed ended, ticking as `hh:mm` ("00:45", "02:15").
+///
+/// The system's clock formats can't leave out seconds, so a clock with seconds is drawn and
+/// clipped to the width of "00:00", which hides the trailing ":ss" (see `SinceLastFeedFormat`).
+struct SinceLastFeedText: View {
+    let lastFeedEnded: Date
+    /// Past the hour mark (the content's stale date) when the system last drew the activity.
+    let isStale: Bool
+
+    var body: some View {
+        let showsHours = SinceLastFeedFormat.showsHours(since: lastFeedEnded, isStale: isStale)
+        Text(verbatim: SinceLastFeedFormat.visibleTemplate)
+            .hidden()
+            .overlay(alignment: .leading) {
+                (Text(verbatim: SinceLastFeedFormat.prefix(showsHours: showsHours))
+                    + Text(.currentDate, format: SinceLastFeedFormat.clock(since: lastFeedEnded, showsHours: showsHours)))
+                    .multilineTextAlignment(.leading)
+                    .lineLimit(1)
+                    .fixedSize()
+            }
+            .clipped()
+            .monospacedDigit()
+            .accessibilityElement(children: .ignore)
+            .accessibilityLabel(Text("Time since last feed"))
+            .accessibilityValue(Text(lastFeedEnded, style: .relative))
+    }
+}
+
+/// The big number: the feed's total while it runs or is paused, the time since it ended after.
+struct HeadlineTimerText: View {
+    let state: FeedingState
+    let isStale: Bool
+
+    var body: some View {
+        if let ended = state.lastFeedEndedAt {
+            SinceLastFeedText(lastFeedEnded: ended, isStale: isStale)
+        } else {
+            TotalTimerText(state: state)
+        }
+    }
+}
+
 /// Time on one side. Ticks only for the running side.
 struct SideTimerText: View {
     let state: FeedingState
@@ -82,7 +128,7 @@ struct SideTimerText: View {
 /// Dark text on a filled side color: white would fall below WCAG AA on the light side tints.
 private let textOnSide = Color(light: 0x1B1B20, dark: 0x0F0F12)
 
-/// "Feeding", "Paused" or "Feed complete" with a small glyph: one quiet line instead of a badge
+/// "Feeding", "Paused" or "Since last feed" with a small glyph: one quiet line instead of a badge
 /// and a status label.
 struct ActivityStatusLabel: View {
     let state: FeedingState
@@ -109,7 +155,7 @@ struct ActivityStatusLabel: View {
         switch state.status {
         case .active: return "Feeding"
         case .paused: return "Paused"
-        case .ended: return "Feed complete"
+        case .ended: return "Since last feed"
         }
     }
 
@@ -118,7 +164,7 @@ struct ActivityStatusLabel: View {
         switch state.status {
         case .active: return "drop.fill"
         case .paused: return "pause.fill"
-        case .ended: return "checkmark"
+        case .ended: return "clock"
         }
     }
 
@@ -131,26 +177,19 @@ struct ActivityStatusLabel: View {
 ///
 /// While a feed is open, the pill is the side-switch control: tapping the other side switches to
 /// it, or resumes on it when paused. Tapping the running side changes nothing, because the
-/// intent targets a state rather than toggling. After the feed ends the pills only show times.
+/// intent targets a state rather than toggling.
 struct SidePill: View {
     let sessionID: UUID
     let state: FeedingState
     let side: Side
 
     var body: some View {
-        if state.status == .ended {
+        Button(intent: SwitchFeedingSideIntent(sessionID: sessionID, side: side)) {
             label
-                .accessibilityElement(children: .ignore)
-                .accessibilityLabel("\(side.displayName) side")
-                .accessibilityValue(LiveActivityFormat.spoken(state.accumulated(on: side)))
-        } else {
-            Button(intent: SwitchFeedingSideIntent(sessionID: sessionID, side: side)) {
-                label
-            }
-            .buttonStyle(.plain)
-            .accessibilityLabel(accessibilityLabel)
-            .accessibilityValue(accessibilityValue)
         }
+        .buttonStyle(.plain)
+        .accessibilityLabel(accessibilityLabel)
+        .accessibilityValue(accessibilityValue)
     }
 
     private var label: some View {
@@ -187,27 +226,33 @@ struct SidePill: View {
     }
 }
 
-/// A capsule-backed control with a label, used for "Undo". At least 44 pt tall.
-struct ActivityControlLabel: View {
-    let title: String
-    let systemImage: String?
-    let tint: Color
+/// "▶ Left" / "▶ Right" in the since-last-feed state: starts a new feed on that side. The side
+/// the app would suggest next (the other one from the last feed) gets the stronger tint.
+struct StartSidePill: View {
+    let sessionID: UUID
+    let state: FeedingState
+    let side: Side
 
     var body: some View {
-        HStack(spacing: NBSpacing.xs) {
-            if let systemImage {
-                Image(systemName: systemImage)
+        let suggested = state.suggestedNextSide == side
+        let tint = NBColor.side(side)
+        Button(intent: StartFeedingIntent(sessionID: sessionID, side: side)) {
+            HStack(spacing: NBSpacing.s) {
+                Image(systemName: "play.fill")
+                    .font(.caption.weight(.bold))
+                Text(side.displayName)
+                    .font(.system(.body, design: .rounded, weight: .semibold))
+                    .lineLimit(1)
             }
-            if !title.isEmpty {
-                Text(title).lineLimit(1)
-            }
+            .foregroundStyle(tint)
+            .padding(.horizontal, NBSpacing.m)
+            .frame(maxWidth: .infinity, minHeight: 44)
+            .background(Capsule().fill(tint.opacity(suggested ? 0.3 : 0.16)))
+            .contentShape(Capsule())
         }
-        .font(.subheadline.weight(.semibold))
-        .foregroundStyle(tint)
-        .padding(.horizontal, NBSpacing.m)
-        .frame(minWidth: 44, minHeight: 44)
-        .background(Capsule().fill(tint.opacity(0.18)))
-        .contentShape(Capsule())
+        .buttonStyle(.plain)
+        .accessibilityLabel("Start feeding on \(side.displayName.lowercased())")
+        .accessibilityHint(suggested ? "Suggested next side" : "")
     }
 }
 
@@ -266,37 +311,28 @@ struct EndButton: View {
 /// both read the same way.
 ///
 /// ```
-///  [ L 12:05 ] [ R 6:37 ]  (⏸)  (■)
+///  [ L 12:05 ] [ R 6:37 ]  (⏸)  (■)      while feeding
+///  [ ▶ Left  ] [ ▶ Right ]                since last feed
 /// ```
 struct ActivitySidesAndControls: View {
     let attributes: FeedingActivityAttributes
     let state: FeedingState
 
     var body: some View {
+        // The content's session: it differs from the attributes' when the activity was carried
+        // over to another feed.
+        let sessionID = LiveActivityRecord.sessionID(attributes: attributes, state: state)
         HStack(spacing: NBSpacing.s) {
-            SidePill(sessionID: attributes.sessionID, state: state, side: .left)
-            SidePill(sessionID: attributes.sessionID, state: state, side: .right)
             if state.status == .ended {
-                UndoEndButton(sessionID: attributes.sessionID)
+                StartSidePill(sessionID: sessionID, state: state, side: .left)
+                StartSidePill(sessionID: sessionID, state: state, side: .right)
             } else {
-                PauseResumeButton(sessionID: attributes.sessionID, state: state)
-                EndButton(sessionID: attributes.sessionID)
+                SidePill(sessionID: sessionID, state: state, side: .left)
+                SidePill(sessionID: sessionID, state: state, side: .right)
+                PauseResumeButton(sessionID: sessionID, state: state)
+                EndButton(sessionID: sessionID)
                     .padding(.leading, NBSpacing.xs)
             }
         }
-    }
-}
-
-/// "Undo" on the "Feed complete" summary, for an End tapped by mistake.
-struct UndoEndButton: View {
-    let sessionID: UUID
-
-    var body: some View {
-        Button(intent: UndoEndFeedingIntent(sessionID: sessionID)) {
-            ActivityControlLabel(title: "Undo", systemImage: "arrow.uturn.backward", tint: NBColor.accent)
-        }
-        .buttonStyle(.plain)
-        .accessibilityLabel("Undo end feeding")
-        .accessibilityHint("Reopens the feed you just ended")
     }
 }

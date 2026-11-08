@@ -111,15 +111,13 @@ public struct LastFeed: Sendable, Hashable {
 
     /// The newer of the last breastfeed and the last bottle.
     public static func latest(breast: SessionSnapshot?, bottle: BottleEntry?) -> LastFeed? {
-        let fromBreast = breast.map {
-            LastFeed(start: $0.startedAt, end: $0.endedAt ?? $0.segments.compactMap(\.end).max(), kind: .breast)
-        }
-        let fromBottle = bottle.map {
-            LastFeed(start: $0.startedAt, end: $0.durationSeconds.map($0.startedAt.addingTimeInterval), kind: .bottle)
-        }
-        switch (fromBreast, fromBottle) {
-        case let (b?, f?): return b.start >= f.start ? b : f
-        case let (b, f): return b ?? f
+        switch LatestFinishedFeed.of(breast: breast, bottle: bottle) {
+        case .breast(let session)?:
+            LastFeed(start: session.startedAt, end: session.endedAt ?? session.segments.compactMap(\.end).max(), kind: .breast)
+        case .bottle(let bottle)?:
+            LastFeed(start: bottle.startedAt, end: bottle.durationSeconds.map(bottle.startedAt.addingTimeInterval), kind: .bottle)
+        case nil:
+            nil
         }
     }
 }

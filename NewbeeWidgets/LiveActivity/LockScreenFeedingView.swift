@@ -13,6 +13,17 @@ import WidgetKit
 ///  18:42                                Feeding 💧
 ///  [  L 12:05  ] [  R 6:37  ]   (⏸)   (■)
 /// ```
+///
+/// After the feed ends, the same activity counts the time since, with Start buttons and a line
+/// about the feed that ended:
+///
+/// ```
+///  2:15                          Since last feed 🕒
+///  [   ▶ Left   ] [   ▶ Right   ]
+///  Last feed L 12:05 · R 9:00 · ended 3:40 PM
+/// ```
+///
+/// When the latest feed is a bottle, the last line is "Last feed bottle 90 mL · ended 3:40 PM".
 struct LockScreenFeedingView: View {
     let attributes: FeedingActivityAttributes
     let state: FeedingState
@@ -21,9 +32,9 @@ struct LockScreenFeedingView: View {
     var body: some View {
         VStack(spacing: NBSpacing.m) {
             HStack(alignment: .firstTextBaseline, spacing: NBSpacing.s) {
-                TotalTimerText(state: state)
+                HeadlineTimerText(state: state, isStale: isStale)
                     .font(NBFont.timer(size: 30))
-                    .foregroundStyle(state.status == .active ? Color.primary : Color.secondary)
+                    .foregroundStyle(state.status == .paused ? Color.secondary : Color.primary)
                     .multilineTextAlignment(.leading)
                     // Timer text otherwise claims all available width.
                     .frame(maxWidth: 150, alignment: .leading)
@@ -40,11 +51,30 @@ struct LockScreenFeedingView: View {
 
     @ViewBuilder
     private var endedFooter: some View {
-        if let endedAt = state.pausedAt {
-            Text("Started \(state.sessionStart, style: .time) · ended \(endedAt, style: .time)")
+        if let endedAt = state.lastFeedEndedAt, let bottle = state.lastBottle {
+            // A bottle with no duration ended when it started.
+            let when = endedAt > state.sessionStart ? "ended" : "at"
+            Text("Last feed bottle \(bottle.formatted) · \(when) \(endedAt, style: .time)")
                 .font(.footnote)
                 .foregroundStyle(.secondary)
+                .lineLimit(1)
+                .minimumScaleFactor(0.8)
                 .frame(maxWidth: .infinity, alignment: .leading)
+                .accessibilityLabel(
+                    "Last feed: bottle, \(bottle.formatted), \(when) \(endedAt.formatted(date: .omitted, time: .shortened))"
+                )
+        } else if let endedAt = state.lastFeedEndedAt {
+            let left = LiveActivityFormat.clock(state.leftAccumulated)
+            let right = LiveActivityFormat.clock(state.rightAccumulated)
+            Text("Last feed L \(left) · R \(right) · ended \(endedAt, style: .time)")
+                .font(.footnote)
+                .foregroundStyle(.secondary)
+                .lineLimit(1)
+                .minimumScaleFactor(0.8)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .accessibilityLabel(
+                    "Last feed: left \(LiveActivityFormat.spoken(state.leftAccumulated)), right \(LiveActivityFormat.spoken(state.rightAccumulated)), ended \(endedAt.formatted(date: .omitted, time: .shortened))"
+                )
         }
     }
 }

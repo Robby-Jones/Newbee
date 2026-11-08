@@ -49,10 +49,12 @@ final class ActivityKitClient: LiveActivityClient {
     func records() -> [LiveActivityRecord] {
         FeedingActivity.activities.map { activity in
             observeState(of: activity)
+            let state = activity.content.state
             return LiveActivityRecord(
                 id: activity.id,
-                sessionID: activity.attributes.sessionID,
-                state: activity.content.state,
+                sessionID: LiveActivityRecord.sessionID(attributes: activity.attributes, state: state),
+                requestedForSessionID: activity.attributes.sessionID,
+                state: state,
                 phase: Self.phase(of: activity.activityState)
             )
         }
@@ -118,12 +120,13 @@ final class ActivityKitClient: LiveActivityClient {
     private func observeState(of activity: FeedingActivity) {
         let id = activity.id
         guard stateObservers[id] == nil else { return }
-        let sessionID = activity.attributes.sessionID
         stateObservers[id] = Task { [weak self] in
             var previous = activity.activityState
             for await state in activity.activityStateUpdates {
                 if state == .dismissed, previous == .active || previous == .stale {
-                    self?.onUserDismissal?(sessionID, activity.content.state.revision)
+                    let content = activity.content.state
+                    let sessionID = LiveActivityRecord.sessionID(attributes: activity.attributes, state: content)
+                    self?.onUserDismissal?(sessionID, content.revision)
                 }
                 previous = state
             }

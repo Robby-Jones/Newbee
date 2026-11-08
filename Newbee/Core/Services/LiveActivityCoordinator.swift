@@ -5,12 +5,14 @@ import Observation
 import os
 
 /// Makes the system's Live Activities match the session manager's snapshot
-/// (docs/LIVE_ACTIVITIES.md §5). `sync(_:)` is the only entry point.
+/// (docs/LIVE_ACTIVITIES.md §5). `sync(_:lastBottle:)` is the only entry point.
 ///
-/// - The session manager calls it after every saved command (active/paused snapshot, the
-///   just-completed snapshot after End, or `nil` after discard).
-/// - Recovery calls it on launch and every foreground, which re-requests an activity lost to a
-///   reboot or the 8-hour limit and ends leftovers.
+/// - The session manager calls it after every saved command and every bottle change: the active
+///   or paused snapshot, or, when no feed is running, the latest finished breastfeed and the latest
+///   bottle (the activity then counts the time since the newer of the two ended). With no feeds
+///   at all, both are `nil`.
+/// - Recovery calls it on launch and every foreground, which re-requests a running feed's
+///   activity lost to a reboot or the 8-hour limit and ends leftovers.
 ///
 /// Decisions come from the pure `LiveActivityPlanner` (unit tested in NewbeeShared); this type
 /// only serializes calls and executes the plan against ActivityKit.
@@ -54,22 +56,24 @@ final class LiveActivityCoordinator {
         self.init(client: ActivityKitClient())
     }
 
-    /// Brings the Live Activity in line with `snapshot`. Safe to call repeatedly; returns once
-    /// every ActivityKit call for this and earlier syncs has finished.
-    func sync(_ snapshot: SessionSnapshot?) async {
+    /// Brings the Live Activity in line with `snapshot` (and `lastBottle` when no feed is
+    /// running). Safe to call repeatedly; returns once every ActivityKit call for this and
+    /// earlier syncs has finished.
+    func sync(_ snapshot: SessionSnapshot?, lastBottle: BottleEntry?) async {
         let previous = tail
         let task = Task { [weak self] in
             await previous?.value
-            await self?.reconcile(snapshot)
+            await self?.reconcile(snapshot, lastBottle: lastBottle)
         }
         tail = task
         await task.value
     }
 
-    private func reconcile(_ snapshot: SessionSnapshot?) async {
+    private func reconcile(_ snapshot: SessionSnapshot?, lastBottle: BottleEntry?) async {
         activitiesEnabled = client.areActivitiesEnabled
         let actions = planner.plan(
             for: snapshot,
+            lastBottle: lastBottle,
             existing: client.records(),
             activitiesEnabled: activitiesEnabled,
             dismissedAtRevision: snapshot.flatMap { dismissedRevisions[$0.id] },
@@ -88,13 +92,23 @@ final class LiveActivityCoordinator {
 
     private func perform(_ action: LiveActivityAction) async {
         switch action {
-        case let .request(attributes, state, staleDate):
+        case let .request(attributes, state, staleDate, replacing):
             do {
                 _ = try client.request(attributes, state: state, staleDate: staleDate)
+                // Only now remove the activity it replaces, so the parent never sees a gap.
+                if let replacing {
+                    await client.end(id: replacing, finalState: nil, dismissal: .immediate)
+                }
             } catch {
-                // Expected when the app is in the background (e.g. a Lock Screen intent after a
-                // reboot) or activities are off. Recovery requests it again on next foreground.
+                // Expected when the app is in the background (e.g. Start on the Lock Screen, or
+                // a Lock Screen intent after a reboot) or activities are off.
                 logger.notice("Live Activity request refused: \(String(describing: error))")
+                if let replacing {
+                    // Keep the parent's activity by carrying it over to the new feed. Its
+                    // content names the new session, so its buttons act on that feed.
+                    await client.update(id: replacing, state: state, staleDate: staleDate)
+                }
+                // Otherwise recovery requests it again on the next foreground.
             }
         case let .update(id, state, staleDate):
             await client.update(id: id, state: state, staleDate: staleDate)

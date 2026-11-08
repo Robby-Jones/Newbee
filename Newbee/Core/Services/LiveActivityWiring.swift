@@ -11,22 +11,23 @@ extension FeedingSessionManager: @retroactive LiveActivityCommandHandling {
     public func handleLiveActivityCommand(_ command: LiveActivityCommand, sessionID: UUID) async {
         if let engineCommand = SessionCommand(command) {
             await applyRemote(engineCommand, sessionID: sessionID)
-        } else {
-            await undoEnd(sessionID: sessionID)
+        } else if case .start(let side) = command {
+            // From the since-last-feed state: the id names the finished feed it was showing.
+            await applyRemoteStart(side: side, sessionID: sessionID)
         }
     }
 }
 
 extension SessionCommand {
-    /// The engine command behind a button, or `nil` for Undo, which reopens a finished feed
-    /// instead of changing a running one.
+    /// The engine command for a button on a running feed, or `nil` for Start, which begins a new
+    /// feed instead of changing the one the activity names.
     init?(_ command: LiveActivityCommand) {
         switch command {
         case .switchTo(let side): self = .switchTo(side)
         case .pause: self = .pause
         case .resume: self = .resume
         case .end: self = .end
-        case .undoEnd: return nil
+        case .start: return nil
         }
     }
 }

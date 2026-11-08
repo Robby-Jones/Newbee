@@ -6,17 +6,20 @@ import Testing
 @MainActor
 final class RecordingLiveActivity: LiveActivitySyncing {
     var synced: [SessionSnapshot?] = []
+    /// The latest bottle passed with each sync, parallel to `synced`.
+    var syncedBottles: [BottleEntry?] = []
     /// When set, checks at every sync that the store already holds what is being synced.
     var repository: InMemoryFeedingRepository?
     var sawUnsavedState = false
 
-    func sync(_ snapshot: SessionSnapshot?) async {
+    func sync(_ snapshot: SessionSnapshot?, lastBottle: BottleEntry?) async {
         if let repository, let snapshot, repository.sessions[snapshot.id] != snapshot {
             sawUnsavedState = true
         }
         // Yield so overlapping commands would interleave if effects weren't serialized.
         await Task.yield()
         synced.append(snapshot)
+        syncedBottles.append(lastBottle)
     }
 }
 
@@ -38,7 +41,7 @@ final class EndingDuringSync: LiveActivitySyncing {
     weak var manager: FeedingSessionManager?
     private var fired = false
 
-    func sync(_ snapshot: SessionSnapshot?) async {
+    func sync(_ snapshot: SessionSnapshot?, lastBottle: BottleEntry?) async {
         await Task.yield()
         guard !fired, let manager, snapshot?.status == .active else { return }
         fired = true
@@ -53,10 +56,22 @@ struct FeedingSessionManagerTests {
     let repository = InMemoryFeedingRepository()
     let activity = RecordingLiveActivity()
     let reminders = RecordingReminders()
+    let bottles = InMemoryBottleRepository()
 
     func makeManager() -> FeedingSessionManager {
         activity.repository = repository
-        return FeedingSessionManager(repository: repository, clock: clock, liveActivity: activity, reminders: reminders)
+        return FeedingSessionManager(
+            repository: repository, clock: clock, liveActivity: activity, reminders: reminders, bottles: bottles
+        )
+    }
+
+    func logBottle(startingIn offset: TimeInterval = 0, minutes: Double? = nil) throws -> BottleEntry {
+        let bottle = BottleEntry(
+            startedAt: clock.now.addingTimeInterval(offset), contents: .formula, amountML: 90,
+            durationSeconds: minutes.map { $0 * 60 }
+        )
+        try bottles.save(bottle, modifiedAt: clock.now)
+        return bottle
     }
 
     @Test func startPersistsBeforePublishingAndSyncing() async throws {
@@ -300,96 +315,153 @@ struct FeedingSessionManagerTests {
         try manager.end()
         await manager.applyRemote(.end, sessionID: id)
         #expect(repository.sessions.count == 1)
-        #expect(activity.synced.last == .some(nil))
+        #expect(activity.synced.last == .some(manager.lastCompletedSession))
     }
 
-    // MARK: Undo End from the Live Activity summary
+    // MARK: Since last feed and Start from the Live Activity
 
-    @Test func undoEndPutsARunningFeedBackAsItWas() async throws {
+    @Test func endingKeepsSyncingTheFinishedFeedForTheSinceLastFeedCount() async throws {
         let manager = makeManager()
         try manager.start(side: .left)
         let id = manager.activeSession!.id
         clock.advance(by: 5 * 60)
         await manager.applyRemote(.end, sessionID: id)
-        #expect(manager.activeSession == nil)
-        clock.advance(by: 30)
-        await manager.undoEnd(sessionID: id)
-        let reopened = try #require(manager.activeSession)
-        #expect(reopened.id == id)
-        #expect(reopened.status == .active)
-        #expect(reopened.openSegment?.side == .left)
-        #expect(reopened.endedAt == nil)
-        #expect(approx(reopened.duration(on: .left, at: clock.now), 5 * 60 + 30))
-        #expect(activity.synced.last == .some(reopened))
+        let finished = try #require(manager.lastCompletedSession)
+        #expect(activity.synced.last == .some(finished))
+
+        // Every foreground re-syncs it, rather than clearing the activity.
+        await manager.reload()
+        #expect(activity.synced.last == .some(finished))
     }
 
-    @Test func undoEndKeepsAPausedFeedPaused() async throws {
+    @Test func discardingTheRunningFeedGoesBackToThePreviousFeed() async throws {
         let manager = makeManager()
+        try manager.start(side: .left)
+        clock.advance(by: 60)
+        try manager.end()
+        let previous = try #require(manager.lastCompletedSession)
+        clock.advance(by: 3600)
         try manager.start(side: .right)
-        let id = manager.activeSession!.id
-        clock.advance(by: 4 * 60)
-        try manager.pause()
-        clock.advance(by: 10 * 60)
-        await manager.applyRemote(.end, sessionID: id)
-        await manager.undoEnd(sessionID: id)
-        let reopened = try #require(manager.activeSession)
-        #expect(reopened.status == .paused)
-        #expect(approx(reopened.duration(on: .right, at: clock.now), 4 * 60))
+        _ = try manager.discardActive()
+        await manager.waitForPendingEffects()
+        #expect(activity.synced.last == .some(previous))
     }
 
-    @Test func undoEndAfterTheAppWasTerminatedReopensPaused() async throws {
-        let first = makeManager()
-        try first.start(side: .left)
-        let id = first.activeSession!.id
-        clock.advance(by: 6 * 60)
-        await first.applyRemote(.end, sessionID: id)
-
-        let relaunched = makeManager()
-        clock.advance(by: 60)
-        await relaunched.undoEnd(sessionID: id)
-        let reopened = try #require(relaunched.activeSession)
-        #expect(reopened.status == .paused)
-        #expect(reopened.endedAt == nil)
-        #expect(approx(reopened.duration(on: .left, at: clock.now), 6 * 60))
-    }
-
-    @Test func undoEndIsRefusedAfterTheWindow() async throws {
+    @Test func deletingTheLatestFeedCountsFromTheOneBefore() async throws {
         let manager = makeManager()
         try manager.start(side: .left)
-        let id = manager.activeSession!.id
         clock.advance(by: 60)
-        await manager.applyRemote(.end, sessionID: id)
-        clock.advance(by: FeedingSessionManager.undoEndWindow + 1)
-        await manager.undoEnd(sessionID: id)
-        #expect(manager.activeSession == nil)
-        #expect(try repository.session(id: id)?.status == .completed)
-    }
-
-    @Test func undoEndIsRefusedOnceTheNextFeedHasStarted() async throws {
-        let manager = makeManager()
-        try manager.start(side: .left)
-        let id = manager.activeSession!.id
-        clock.advance(by: 60)
-        await manager.applyRemote(.end, sessionID: id)
-        clock.advance(by: 60)
+        try manager.end()
+        let earlier = try #require(manager.lastCompletedSession)
+        clock.advance(by: 3600)
         try manager.start(side: .right)
-        let next = manager.activeSession
-        await manager.undoEnd(sessionID: id)
-        #expect(manager.activeSession == next)
-        #expect(try repository.session(id: id)?.status == .completed)
+        clock.advance(by: 60)
+        try manager.end()
+        let latest = try #require(manager.lastCompletedSession)
+        _ = try manager.deleteCompleted(sessionID: latest.id)
+        await manager.waitForPendingEffects()
+        #expect(activity.synced.last == .some(earlier))
     }
 
-    @Test func undoEndTwiceIsHarmless() async throws {
+    @Test func remoteStartBeginsAFeedOnThatSide() async throws {
         let manager = makeManager()
         try manager.start(side: .left)
-        let id = manager.activeSession!.id
         clock.advance(by: 60)
-        await manager.applyRemote(.end, sessionID: id)
-        await manager.undoEnd(sessionID: id)
-        let reopened = manager.activeSession
-        await manager.undoEnd(sessionID: id)
-        #expect(manager.activeSession == reopened)
+        try manager.end()
+        let finished = try #require(manager.lastCompletedSession)
+        clock.advance(by: 2 * 3600)
+        await manager.applyRemoteStart(side: .right, sessionID: finished.id)
+        let started = try #require(manager.activeSession)
+        #expect(started.openSegment?.side == .right)
+        #expect(activity.synced.last == .some(started))
+    }
+
+    @Test func remoteStartWhileAFeedIsRunningChangesNothingButResyncs() async throws {
+        let manager = makeManager()
+        try manager.start(side: .left)
+        let running = manager.activeSession
+        await manager.applyRemoteStart(side: .right, sessionID: UUID())
+        #expect(manager.activeSession == running)
         #expect(repository.sessions.count == 1)
+        #expect(activity.synced.last == .some(running))
+    }
+
+    @Test func remoteStartFromAnOutOfDateActivityIsIgnoredButResyncs() async throws {
+        let manager = makeManager()
+        try manager.start(side: .left)
+        clock.advance(by: 60)
+        try manager.end()
+        let older = try #require(manager.lastCompletedSession)
+        clock.advance(by: 3600)
+        try manager.start(side: .right)
+        clock.advance(by: 60)
+        try manager.end()
+        let latest = try #require(manager.lastCompletedSession)
+        // A Start drawn for the older feed.
+        await manager.applyRemoteStart(side: .left, sessionID: older.id)
+        #expect(manager.activeSession == nil)
+        #expect(repository.sessions.count == 2)
+        #expect(activity.synced.last == .some(latest))
+    }
+
+    // MARK: Bottles in the since-last-feed count
+
+    @Test func everyIdleSyncCarriesTheLatestBottle() async throws {
+        let manager = makeManager()
+        try manager.start(side: .left)
+        clock.advance(by: 60)
+        try manager.end()
+        clock.advance(by: 3600)
+        let bottle = try logBottle(minutes: 10)
+        await manager.bottlesDidChange()
+        #expect(activity.synced.last == .some(manager.lastCompletedSession))
+        #expect(activity.syncedBottles.last == .some(bottle))
+
+        // Foreground re-syncs keep it.
+        await manager.reload()
+        #expect(activity.syncedBottles.last == .some(bottle))
+
+        // Deleted: the sync no longer has a bottle, so the count goes back to the breastfeed.
+        try bottles.deleteBottle(id: bottle.id)
+        await manager.bottlesDidChange()
+        #expect(activity.syncedBottles.last == .some(nil))
+    }
+
+    @Test func aBottleIsTheLastFeedEvenWithNoBreastfeeds() async throws {
+        let manager = makeManager()
+        let bottle = try logBottle()
+        await manager.bottlesDidChange()
+        #expect(activity.synced.last == .some(nil))
+        #expect(activity.syncedBottles.last == .some(bottle))
+    }
+
+    @Test func bottleChangesDuringAFeedLeaveItsActivityAlone() async throws {
+        let manager = makeManager()
+        try manager.start(side: .left)
+        await manager.waitForPendingEffects()
+        let syncs = activity.synced.count
+        _ = try logBottle(startingIn: -600)
+        await manager.bottlesDidChange()
+        #expect(activity.synced.count == syncs)
+    }
+
+    @Test func remoteStartFromACountSinceABottleBeginsAFeed() async throws {
+        let manager = makeManager()
+        try manager.start(side: .left)
+        clock.advance(by: 60)
+        try manager.end()
+        let breastfeed = try #require(manager.lastCompletedSession)
+        clock.advance(by: 3600)
+        let bottle = try logBottle()
+        clock.advance(by: 3600)
+
+        // The breastfeed is no longer the latest feed, so a Start drawn for it is out of date.
+        await manager.applyRemoteStart(side: .right, sessionID: breastfeed.id)
+        #expect(manager.activeSession == nil)
+        #expect(activity.syncedBottles.last == .some(bottle))
+
+        await manager.applyRemoteStart(side: .right, sessionID: bottle.id)
+        #expect(manager.activeSession?.openSegment?.side == .right)
     }
 }
 
