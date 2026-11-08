@@ -52,6 +52,23 @@ struct BottleAmountTests {
         #expect(BottlePresets.amounts(storedML: [120, 0, 60, 900, 60], unit: .milliliters).map(\.value) == [60, 120])
         #expect(BottlePresets.amounts(storedML: [90], unit: .fluidOunces) == [BottleAmount(3, .fluidOunces)])
     }
+
+    @Test func editablePresetsKeepOrderAndDuplicates() {
+        // Raising the first preset past the others must not reorder or drop any row.
+        #expect(BottlePresets.editable(storedML: [150, 90, 120], unit: .milliliters).map(\.value) == [150, 90, 120])
+        #expect(BottlePresets.editable(storedML: [90, 90, 120], unit: .milliliters).map(\.value) == [90, 90, 120])
+        #expect(BottlePresets.editable(storedML: nil, unit: .fluidOunces) == BottlePresets.defaults(for: .fluidOunces))
+        #expect(BottlePresets.editable(storedML: [0, 900], unit: .milliliters) == BottlePresets.defaults(for: .milliliters))
+        #expect(BottlePresets.editable(storedML: [10, 20, 30, 40, 50, 60], unit: .milliliters).count == BottlePresets.maximumCount)
+        // The Log Bottle chips are still sorted and de-duplicated.
+        #expect(BottlePresets.amounts(storedML: [150, 90, 90], unit: .milliliters).map(\.value) == [90, 150])
+    }
+
+    @Test func newPresetStartsAboveTheLargest() {
+        #expect(BottlePresets.nextAmount(after: [BottleAmount(2, .fluidOunces), BottleAmount(4, .fluidOunces)], unit: .fluidOunces) == BottleAmount(5, .fluidOunces))
+        #expect(BottlePresets.nextAmount(after: [BottleAmount(120, .milliliters)], unit: .milliliters) == BottleAmount(150, .milliliters))
+        #expect(BottlePresets.nextAmount(after: [BottleAmount(490, .milliliters)], unit: .milliliters).milliliters <= 500)
+    }
 }
 
 @Suite("Bottle validation")

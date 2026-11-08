@@ -90,15 +90,36 @@ public enum BottlePresets {
         }
     }
 
-    /// Presets shown for `unit`: the parent's own (stored in mL) or the defaults, sorted, without
-    /// duplicates, and limited to amounts the rules accept.
+    /// A parent keeps between 1 and 5 presets.
+    public static let minimumCount = 1
+    public static let maximumCount = 5
+
+    /// Presets shown as chips on the Log Bottle sheet: the parent's own (stored in mL) or the
+    /// defaults, sorted, without duplicates, and limited to amounts the rules accept.
     public static func amounts(storedML: [Double]?, unit: VolumeUnit, rules: BottleRules = BottleRules()) -> [BottleAmount] {
-        guard let storedML, !storedML.isEmpty else { return defaults(for: unit) }
+        guard storedML?.isEmpty == false else { return defaults(for: unit) }
         var seen = Set<Double>()
-        return storedML
+        let sorted = editable(storedML: storedML, unit: unit, rules: rules).sorted { $0.value < $1.value }
+        return sorted.filter { seen.insert($0.value).inserted }
+    }
+
+    /// Presets as Settings edits them: in the order the parent made them, duplicates kept, so
+    /// raising one past another never reorders or merges rows mid-edit.
+    public static func editable(storedML: [Double]?, unit: VolumeUnit, rules: BottleRules = BottleRules()) -> [BottleAmount] {
+        guard let storedML, !storedML.isEmpty else { return defaults(for: unit) }
+        let valid = storedML
             .filter { $0 > 0 && $0 <= rules.maximumML }
-            .sorted()
+            .prefix(maximumCount)
             .map { BottleAmount(milliliters: $0).converted(to: unit) }
-            .filter { seen.insert($0.value).inserted }
+        return valid.isEmpty ? defaults(for: unit) : Array(valid)
+    }
+
+    /// The amount a new preset starts at: one "round" step (1 oz or 30 mL) above the largest,
+    /// clamped to the rules' maximum.
+    public static func nextAmount(after presets: [BottleAmount], unit: VolumeUnit, rules: BottleRules = BottleRules()) -> BottleAmount {
+        let largest = presets.map { $0.converted(to: unit).value }.max() ?? 0
+        let increment: Double = unit == .fluidOunces ? 1 : 30
+        let maximum = unit.rounded(unit.fromMilliliters(rules.maximumML), down: true)
+        return BottleAmount(min(unit.rounded(largest + increment), maximum), unit)
     }
 }
