@@ -48,6 +48,8 @@ struct RootView: View {
                 .tag(TabID.settings)
         }
         .tint(NBColor.accent)
+        // First launch only (docs/UX_SPEC.md §3.1).
+        .onboardingPresentation()
         .preferredColorScheme(preferences?.appearance.colorScheme)
         // The "+" on the Live Activity's since-last-feed count.
         .onOpenURL { url in
