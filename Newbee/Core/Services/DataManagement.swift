@@ -2,7 +2,7 @@ import Foundation
 import NewbeeKit
 import SwiftData
 
-/// CSV export and "Delete all data" (docs/DATA_MODEL.md §"Deleting", docs/UX_SPEC.md §3.10).
+/// CSV and PDF export and "Delete all data" (docs/DATA_MODEL.md §"Deleting", docs/UX_SPEC.md §3.10).
 extension AppDependencies {
     enum DataError: LocalizedError {
         case storeUnavailable
@@ -21,6 +21,35 @@ extension AppDependencies {
         try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
         let url = directory.appendingPathComponent(FeedCSV.fileName(at: clock.now))
         try Data(csv.utf8).write(to: url, options: [.atomic, .completeFileProtection])
+        return url
+    }
+
+    /// The feeding report for `range` as a US Letter PDF in a temporary file named by its days:
+    /// a summary page, then every feed and pumping session day by day (docs/PRD.md #21).
+    func exportPDF(range: FeedReportRange) throws -> URL {
+        guard let container = modelContainer else { throw DataError.storeUnavailable }
+        let context = container.mainContext
+        let interval = range.interval(now: clock.now)
+        let feeds = try context.fetch(FeedingSession.completedFeeds(from: interval.start, to: interval.end)).compactMap(\.feedEntry)
+        let pumps = try context.fetch(FeedingSession.completedPumps(from: interval.start, to: interval.end)).compactMap(\.pumpEntry)
+        let report = FeedReport(feeds: feeds, pumps: pumps, interval: interval)
+
+        var descriptor = FetchDescriptor<Baby>(sortBy: [SortDescriptor(\.createdAt)])
+        descriptor.fetchLimit = 1
+        let baby = try context.fetch(descriptor).first
+        let header = FeedReportPDF.Header(
+            babyName: baby?.name.trimmingCharacters(in: .whitespacesAndNewlines) ?? "",
+            age: baby?.birthDate.map { BabyAge.text(from: $0, now: clock.now) },
+            volumeUnit: preferences.volumeUnit,
+            generatedAt: clock.now
+        )
+
+        let directory = FileManager.default.temporaryDirectory.appendingPathComponent("Export", isDirectory: true)
+        try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+        let url = directory.appendingPathComponent(FeedReport.fileName(for: interval))
+        try? FileManager.default.removeItem(at: url)
+        try FeedReportPDF.write(report, header: header, to: url)
+        try? FileManager.default.setAttributes([.protectionKey: FileProtectionType.complete], ofItemAtPath: url.path)
         return url
     }
 

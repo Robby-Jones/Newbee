@@ -1,3 +1,4 @@
+import CoreGraphics
 import Foundation
 import NewbeeKit
 import SwiftData
@@ -193,6 +194,58 @@ struct DataManagementTests {
         #expect(lines[1].contains(",breast,12.0,12.0,0.0,left,left,"))
         #expect(lines[2].contains(",bottle,"))
         #expect(url.lastPathComponent.hasSuffix(".csv"))
+    }
+
+    @Test func pdfReportHasASummaryPageThenTheLog() throws {
+        let dependencies = AppDependencies(clock: clock, storage: .inMemory, notifications: FakeNotificationClient(), defaults: freshDefaults())
+        let context = try #require(dependencies.modelContainer?.mainContext)
+        context.insert(Baby(name: "Juniper"))
+        try context.save()
+        let manager = dependencies.sessionManager
+        try manager.start(side: .left)
+        clock.advance(by: 12 * 60)
+        _ = try manager.end()
+        clock.advance(by: 60 * 60)
+        try dependencies.bottleLog.save(dependencies.bottleLog.newDraft(unit: .milliliters))
+        clock.advance(by: 60 * 60)
+        _ = try dependencies.pumpLog.save(dependencies.pumpLog.newDraft(unit: .milliliters))
+
+        let url = try dependencies.exportPDF(range: .lastDays(7))
+        #expect(url.pathExtension == "pdf")
+        #expect(url.lastPathComponent.hasPrefix("Newbee feeding report "))
+        let document = try #require(CGPDFDocument(url as CFURL))
+        #expect(document.numberOfPages == 2)
+        let box = try #require(document.page(at: 1)?.getBoxRect(.mediaBox))
+        #expect(box.size == CGSize(width: 612, height: 792))
+    }
+
+    @Test func emptyPDFReportIsOneSummaryPage() throws {
+        let dependencies = AppDependencies(clock: clock, storage: .inMemory, notifications: FakeNotificationClient(), defaults: freshDefaults())
+        let url = try dependencies.exportPDF(range: .lastDays(14))
+        let document = try #require(CGPDFDocument(url as CFURL))
+        #expect(document.numberOfPages == 1)
+    }
+
+    @Test func longLogsFlowOntoMorePages() throws {
+        let report = FeedReport(
+            feeds: (0..<120).map { index in
+                let start = clock.now.addingTimeInterval(-Double(index) * 2 * 3600)
+                return FeedEntry(id: UUID(), start: start, end: start.addingTimeInterval(900),
+                                 details: .breast(left: 600, right: 300, firstSide: .left, lastSide: .right),
+                                 notes: index.isMultiple(of: 5) ? "Fussy at the start, then settled and fed well." : "")
+            },
+            pumps: [],
+            interval: FeedReportRange.lastDays(11).interval(now: clock.now)
+        )
+        let pages = FeedReportPDF.paginate(report, header: FeedReportPDF.Header(), calendar: .current)
+        #expect(pages.count >= 3)
+        // Every feed in the range appears exactly once, and no page starts with a day heading
+        // that has nothing under it.
+        let rows = pages.flatMap { $0 }.filter { if case .item = $0 { true } else { false } }
+        #expect(rows.count == report.feedCount)
+        for page in pages {
+            if case .day = page.last { Issue.record("A page ends with a day heading") }
+        }
     }
 
     @Test func deleteAllRemovesEverythingAndCancelsReminders() async throws {

@@ -1,4 +1,5 @@
 import Foundation
+import NewbeeKit
 import SwiftUI
 import UIKit
 
@@ -6,6 +7,7 @@ import UIKit
 /// `AppDependencies.shared` (and previews can leave them out).
 struct DataManagementActions: Sendable {
     var exportCSV: @MainActor @Sendable () throws -> URL
+    var exportPDF: @MainActor @Sendable (FeedReportRange) throws -> URL
     var deleteAll: @MainActor @Sendable () async throws -> Void
 }
 
@@ -13,6 +15,7 @@ extension DataManagementActions {
     @MainActor
     init(dependencies: AppDependencies) {
         exportCSV = { try dependencies.exportCSV() }
+        exportPDF = { try dependencies.exportPDF(range: $0) }
         deleteAll = { try await dependencies.deleteAllData() }
     }
 }
