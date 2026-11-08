@@ -28,7 +28,7 @@ struct RootView: View {
     }
 
     var body: some View {
-        // `.tabItem` + `.tag` rather than the iOS 18 `Tab` API, to support iOS 17.
+        // `.tabItem` + `.tag`; the iOS 18 `Tab` API is now available but not adopted yet.
         TabView(selection: $selection) {
             NavigationStack { DashboardView() }
                 .tabChrome(sessionModel, bottleModel, pumpModel)

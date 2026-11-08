@@ -186,8 +186,8 @@ enum NewbeeSchemaV2: VersionedSchema {
 extension NewbeeSchemaV2.FeedingSession {
     /// Deletes this session together with its segments, bottle details and pump details.
     ///
-    /// The `.cascade` delete rule is unreliable on iOS 17 (CI shows children surviving a parent
-    /// delete), so children are deleted explicitly. Always delete sessions through this method.
+    /// The `.cascade` delete rule proved unreliable (CI on iOS 17 showed children surviving a
+    /// parent delete), so children are deleted explicitly. Always delete sessions through this method.
     func deleteWithChildren(from context: ModelContext) {
         for segment in segments ?? [] {
             context.delete(segment)
