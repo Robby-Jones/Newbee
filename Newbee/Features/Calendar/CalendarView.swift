@@ -7,8 +7,9 @@ import SwiftUI
 ///
 /// **Week** (the default) lays the week out as seven day columns on a 24-hour axis, each feed a
 /// block at its time, like the calendars in popular baby trackers: rhythms and gaps show at a
-/// glance. **Month** is the grid with side and bottle dots, shaded by how busy each day was.
-/// Either way the selected day's summary sits underneath.
+/// glance. **Month** is the grid with side, bottle and pumping dots, shaded by how busy each day
+/// was. Pumping shows in both but never counts as a feed. Either way the selected day's summary
+/// sits underneath.
 ///
 /// `HistoryView` owns the title, the `DayRoute` destination, and the selected day.
 struct CalendarView: View {
@@ -111,13 +112,14 @@ private struct ScopePicker: View {
     }
 }
 
-/// Left, Right, Bottle color key.
+/// Left, Right, Bottle, Pumping color key.
 private struct CalendarLegend: View {
     var body: some View {
         HStack(spacing: NBSpacing.l) {
             LegendDot(color: NBColor.left, label: "Left")
             LegendDot(color: NBColor.right, label: "Right")
             LegendDot(color: NBColor.bottleBreastMilk, label: "Bottle")
+            LegendDot(color: NBColor.pump, label: "Pumping")
         }
         .font(.caption)
         .foregroundStyle(.secondary)
@@ -135,8 +137,10 @@ private struct CalendarWeekView: View {
     let changeWeek: (Int) -> Void
 
     @Query private var sessions: [FeedingSession]
+    @Query private var pumpSessions: [FeedingSession]
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @Environment(BottleLogUIModel.self) private var bottleModel: BottleLogUIModel?
+    @Environment(PumpLogUIModel.self) private var pumpModel: PumpLogUIModel?
 
     init(weekStart: Date, selectedDay: Binding<Date?>, scope: Binding<CalendarView.Scope>, changeWeek: @escaping (Int) -> Void) {
         self.weekStart = weekStart
@@ -145,22 +149,25 @@ private struct CalendarWeekView: View {
         self.changeWeek = changeWeek
         let end = Calendar.current.date(byAdding: .day, value: 7, to: weekStart) ?? weekStart.addingTimeInterval(7 * 86_400)
         _sessions = Query(FeedingSession.completedFeeds(from: weekStart, to: end))
+        _pumpSessions = Query(FeedingSession.completedPumps(from: weekStart, to: end))
     }
 
     var body: some View {
         let calendar = Calendar.current
         let entries = sessions.compactMap(\.feedEntry)
+        let pumps = pumpSessions.compactMap(\.pumpEntry)
         let now = Date.now
         let days = (0..<7).compactMap { calendar.date(byAdding: .day, value: $0, to: weekStart) }
         let isCurrentWeek = weekStart == CalendarView.startOfWeek(containing: now)
         let unit = bottleModel?.unit ?? .milliliters
+        let pumpUnit = pumpModel?.unit ?? unit
 
         ScrollView {
             VStack(alignment: .leading, spacing: NBSpacing.l) {
                 Card(padding: NBSpacing.m) {
                     VStack(spacing: NBSpacing.m) {
                         header(days: days, isCurrentWeek: isCurrentWeek)
-                        WeekTimeline(days: days, entries: entries, selectedDay: selectedDay, now: now, onSelect: select)
+                        WeekTimeline(days: days, entries: entries, pumps: pumps, selectedDay: selectedDay, now: now, onSelect: select)
                             .gesture(swipe(isCurrentWeek: isCurrentWeek))
                         CalendarLegend()
                     }
@@ -168,15 +175,22 @@ private struct CalendarWeekView: View {
 
                 if let selectedDay, days.contains(selectedDay) {
                     let summary = FeedCalendar.daySummary(selectedDay, entries: entries)
-                    DaySummaryCard(day: selectedDay, entries: summary.entries, totals: summary.totals, unit: unit)
-                } else if entries.isEmpty {
+                    DaySummaryCard(
+                        day: selectedDay,
+                        entries: summary.entries,
+                        totals: summary.totals,
+                        pumps: FeedCalendar.dayPumps(selectedDay, pumps: pumps),
+                        unit: unit,
+                        pumpUnit: pumpUnit
+                    )
+                } else if entries.isEmpty && pumps.isEmpty {
                     Text("No feeds this week")
                         .font(.headline)
                         .foregroundStyle(.secondary)
                         .frame(maxWidth: .infinity)
                         .padding(.top, NBSpacing.l)
                 } else {
-                    PeriodSummary(title: "This week", totals: FeedTotals(entries), unit: unit)
+                    PeriodSummary(title: "This week", totals: FeedTotals(entries), pumps: PumpSummary(entries: pumps), unit: unit, pumpUnit: pumpUnit)
                 }
             }
             .padding(NBSpacing.l)
@@ -240,10 +254,12 @@ private struct CalendarWeekView: View {
 
 /// Seven day columns on a 24-hour axis. Each feed is a block at its start time, as tall as it
 /// lasted: breastfeeds split lavender / teal by side, bottles a small capsule in the bottle's
-/// color. Tap a day's header (or its column) to see that day's feeds.
+/// color. Pumping sessions are narrow rose bars along the column's trailing edge, so they never
+/// hide a feed. Tap a day's header (or its column) to see that day's feeds.
 private struct WeekTimeline: View {
     let days: [Date]
     let entries: [FeedEntry]
+    let pumps: [PumpEntry]
     let selectedDay: Date?
     let now: Date
     let onSelect: (Date) -> Void
@@ -258,7 +274,12 @@ private struct WeekTimeline: View {
             HStack(spacing: 0) {
                 Color.clear.frame(width: axisWidth, height: 1)
                 ForEach(days, id: \.self) { day in
-                    dayHeader(day, feedCount: feeds(on: day, calendar: calendar).count, calendar: calendar)
+                    dayHeader(
+                        day,
+                        feedCount: feeds(on: day, calendar: calendar).count,
+                        pumpCount: pumps(on: day, calendar: calendar).count,
+                        calendar: calendar
+                    )
                 }
             }
 
@@ -268,6 +289,7 @@ private struct WeekTimeline: View {
                     DayColumn(
                         day: day,
                         entries: feeds(on: day, calendar: calendar),
+                        pumps: pumps(on: day, calendar: calendar),
                         isSelected: day == selectedDay,
                         height: chartHeight
                     )
@@ -286,7 +308,11 @@ private struct WeekTimeline: View {
         return entries.filter { $0.start >= day && $0.start < end }
     }
 
-    private func dayHeader(_ day: Date, feedCount: Int, calendar: Calendar) -> some View {
+    private func pumps(on day: Date, calendar: Calendar) -> [PumpEntry] {
+        FeedCalendar.dayPumps(day, pumps: pumps, calendar: calendar)
+    }
+
+    private func dayHeader(_ day: Date, feedCount: Int, pumpCount: Int, calendar: Calendar) -> some View {
         let isToday = calendar.isDateInToday(day)
         let isSelected = day == selectedDay
         let isFuture = day > now
@@ -309,7 +335,7 @@ private struct WeekTimeline: View {
         .buttonStyle(.plain)
         .disabled(isFuture)
         .opacity(isFuture ? 0.35 : 1)
-        .accessibilityLabel(Self.accessibilityText(day, feedCount: feedCount, isToday: isToday))
+        .accessibilityLabel(Self.accessibilityText(day, feedCount: feedCount, pumpCount: pumpCount, isToday: isToday))
         .accessibilityAddTraits(isSelected ? [.isSelected] : [])
     }
 
@@ -349,7 +375,7 @@ private struct WeekTimeline: View {
         return date.formatted(.dateTime.hour(.defaultDigits(amPM: .narrow)))
     }
 
-    static func accessibilityText(_ day: Date, feedCount: Int, isToday: Bool) -> String {
+    static func accessibilityText(_ day: Date, feedCount: Int, pumpCount: Int, isToday: Bool) -> String {
         var parts = [day.formatted(.dateTime.weekday(.wide).day().month(.wide))]
         if isToday { parts.append(String(localized: "today")) }
         switch feedCount {
@@ -357,14 +383,16 @@ private struct WeekTimeline: View {
         case 1: parts.append(String(localized: "1 feed"))
         default: parts.append(String(localized: "\(feedCount) feeds"))
         }
+        if let pumping = PumpCountText.spoken(pumpCount) { parts.append(pumping) }
         return parts.joined(separator: ", ")
     }
 }
 
-/// One day's feeds as blocks positioned by time of day.
+/// One day's feeds as blocks positioned by time of day, with its pumping sessions on top.
 private struct DayColumn: View {
     let day: Date
     let entries: [FeedEntry]
+    let pumps: [PumpEntry]
     let isSelected: Bool
     let height: CGFloat
 
@@ -376,17 +404,24 @@ private struct DayColumn: View {
                 .fill(isSelected ? NBColor.accent.opacity(0.08) : Color.clear)
             ForEach(entries) { entry in
                 let top = height * CGFloat(max(0, entry.start.timeIntervalSince(day)) / Self.dayLength)
-                FeedBlock(entry: entry, height: blockHeight(entry, top: top))
+                FeedBlock(entry: entry, height: blockHeight(from: entry.start, to: entry.end ?? entry.start, top: top))
                     .padding(.horizontal, 3)
+                    .offset(y: top)
+            }
+            ForEach(pumps) { pump in
+                let top = height * CGFloat(max(0, pump.startedAt.timeIntervalSince(day)) / Self.dayLength)
+                PumpBlock(height: blockHeight(from: pump.startedAt, to: pump.endedAt, top: top))
+                    .padding(.trailing, 1)
+                    .frame(maxWidth: .infinity, alignment: .trailing)
                     .offset(y: top)
             }
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
     }
 
-    /// As tall as the feed lasted (at least 6 pt so short feeds stay visible), clipped at midnight.
-    private func blockHeight(_ entry: FeedEntry, top: CGFloat) -> CGFloat {
-        let span = (entry.end ?? entry.start).timeIntervalSince(entry.start)
+    /// As tall as the entry lasted (at least 6 pt so short ones stay visible), clipped at midnight.
+    private func blockHeight(from start: Date, to end: Date, top: CGFloat) -> CGFloat {
+        let span = end.timeIntervalSince(start)
         let natural = height * CGFloat(span / Self.dayLength)
         return max(6, min(natural, height - top))
     }
@@ -422,6 +457,29 @@ private struct FeedBlock: View {
     }
 }
 
+/// A pumping session: a narrow rose bar, outlined so it stands out over a feed block.
+private struct PumpBlock: View {
+    let height: CGFloat
+
+    var body: some View {
+        Capsule()
+            .fill(NBColor.pump)
+            .overlay { Capsule().strokeBorder(NBColor.card, lineWidth: 1) }
+            .frame(width: 7, height: max(8, height))
+    }
+}
+
+/// "1 pumping session" / "3 pumping sessions", for VoiceOver; `nil` for none.
+enum PumpCountText {
+    static func spoken(_ count: Int) -> String? {
+        switch count {
+        case 0: nil
+        case 1: String(localized: "1 pumping session")
+        default: String(localized: "\(count) pumping sessions")
+        }
+    }
+}
+
 /// Pushes the full day timeline.
 struct DayRoute: Hashable {
     let day: Date
@@ -435,8 +493,10 @@ private struct CalendarMonthView: View {
     let showDay: (Date) -> Void
 
     @Query private var sessions: [FeedingSession]
+    @Query private var pumpSessions: [FeedingSession]
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @Environment(BottleLogUIModel.self) private var bottleModel: BottleLogUIModel?
+    @Environment(PumpLogUIModel.self) private var pumpModel: PumpLogUIModel?
 
     init(
         month: Date,
@@ -456,12 +516,16 @@ private struct CalendarMonthView: View {
         let start = calendar.date(byAdding: .day, value: -7, to: interval.start) ?? interval.start
         let end = calendar.date(byAdding: .day, value: 7, to: interval.end) ?? interval.end
         _sessions = Query(FeedingSession.completedFeeds(from: start, to: end))
+        _pumpSessions = Query(FeedingSession.completedPumps(from: start, to: end))
     }
 
     var body: some View {
         let entries = sessions.compactMap(\.feedEntry)
+        let pumps = pumpSessions.compactMap(\.pumpEntry)
         let now = Date.now
-        let grid = FeedCalendar.month(month, entries: entries, now: now)
+        let grid = FeedCalendar.month(month, entries: entries, pumps: pumps, now: now)
+        let unit = bottleModel?.unit ?? .milliliters
+        let pumpUnit = pumpModel?.unit ?? unit
         let isCurrentMonth = month == FeedCalendar.startOfMonth(now)
 
         ScrollView {
@@ -484,7 +548,14 @@ private struct CalendarMonthView: View {
 
                 if let selectedDay {
                     let summary = FeedCalendar.daySummary(selectedDay, entries: entries)
-                    DaySummaryCard(day: selectedDay, entries: summary.entries, totals: summary.totals, unit: bottleModel?.unit ?? .milliliters)
+                    DaySummaryCard(
+                        day: selectedDay,
+                        entries: summary.entries,
+                        totals: summary.totals,
+                        pumps: FeedCalendar.dayPumps(selectedDay, pumps: pumps),
+                        unit: unit,
+                        pumpUnit: pumpUnit
+                    )
                 } else if grid.isEmpty {
                     Text("No feeds this month")
                         .font(.headline)
@@ -492,7 +563,7 @@ private struct CalendarMonthView: View {
                         .frame(maxWidth: .infinity)
                         .padding(.top, NBSpacing.l)
                 } else {
-                    PeriodSummary(title: "This month", totals: grid.totals, unit: bottleModel?.unit ?? .milliliters)
+                    PeriodSummary(title: "This month", totals: grid.totals, pumps: grid.pumps, unit: unit, pumpUnit: pumpUnit)
                 }
             }
             .padding(NBSpacing.l)
@@ -610,6 +681,7 @@ private struct DayCell: View {
                 if cell.usedLeft { dot(NBColor.left) }
                 if cell.usedRight { dot(NBColor.right) }
                 if cell.hadBottle { dot(NBColor.bottleBreastMilk) }
+                if cell.hadPump { dot(NBColor.pump) }
             }
             .frame(height: 5)
         }
@@ -650,16 +722,19 @@ private struct DayCell: View {
         default: parts.append(String(localized: "\(cell.feedCount) feeds"))
         }
         if cell.hadBottle { parts.append(String(localized: "includes a bottle")) }
+        if let pumping = PumpCountText.spoken(cell.pumpCount) { parts.append(pumping) }
         return parts.joined(separator: ", ")
     }
 }
 
-/// The selected day: totals, the L/R split, its feeds, and a link to the full day.
+/// The selected day: totals, the L/R split, its feeds, its pumping, and a link to the full day.
 private struct DaySummaryCard: View {
     let day: Date
     let entries: [FeedEntry]
     let totals: FeedTotals
+    let pumps: [PumpEntry]
     let unit: VolumeUnit
+    let pumpUnit: VolumeUnit
 
     var body: some View {
         Card {
@@ -671,6 +746,10 @@ private struct DaySummaryCard: View {
                     Text("No feeds recorded on this day.")
                         .font(.subheadline)
                         .foregroundStyle(.secondary)
+                    if !pumps.isEmpty {
+                        pumping
+                        openDay
+                    }
                 } else {
                     DayTotalsRow(totals: totals, unit: unit)
                     let left = entries.reduce(0) { $0 + $1.duration(on: .left) }
@@ -693,17 +772,59 @@ private struct DaySummaryCard: View {
                             .font(.footnote)
                             .foregroundStyle(.secondary)
                     }
-                    NavigationLink(value: DayRoute(day: day)) {
-                        Label("Open day", systemImage: "list.bullet")
-                            .font(.body.weight(.semibold))
-                            .frame(maxWidth: .infinity, minHeight: NBLayout.minHitTarget)
+                    if !pumps.isEmpty {
+                        Divider()
+                        pumping
                     }
-                    .buttonStyle(.bordered)
-                    .tint(NBColor.accent)
-                    .accessibilityIdentifier("calendar.openDay")
+                    openDay
                 }
             }
         }
+    }
+
+    /// The day's pumping total, then up to three sessions. Not counted in the feed totals.
+    @ViewBuilder
+    private var pumping: some View {
+        PumpTotalLine(summary: PumpSummary(entries: pumps), unit: pumpUnit)
+        ForEach(pumps.prefix(3)) { pump in
+            PumpRow(entry: pump)
+        }
+        if pumps.count > 3 {
+            Text("and \(pumps.count - 3) more")
+                .font(.footnote)
+                .foregroundStyle(.secondary)
+        }
+    }
+
+    private var openDay: some View {
+        NavigationLink(value: DayRoute(day: day)) {
+            Label("Open day", systemImage: "list.bullet")
+                .font(.body.weight(.semibold))
+                .frame(maxWidth: .infinity, minHeight: NBLayout.minHitTarget)
+        }
+        .buttonStyle(.bordered)
+        .tint(NBColor.accent)
+        .accessibilityIdentifier("calendar.openDay")
+    }
+}
+
+/// "Pumping · 2 sessions · 240 mL", in rose.
+private struct PumpTotalLine: View {
+    let summary: PumpSummary
+    let unit: VolumeUnit
+
+    var body: some View {
+        HStack {
+            Label("Pumping", systemImage: PumpText.symbolName)
+                .foregroundStyle(NBColor.pump)
+            Spacer()
+            Text(summary.count == 1 ? String(localized: "1 session") : String(localized: "\(summary.count) sessions"))
+                .foregroundStyle(.secondary)
+            Text(FeedText.volume(ml: summary.totalML, unit: unit))
+                .monospacedDigit()
+        }
+        .font(.subheadline.weight(.semibold))
+        .accessibilityElement(children: .combine)
     }
 }
 
@@ -751,7 +872,9 @@ struct MiniStat: View {
 private struct PeriodSummary: View {
     let title: LocalizedStringKey
     let totals: FeedTotals
+    let pumps: PumpSummary
     let unit: VolumeUnit
+    let pumpUnit: VolumeUnit
 
     var body: some View {
         Card {
@@ -759,6 +882,9 @@ private struct PeriodSummary: View {
                 Text(title)
                     .font(.title3.weight(.semibold))
                 DayTotalsRow(totals: totals, unit: unit)
+                if !pumps.isEmpty {
+                    PumpTotalLine(summary: pumps, unit: pumpUnit)
+                }
                 Text("Tap a day to see its feeds.")
                     .font(.footnote)
                     .foregroundStyle(.secondary)
@@ -774,6 +900,7 @@ private struct PeriodSummary: View {
     return NavigationStack { CalendarView(selectedDay: $day).navigationDestination(for: DayRoute.self) { DayFeedsView(day: $0.day) } }
         .modelContainer(container)
         .environment(BottleLogUIModel.preview())
+        .environment(PumpLogUIModel.preview())
 }
 
 #Preview("Empty") {

@@ -161,20 +161,20 @@ private struct SparseNote: View {
     }
 }
 
-/// 1. Feeds per day (or per hour for 24 h), stacked breast/bottle, with an average line.
+/// 1. Feeds per day (or per hour for 24 h), stacked breast/bottle, with an average line. Each
+/// bar shows its total, and each part its own count when there's room (`BarLabels`).
 private struct FeedsCard: View {
     let report: InsightsReport
 
     var body: some View {
         let unit: Calendar.Component = report.range == .day ? .hour : .day
         let average = Double(report.entries.count) / Double(max(1, report.buckets.count))
+        let density = BarLabels.density(barCount: report.buckets.count)
+        let tallest = Double(report.buckets.map(\.feedCount).max() ?? 0)
         InsightCard(title: report.range == .day ? "Feeds by hour" : "Feeds per day", summary: summary) {
             Chart {
                 ForEach(report.buckets) { bucket in
-                    BarMark(x: .value("Time", bucket.start, unit: unit), y: .value("Feeds", bucket.breastCount))
-                        .foregroundStyle(by: .value("Kind", String(localized: "Breast")))
-                    BarMark(x: .value("Time", bucket.start, unit: unit), y: .value("Feeds", bucket.bottleCount))
-                        .foregroundStyle(by: .value("Kind", String(localized: "Bottle")))
+                    bars(bucket, unit: unit, density: density, tallest: tallest)
                 }
                 if report.range != .day {
                     RuleMark(y: .value("Average", average))
@@ -183,10 +183,33 @@ private struct FeedsCard: View {
                 }
             }
             .chartForegroundStyleScale([String(localized: "Breast"): NBColor.accent, String(localized: "Bottle"): NBColor.bottleBreastMilk])
+            .chartYScale(domain: 0...BarLabels.axisTop(tallest: tallest))
             .chartYAxis { AxisMarks(position: .leading, values: .automatic(desiredCount: 4)) }
             .chartXAxis { dateAxis(for: report.range) }
             .frame(height: 180)
             .accessibilityLabel(summary)
+        }
+    }
+
+    @ChartContentBuilder
+    private func bars(_ bucket: InsightsBucket, unit: Calendar.Component, density: BarLabels.Density, tallest: Double) -> some ChartContent {
+        let segments = [Double(bucket.breastCount), Double(bucket.bottleCount)]
+        BarMark(x: .value("Time", bucket.start, unit: unit), y: .value("Feeds", bucket.breastCount))
+            .foregroundStyle(by: .value("Kind", String(localized: "Breast")))
+            .annotation(position: .overlay) {
+                if BarLabels.showsSegmentLabel(segments[0], in: segments, tallest: tallest, density: density) {
+                    SegmentValueLabel(text: "\(bucket.breastCount)", density: density, color: .white)
+                }
+            }
+        BarMark(x: .value("Time", bucket.start, unit: unit), y: .value("Feeds", bucket.bottleCount))
+            .foregroundStyle(by: .value("Kind", String(localized: "Bottle")))
+            .annotation(position: .overlay) {
+                if BarLabels.showsSegmentLabel(segments[1], in: segments, tallest: tallest, density: density) {
+                    SegmentValueLabel(text: "\(bucket.bottleCount)", density: density, color: NBColor.onSide)
+                }
+            }
+        if bucket.feedCount > 0 {
+            BarTotalMark(x: .value("Time", bucket.start, unit: unit), y: .value("Feeds", bucket.feedCount), text: "\(bucket.feedCount)", density: density)
         }
     }
 
@@ -347,6 +370,8 @@ private struct BottleCard: View {
     var body: some View {
         let timeUnit: Calendar.Component = report.range == .day ? .hour : .day
         let bottle = report.bottle
+        let density = BarLabels.density(barCount: report.buckets.count)
+        let tallest = unit.fromMilliliters(report.buckets.map(\.bottleML).max() ?? 0)
         InsightCard(title: "Bottles", summary: summary) {
             HStack(alignment: .top, spacing: NBSpacing.l) {
                 MiniStat(value: FeedText.volume(ml: bottle.totalML, unit: unit), label: String(localized: "total"))
@@ -355,12 +380,7 @@ private struct BottleCard: View {
             }
             Chart {
                 ForEach(report.buckets) { bucket in
-                    BarMark(x: .value("Time", bucket.start, unit: timeUnit), y: .value(unit.symbol, unit.fromMilliliters(bucket.breastMilkML)))
-                        .foregroundStyle(by: .value("Contents", String(localized: "Breast milk")))
-                    BarMark(x: .value("Time", bucket.start, unit: timeUnit), y: .value(unit.symbol, unit.fromMilliliters(bucket.formulaML)))
-                        .foregroundStyle(by: .value("Contents", String(localized: "Formula")))
-                    BarMark(x: .value("Time", bucket.start, unit: timeUnit), y: .value(unit.symbol, unit.fromMilliliters(bucket.otherML)))
-                        .foregroundStyle(by: .value("Contents", String(localized: "Other")))
+                    bars(bucket, timeUnit: timeUnit, density: density, tallest: tallest)
                 }
             }
             .chartForegroundStyleScale([
@@ -368,11 +388,47 @@ private struct BottleCard: View {
                 String(localized: "Formula"): NBColor.bottleFormula,
                 String(localized: "Other"): Color.gray.opacity(0.6),
             ])
+            .chartYScale(domain: 0...BarLabels.axisTop(tallest: tallest))
             .chartYAxis { AxisMarks(position: .leading, values: .automatic(desiredCount: 4)) }
             .chartXAxis { dateAxis(for: report.range) }
             .frame(height: 160)
             .accessibilityLabel(summary)
         }
+    }
+
+    /// Breast milk, formula and other stacked, each labeled when there's room, and the total on top.
+    @ChartContentBuilder
+    private func bars(_ bucket: InsightsBucket, timeUnit: Calendar.Component, density: BarLabels.Density, tallest: Double) -> some ChartContent {
+        let parts = [bucket.breastMilkML, bucket.formulaML, bucket.otherML].map(unit.fromMilliliters)
+        BarMark(x: .value("Time", bucket.start, unit: timeUnit), y: .value(unit.symbol, parts[0]))
+            .foregroundStyle(by: .value("Contents", String(localized: "Breast milk")))
+            .annotation(position: .overlay) { segmentLabel(parts[0], parts: parts, density: density, tallest: tallest) }
+        BarMark(x: .value("Time", bucket.start, unit: timeUnit), y: .value(unit.symbol, parts[1]))
+            .foregroundStyle(by: .value("Contents", String(localized: "Formula")))
+            .annotation(position: .overlay) { segmentLabel(parts[1], parts: parts, density: density, tallest: tallest) }
+        BarMark(x: .value("Time", bucket.start, unit: timeUnit), y: .value(unit.symbol, parts[2]))
+            .foregroundStyle(by: .value("Contents", String(localized: "Other")))
+            .annotation(position: .overlay) { segmentLabel(parts[2], parts: parts, density: density, tallest: tallest) }
+        if bucket.bottleML > 0 {
+            BarTotalMark(
+                x: .value("Time", bucket.start, unit: timeUnit),
+                y: .value(unit.symbol, unit.fromMilliliters(bucket.bottleML)),
+                text: Self.amount(unit.fromMilliliters(bucket.bottleML), unit: unit),
+                density: density
+            )
+        }
+    }
+
+    @ViewBuilder
+    private func segmentLabel(_ value: Double, parts: [Double], density: BarLabels.Density, tallest: Double) -> some View {
+        if BarLabels.showsSegmentLabel(value, in: parts, tallest: tallest, density: density) {
+            SegmentValueLabel(text: Self.amount(value, unit: unit), density: density, color: NBColor.onSide)
+        }
+    }
+
+    /// The number alone, in `unit` (the axis and stats above carry the unit): "120", "3.5".
+    static func amount(_ value: Double, unit: VolumeUnit) -> String {
+        value.formatted(.number.precision(.fractionLength(0...(unit == .milliliters ? 0 : 1))))
     }
 
     private var summary: String {
@@ -438,6 +494,71 @@ private struct HeatmapCard: View {
 }
 
 // MARK: - Shared chart bits
+
+/// A bar's total, printed just above it. Drawn as an invisible point at the top of the stack so it
+/// sits on the whole bar rather than on one of its parts.
+private struct BarTotalMark<Y: Plottable>: ChartContent {
+    let x: PlottableValue<Date>
+    let y: PlottableValue<Y>
+    let text: String
+    let density: BarLabels.Density
+
+    var body: some ChartContent {
+        PointMark(x: x, y: y)
+            .symbolSize(0)
+            .foregroundStyle(.clear)
+            .annotation(position: .top, spacing: 2) {
+                BarValueLabel(text: text, density: density)
+            }
+    }
+}
+
+/// Font size for bar labels: smaller as bars get narrower.
+private func barLabelSize(_ density: BarLabels.Density) -> CGFloat {
+    switch density {
+    case .roomy: 11
+    case .compact: 9
+    case .dense: 8
+    }
+}
+
+/// A total above a bar. On dense charts, numbers of two or more characters run upward so
+/// neighbors don't overlap.
+private struct BarValueLabel: View {
+    let text: String
+    let density: BarLabels.Density
+
+    var body: some View {
+        let size = barLabelSize(density)
+        let label = Text(text)
+            .font(.system(size: size, weight: .semibold).monospacedDigit())
+            .foregroundStyle(.secondary)
+            .lineLimit(1)
+            .fixedSize()
+        if density == .dense && text.count >= 2 {
+            label
+                .rotationEffect(.degrees(-90))
+                .frame(width: size + 2, height: CGFloat(text.count) * size * 0.62 + 2)
+        } else {
+            label
+        }
+    }
+}
+
+/// A stacked part's own value, inside it.
+private struct SegmentValueLabel: View {
+    let text: String
+    let density: BarLabels.Density
+    let color: Color
+
+    var body: some View {
+        Text(text)
+            .font(.system(size: density == .roomy ? 10 : 8, weight: .semibold).monospacedDigit())
+            .foregroundStyle(color)
+            .lineLimit(1)
+            .minimumScaleFactor(0.7)
+    }
+}
 
 /// Day labels for day ranges, hour labels for 24 h.
 private func dateAxis(for range: InsightsRange) -> some AxisContent {
