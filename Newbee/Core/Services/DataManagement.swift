@@ -24,7 +24,7 @@ extension AppDependencies {
         return url
     }
 
-    /// Deletes every feed and the baby profile, ends any Live Activity, cancels every
+    /// Deletes every feed and the baby profile (photo included), ends any Live Activity, cancels every
     /// notification and resets preferences except appearance. Can't be undone.
     func deleteAllData() async throws {
         guard let container = modelContainer else { throw DataError.storeUnavailable }
@@ -57,6 +57,7 @@ extension AppDependencies {
             throw error
         }
         preferences.resetToDefaults()
+        babyPhoto.remove()
         // Re-read the now empty store: ends every Live Activity and clears reminders.
         await sessionManager.reload()
         await reminders.removeAll()

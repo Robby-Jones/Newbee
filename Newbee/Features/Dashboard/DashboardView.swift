@@ -59,20 +59,23 @@ struct DashboardView: View {
     }
 }
 
-/// The baby's name and age from Settings, or a greeting when there's no profile yet.
+/// The baby's photo, name and age from Settings, or a greeting when there's no profile yet.
 private struct ProfileHeader: View {
     let baby: Baby?
     let now: Date
+    @Environment(BabyPhotoStore.self) private var photo: BabyPhotoStore?
 
     var body: some View {
         let name = baby?.name.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+        let image = photo?.image
         VStack(spacing: NBSpacing.s) {
-            Image(systemName: "heart.fill")
-                .font(.title2)
-                .foregroundStyle(NBColor.accent)
-                .frame(width: 64, height: 64)
-                .background(NBColor.accent.opacity(0.12), in: .circle)
-                .accessibilityHidden(true)
+            // The photo from Settings is shown larger than the placeholder heart.
+            BabyAvatar(image: image, size: image == nil ? 64 : 112)
+                .overlay {
+                    if image != nil {
+                        Circle().strokeBorder(NBColor.accent.opacity(0.35), lineWidth: 3)
+                    }
+                }
             Text(name.isEmpty ? DashboardView.greeting(at: now) : name)
                 .font(.title2.weight(.bold))
                 .accessibilityAddTraits(.isHeader)

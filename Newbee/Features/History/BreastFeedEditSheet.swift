@@ -23,6 +23,10 @@ struct BreastFeedEditSheet: View {
     @State private var notes: String
     @State private var saveError: String?
     @State private var confirmingDelete = false
+    @FocusState private var focusedSide: Side?
+
+    /// The longest time on one side the sheet accepts: 3 hours.
+    static let maxSideDuration: TimeInterval = 3 * 3_600
 
     init(model: FeedingSessionUIModel, original: SessionSnapshot?, suggestedSide: Side = .left, now: Date = .now) {
         self.model = model
@@ -135,6 +139,11 @@ struct BreastFeedEditSheet: View {
                 ToolbarItem(placement: .cancellationAction) {
                     Button("Cancel") { dismiss() }
                 }
+                // The number pad has no return key.
+                ToolbarItemGroup(placement: .keyboard) {
+                    Spacer()
+                    Button("Done") { focusedSide = nil }
+                }
             }
             .scrollDismissesKeyboard(.interactively)
             .safeAreaInset(edge: .bottom) { saveButton }
@@ -195,17 +204,18 @@ struct BreastFeedEditSheet: View {
         Section {
             ForEach(Side.allCases, id: \.self) { side in
                 let binding = side == .left ? $simple.left : $simple.right
-                Stepper(value: binding, in: 0...(3 * 3_600), step: 60) {
-                    HStack {
-                        SideBadge(side: side, style: binding.wrappedValue > 0 ? .filled : .soft)
+                HStack(spacing: NBSpacing.s) {
+                    SideBadge(side: side, style: binding.wrappedValue > 0 ? .filled : .soft)
+                    Text(side.title)
+                    Spacer(minLength: NBSpacing.s)
+                    // Tap to type the minutes; +/- still nudges by one minute.
+                    MinutesField(seconds: binding, focus: $focusedSide, side: side)
+                    Stepper(value: binding, in: 0...Self.maxSideDuration, step: 60) {
                         Text(side.title)
-                        Spacer()
-                        Text(DurationText.short(binding.wrappedValue))
-                            .monospacedDigit()
-                            .foregroundStyle(NBColor.secondaryText)
                     }
+                    .labelsHidden()
+                    .accessibilityValue(DurationText.spoken(binding.wrappedValue))
                 }
-                .accessibilityValue(DurationText.spoken(binding.wrappedValue))
             }
         } footer: {
             Text("Ends \(simple.end, format: .dateTime.hour().minute()) · total \(DurationText.short(simple.total))")
@@ -293,6 +303,71 @@ struct BreastFeedEditSheet: View {
         case .inFuture: String(localized: "Times can't be in the future.")
         default: String(localized: "Those times don't add up.")
         }
+    }
+}
+
+/// A side's minutes, typed on the number pad. Edits the bound duration as the parent types
+/// (whole minutes, up to `BreastFeedEditSheet.maxSideDuration`) and follows the +/- buttons.
+private struct MinutesField: View {
+    @Binding var seconds: TimeInterval
+    var focus: FocusState<Side?>.Binding
+    let side: Side
+
+    @State private var text = ""
+
+    var body: some View {
+        HStack(spacing: NBSpacing.xs) {
+            TextField("0", text: $text)
+                .keyboardType(.numberPad)
+                .multilineTextAlignment(.trailing)
+                .monospacedDigit()
+                .frame(width: 48)
+                .padding(.vertical, NBSpacing.xs)
+                .padding(.horizontal, NBSpacing.s)
+                .background(NBColor.accent.opacity(0.1), in: .rect(cornerRadius: 8))
+                .focused(focus, equals: side)
+                .accessibilityLabel(String(localized: "\(side.title) minutes"))
+                .accessibilityIdentifier("breastEdit.minutes.\(side.rawValue)")
+            Text("min")
+                .foregroundStyle(NBColor.secondaryText)
+                .accessibilityHidden(true)
+        }
+        .onAppear { text = Self.text(for: seconds) }
+        .onChange(of: text) { _, newText in
+            let digits = String(newText.filter(\.isNumber).prefix(3))
+            if digits != newText {
+                text = digits
+                return
+            }
+            let maxMinutes = Int(BreastFeedEditSheet.maxSideDuration / 60)
+            let minutes = min(Int(digits) ?? 0, maxMinutes)
+            if minutes != Int(digits) ?? 0 {
+                text = String(minutes)
+                return
+            }
+            // Keep any odd seconds from a timed feed until the minutes actually change.
+            if minutes != Self.minutes(in: seconds) {
+                seconds = TimeInterval(minutes * 60)
+            }
+        }
+        .onChange(of: seconds) { _, newValue in
+            // +/- or a mode switch changed it: show the new value unless it already matches.
+            if Self.minutes(in: newValue) != (Int(text) ?? 0) || (text.isEmpty && focus.wrappedValue != side) {
+                text = Self.text(for: newValue)
+            }
+        }
+        .onChange(of: focus.wrappedValue) { _, focused in
+            // Leaving an empty box shows 0 again.
+            if focused != side, text.isEmpty { text = Self.text(for: seconds) }
+        }
+    }
+
+    private static func minutes(in seconds: TimeInterval) -> Int {
+        Int((seconds / 60).rounded())
+    }
+
+    private static func text(for seconds: TimeInterval) -> String {
+        String(minutes(in: seconds))
     }
 }
 
