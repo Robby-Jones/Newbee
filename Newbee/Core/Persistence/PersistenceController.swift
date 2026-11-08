@@ -22,11 +22,16 @@ enum PersistenceController {
         case .file(let url):
             configuration = ModelConfiguration(schema: schema, url: url, cloudKitDatabase: .none)
         case .appGroup:
-            configuration = ModelConfiguration(
-                schema: schema,
-                url: try storeURL(),
-                cloudKitDatabase: .none
+            let url = try storeURL()
+            configuration = ModelConfiguration(schema: schema, url: url, cloudKitDatabase: .none)
+            let container = try ModelContainer(
+                for: schema,
+                migrationPlan: NewbeeMigrationPlan.self,
+                configurations: configuration
             )
+            // SQLite creates the -wal and -shm files on open, so protect them once they exist.
+            allowAccessWhileLocked(storeFilesFor: url)
+            return container
         }
         return try ModelContainer(for: schema, migrationPlan: NewbeeMigrationPlan.self, configurations: configuration)
     }
@@ -40,7 +45,36 @@ enum PersistenceController {
         }
         let directory = group.appending(path: "Library/Application Support", directoryHint: .isDirectory)
         try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
-        return directory.appending(path: "Newbee.store")
+        let url = directory.appending(path: "Newbee.store")
+        allowAccessWhileLocked(directory)
+        allowAccessWhileLocked(storeFilesFor: url)
+        return url
+    }
+
+    /// Lock Screen and Dynamic Island buttons run their intents in the app process while the
+    /// phone may be locked. With `.complete` protection the store would be unreadable then and
+    /// the tap would fail, so the store uses `.completeUntilFirstUserAuthentication`: encrypted
+    /// until the first unlock after a restart, readable while locked after that. The file
+    /// protection class is the iOS default, but setting it explicitly keeps it that way if a
+    /// stricter default is ever set on the app.
+    static func allowAccessWhileLocked(storeFilesFor storeURL: URL) {
+        let path = storeURL.path(percentEncoded: false)
+        for suffix in ["", "-wal", "-shm"] {
+            let fileURL = URL(filePath: path + suffix)
+            if FileManager.default.fileExists(atPath: fileURL.path(percentEncoded: false)) {
+                allowAccessWhileLocked(fileURL)
+            }
+        }
+    }
+
+    private static func allowAccessWhileLocked(_ url: URL) {
+        #if os(iOS)
+        // Best effort: a failure leaves the existing class, which is no worse than before.
+        try? FileManager.default.setAttributes(
+            [.protectionKey: FileProtectionType.completeUntilFirstUserAuthentication],
+            ofItemAtPath: url.path(percentEncoded: false)
+        )
+        #endif
     }
 }
 

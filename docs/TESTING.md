@@ -67,6 +67,7 @@ Run each case on an **iPhone 14 Pro or later** (Dynamic Island). Where marked â€
 | D16 | Dark mode, large Dynamic Type, VoiceOver on Lock Screen activity | Readable; buttons labelled |
 | D17 | Low Power Mode | Timer still accurate (rendered by system) |
 | D18 | Reminder fires after configured interval; suppressed in quiet hours | As configured |
+| D19 | With the phone locked (not just asleep), tap Switch, Pause, Resume, End and Undo end on the Lock Screen activity, without Face ID looking at you (cover the camera) | Each tap takes effect with no unlock prompt; on unlock the app agrees. Before the first unlock after a restart the buttons can't work, because the store is still encrypted |
 
 ## 6. CI (proposed)
 

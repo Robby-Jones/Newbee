@@ -3,6 +3,10 @@
 // - the app needs them because `LiveActivityIntent.perform()` runs in the app's process.
 // `perform()` only forwards to `LiveActivityIntentRouter`, which the app wires to the single
 // `FeedingSessionManager`. There is no timing logic here (docs/LIVE_ACTIVITIES.md §4).
+//
+// Every intent sets `authenticationPolicy = .alwaysAllowed` so the buttons work without unlocking
+// the phone. The app process that performs them can then run while the phone is locked, so the
+// store it reads is kept readable after first unlock (`PersistenceController.storeURL()`).
 
 import AppIntents
 import Foundation
@@ -32,6 +36,8 @@ enum IntentSide: String, AppEnum {
 struct SwitchFeedingSideIntent: LiveActivityIntent {
     static var title: LocalizedStringResource { "Switch Feeding Side" }
     static var isDiscoverable: Bool { false }
+    /// Runs from a locked Lock Screen without asking for Face ID or the passcode.
+    static var authenticationPolicy: IntentAuthenticationPolicy { .alwaysAllowed }
 
     @Parameter(title: "Session") var sessionID: String
     @Parameter(title: "Side") var side: IntentSide
@@ -53,6 +59,8 @@ struct SwitchFeedingSideIntent: LiveActivityIntent {
 struct PauseFeedingIntent: LiveActivityIntent {
     static var title: LocalizedStringResource { "Pause Feeding" }
     static var isDiscoverable: Bool { false }
+    /// Runs from a locked Lock Screen without asking for Face ID or the passcode.
+    static var authenticationPolicy: IntentAuthenticationPolicy { .alwaysAllowed }
 
     @Parameter(title: "Session") var sessionID: String
 
@@ -72,6 +80,8 @@ struct PauseFeedingIntent: LiveActivityIntent {
 struct ResumeFeedingIntent: LiveActivityIntent {
     static var title: LocalizedStringResource { "Resume Feeding" }
     static var isDiscoverable: Bool { false }
+    /// Runs from a locked Lock Screen without asking for Face ID or the passcode.
+    static var authenticationPolicy: IntentAuthenticationPolicy { .alwaysAllowed }
 
     @Parameter(title: "Session") var sessionID: String
 
@@ -91,6 +101,8 @@ struct ResumeFeedingIntent: LiveActivityIntent {
 struct EndFeedingIntent: LiveActivityIntent {
     static var title: LocalizedStringResource { "End Feeding" }
     static var isDiscoverable: Bool { false }
+    /// Runs from a locked Lock Screen without asking for Face ID or the passcode.
+    static var authenticationPolicy: IntentAuthenticationPolicy { .alwaysAllowed }
 
     @Parameter(title: "Session") var sessionID: String
 
@@ -110,6 +122,8 @@ struct EndFeedingIntent: LiveActivityIntent {
 struct UndoEndFeedingIntent: LiveActivityIntent {
     static var title: LocalizedStringResource { "Undo End Feeding" }
     static var isDiscoverable: Bool { false }
+    /// Runs from a locked Lock Screen without asking for Face ID or the passcode.
+    static var authenticationPolicy: IntentAuthenticationPolicy { .alwaysAllowed }
 
     @Parameter(title: "Session") var sessionID: String
 
