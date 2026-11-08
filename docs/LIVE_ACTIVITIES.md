@@ -87,13 +87,21 @@ side pills and controls are one shared view (`ActivitySidesAndControls`). Minima
   text (`IslandColor`).
 
 ### 3.2 Dynamic Island: expanded
-- **Leading:** total timer (live).
-- **Trailing:** status with glyph.
-- **Bottom:** the same side pills, pause/resume and end as the Lock Screen.
+- **Bottom only.** The island draws the Lock Screen's own layouts (`ActivityFeedingContent`,
+  `ActivitySinceLastFeedContent`) in its bottom region at a smaller scale
+  (`ActivityLayoutStyle.island`: total 28 pt, since-last-feed clock 36 pt, + 44 pt), in fixed
+  white / gray text.
+- **Why not leading / trailing:** the regions beside the camera are only about 100 pt wide. With the
+  status and clock there, a device showed "Since last…" and "1:00:…" (2026-11-08). The bottom
+  region spans the island's full width.
+- Live timer text takes all the width it's offered, so every clock gets a cap of 5× its font
+  size (`ActivityLayoutStyle.timerWidth`), which fits "12:05:00".
 
 ### 3.3 Dynamic Island: compact
 - **Leading:** side badge "L" (tinted circle).
-- **Trailing:** total timer, live, monospaced, `.frame(maxWidth: 48)` so it doesn't push the island wide. When paused: "⏸" + static time.
+- **Trailing:** total timer, live, monospaced, capped at 50 pt ("45:12") or 64 pt past an hour and
+  for the time since the last feed ("1:02:03"), so it doesn't push the island wide. When paused:
+  "⏸" + static time. Once ended: a clock glyph leading and the time since the last feed trailing.
 
 ### 3.4 Dynamic Island: minimal
 - Tinted circle with a tiny bottle/drop glyph, tinted by the active side. A paused state uses a hollow ring.
