@@ -1,6 +1,7 @@
 import ActivityKit
 import NewbeeKit
 import NewbeeShared
+import PhotosUI
 import SwiftData
 import SwiftUI
 import UIKit
@@ -36,10 +37,14 @@ struct SettingsView: View {
 private struct BabyProfileSection: View {
     @Environment(\.modelContext) private var context
     @Query(sort: \Baby.createdAt) private var babies: [Baby]
+    @Environment(BabyPhotoStore.self) private var photo: BabyPhotoStore?
 
     var body: some View {
         let baby = babies.first
         Section {
+            if let photo {
+                BabyPhotoRow(store: photo)
+            }
             TextField("Name or nickname", text: Binding(
                 get: { baby?.name ?? "" },
                 set: { name in edit { $0.name = name } }
@@ -81,6 +86,88 @@ private struct BabyProfileSection: View {
         }
         change(baby)
         try? context.save()
+    }
+}
+
+/// Choose, change or remove the baby's photo, shown at the top of Home.
+private struct BabyPhotoRow: View {
+    let store: BabyPhotoStore
+
+    @State private var selection: PhotosPickerItem?
+    @State private var isLoading = false
+    @State private var errorMessage: String?
+
+    var body: some View {
+        HStack(spacing: NBSpacing.m) {
+            BabyAvatar(image: store.image, size: 56)
+            VStack(alignment: .leading, spacing: NBSpacing.xs) {
+                PhotosPicker(selection: $selection, matching: .images) {
+                    Text(store.image == nil ? "Add photo" : "Change photo")
+                }
+                .accessibilityIdentifier("settings.babyPhoto")
+                if store.image != nil {
+                    Button("Remove photo", role: .destructive) { store.remove() }
+                        .font(.subheadline)
+                }
+                if let errorMessage {
+                    Text(errorMessage)
+                        .font(.footnote)
+                        .foregroundStyle(NBColor.destructive)
+                }
+            }
+            .buttonStyle(.borderless)
+            Spacer(minLength: 0)
+            if isLoading {
+                ProgressView()
+            }
+        }
+        .padding(.vertical, NBSpacing.xs)
+        .onChange(of: selection) { _, item in
+            guard let item else { return }
+            Task { await load(item) }
+        }
+    }
+
+    private func load(_ item: PhotosPickerItem) async {
+        isLoading = true
+        defer {
+            isLoading = false
+            selection = nil
+        }
+        do {
+            guard let data = try await item.loadTransferable(type: Data.self) else {
+                throw BabyPhotoStore.PhotoError.unreadable
+            }
+            try store.save(data)
+            errorMessage = nil
+        } catch {
+            errorMessage = (error as? LocalizedError)?.errorDescription ?? BabyPhotoStore.PhotoError.unreadable.errorDescription
+        }
+    }
+}
+
+/// The baby's photo in a circle, or a heart when there's none. Used in Settings and on Home.
+struct BabyAvatar: View {
+    let image: UIImage?
+    var size: CGFloat = 64
+
+    var body: some View {
+        Group {
+            if let image {
+                Image(uiImage: image)
+                    .resizable()
+                    .scaledToFill()
+            } else {
+                Image(systemName: "heart.fill")
+                    .font(size >= 80 ? .largeTitle : .title2)
+                    .foregroundStyle(NBColor.accent)
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+                    .background(NBColor.accent.opacity(0.12))
+            }
+        }
+        .frame(width: size, height: size)
+        .clipShape(.circle)
+        .accessibilityHidden(true)
     }
 }
 

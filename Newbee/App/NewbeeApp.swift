@@ -38,6 +38,7 @@ struct NewbeeApp: App {
                     .modelContainer(container)
                     .environment(dependencies.preferences)
                     .environment(dependencies.reminders)
+                    .environment(dependencies.babyPhoto)
                     .environment(\.dataManagement, DataManagementActions(dependencies: dependencies))
                     // Restore any session interrupted by termination, reboot or a clock change
                     // (docs/TIMER_ENGINE.md §5). Reconciling is idempotent, so overlapping

@@ -23,6 +23,11 @@ struct BreastFeedEditSheet: View {
     @State private var notes: String
     @State private var saveError: String?
     @State private var confirmingDelete = false
+    /// The side whose duration wheel is open, if any.
+    @State private var expandedSide: Side?
+
+    /// The longest time on one side the sheet accepts: 3 hours.
+    static let maxSideDuration: TimeInterval = 3 * 3_600
 
     init(model: FeedingSessionUIModel, original: SessionSnapshot?, suggestedSide: Side = .left, now: Date = .now) {
         self.model = model
@@ -195,17 +200,28 @@ struct BreastFeedEditSheet: View {
         Section {
             ForEach(Side.allCases, id: \.self) { side in
                 let binding = side == .left ? $simple.left : $simple.right
-                Stepper(value: binding, in: 0...(3 * 3_600), step: 60) {
-                    HStack {
+                // Tap a side to open an hours-and-minutes wheel, like the Timer app.
+                Button {
+                    withAnimation { expandedSide = expandedSide == side ? nil : side }
+                } label: {
+                    HStack(spacing: NBSpacing.s) {
                         SideBadge(side: side, style: binding.wrappedValue > 0 ? .filled : .soft)
                         Text(side.title)
+                            .foregroundStyle(.primary)
                         Spacer()
                         Text(DurationText.short(binding.wrappedValue))
                             .monospacedDigit()
-                            .foregroundStyle(NBColor.secondaryText)
+                            .foregroundStyle(expandedSide == side ? NBColor.accent : NBColor.secondaryText)
                     }
+                    .contentShape(.rect)
                 }
+                .buttonStyle(.plain)
                 .accessibilityValue(DurationText.spoken(binding.wrappedValue))
+                .accessibilityHint("Shows a wheel to set the time on this side")
+                .accessibilityIdentifier("breastEdit.duration.\(side.rawValue)")
+                if expandedSide == side {
+                    DurationWheel(seconds: binding, maximum: Self.maxSideDuration)
+                }
             }
         } footer: {
             Text("Ends \(simple.end, format: .dateTime.hour().minute()) · total \(DurationText.short(simple.total))")
@@ -293,6 +309,44 @@ struct BreastFeedEditSheet: View {
         case .inFuture: String(localized: "Times can't be in the future.")
         default: String(localized: "Those times don't add up.")
         }
+    }
+}
+
+/// Hours and minutes on two wheels, like the Timer app. Writes whole minutes, capped at
+/// `maximum`; odd seconds from a timed feed are kept until a wheel is turned.
+private struct DurationWheel: View {
+    @Binding var seconds: TimeInterval
+    let maximum: TimeInterval
+
+    private var maxHours: Int { Int(maximum / 3_600) }
+    private var totalMinutes: Int { Int((seconds / 60).rounded()) }
+
+    var body: some View {
+        HStack(spacing: 0) {
+            Picker("Hours", selection: Binding(
+                get: { totalMinutes / 60 },
+                set: { set(hours: $0, minutes: totalMinutes % 60) }
+            )) {
+                ForEach(0...maxHours, id: \.self) { hour in
+                    Text("\(hour) h").tag(hour)
+                }
+            }
+            Picker("Minutes", selection: Binding(
+                get: { totalMinutes % 60 },
+                set: { set(hours: totalMinutes / 60, minutes: $0) }
+            )) {
+                ForEach(0..<60, id: \.self) { minute in
+                    Text("\(minute) min").tag(minute)
+                }
+            }
+        }
+        .pickerStyle(.wheel)
+        .frame(height: 160)
+    }
+
+    private func set(hours: Int, minutes: Int) {
+        let total = min(TimeInterval(hours * 3_600 + minutes * 60), maximum)
+        if Int((total / 60).rounded()) != totalMinutes { seconds = total }
     }
 }
 

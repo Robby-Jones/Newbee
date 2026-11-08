@@ -88,6 +88,7 @@ A pumping session is a completed `FeedingSession` with `kind = pump`, `source = 
 ### Not in SwiftData
 - **AppPreferences**: App Group `UserDefaults` keys: `volumeUnit`, `bottlePresets` (JSON `[Double]` in mL), `reminder.enabled`, `reminder.intervalMinutes`, `reminder.quietStart`, `reminder.quietEnd`, `reminder.basis` (`start`/`end`), `stillFeeding.minutes`, `appearance`, `intervalDefinition`, `onboardingComplete`, `schemaVersionSeen`.
 - **Bottle presets** are prefs, not entities.
+- **Baby photo**: one JPEG (longest side 600 px) at `Application Support/BabyPhoto/photo.jpg`, app container only (not the App Group, not synced). Written by `BabyPhotoStore`; removed by "Delete all data".
 
 ## 3. Invariants (enforced by `SessionEngine` + repository, covered by tests)
 

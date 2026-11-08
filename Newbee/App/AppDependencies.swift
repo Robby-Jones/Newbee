@@ -31,6 +31,8 @@ final class AppDependencies {
     let preferences: AppPreferences
     /// Feed-due and "Still feeding?" local notifications.
     let reminders: ReminderScheduler
+    /// The baby's profile photo (Settings, Home).
+    let babyPhoto: BabyPhotoStore
 
     init(
         clock: any AppClock = SystemClock(),
@@ -73,6 +75,8 @@ final class AppDependencies {
 
         let isInMemory: Bool
         if case .inMemory = resolvedStorage { isInMemory = true } else { isInMemory = false }
+        // In-memory stores (UI tests, previews, unit tests) get a throwaway photo folder.
+        babyPhoto = isInMemory ? BabyPhotoStore.temporary() : BabyPhotoStore()
         let isAppStore: Bool
         if case .appGroup = resolvedStorage { isAppStore = true } else { isAppStore = false }
         let reminders = ReminderScheduler(
