@@ -248,6 +248,34 @@ struct DataManagementTests {
         }
     }
 
+    @Test func aVeryLongNoteStillFitsOnOnePage() throws {
+        // Notes have no length limit: a pasted essay must not make a row taller than a page,
+        // which would cut it off at the page's foot.
+        let essay = String(repeating: "Fed well, then fussy, then settled again after burping. ", count: 400)
+        let start = clock.now.addingTimeInterval(-3600)
+        let report = FeedReport(
+            feeds: [
+                FeedEntry(id: UUID(), start: start, end: start.addingTimeInterval(900),
+                          details: .breast(left: 600, right: 300, firstSide: .left, lastSide: .right), notes: essay),
+                FeedEntry(id: UUID(), start: start.addingTimeInterval(1800), end: start.addingTimeInterval(1800),
+                          details: .bottle(BottleSummary(contents: .formula, amountML: 90)), source: .manual),
+            ],
+            pumps: [PumpEntry(startedAt: start.addingTimeInterval(600), leftML: 50, rightML: 40, notes: essay)],
+            interval: FeedReportRange.lastDays(2).interval(now: clock.now)
+        )
+        let header = FeedReportPDF.Header()
+        let pages = FeedReportPDF.paginate(report, header: header, calendar: .current)
+        for block in pages.flatMap({ $0 }) {
+            #expect(FeedReportPDF.measure(block, header: header, calendar: .current) < FeedReportPDF.logHeight / 2)
+        }
+        let rows = pages.flatMap { $0 }.filter { if case .item = $0 { true } else { false } }
+        #expect(rows.count == 3)
+
+        let url = FileManager.default.temporaryDirectory.appendingPathComponent("long-note-\(UUID().uuidString).pdf")
+        defer { try? FileManager.default.removeItem(at: url) }
+        #expect(try FeedReportPDF.write(report, header: header, to: url) == 1 + pages.count)
+    }
+
     @Test func deleteAllRemovesEverythingAndCancelsReminders() async throws {
         let notifications = FakeNotificationClient()
         let dependencies = AppDependencies(clock: clock, storage: .inMemory, notifications: notifications, defaults: freshDefaults())

@@ -53,6 +53,7 @@ struct DashboardView: View {
 
     /// "2 h ago", "14 min ago", "just now": short enough to sit under a round button.
     static func compactAgo(_ interval: TimeInterval) -> String {
+        let interval = DurationText.sanitized(interval)
         if interval < 60 { return String(localized: "just now") }
         if interval < 3_600 { return String(localized: "\(Int(interval / 60)) min ago") }
         return String(localized: "\(Int(interval / 3_600)) h ago")

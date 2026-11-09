@@ -179,6 +179,26 @@ struct DurationTextTests {
         #expect(DurationText.short(65 * 60) == "1 h 5 min")
     }
 
+    /// `Int(_:)` traps on NaN, infinity and values past `Int.max`, so a bad duration must never
+    /// reach it: it reads as zero (or the cap) instead of crashing the screen that shows it.
+    @MainActor
+    @Test(arguments: [Double.nan, .infinity, -.infinity, -.greatestFiniteMagnitude])
+    func unusableDurationsReadAsZero(_ value: Double) {
+        #expect(DurationText.clock(value) == "0:00")
+        #expect(DurationText.short(value) == "0 min")
+        #expect(DurationText.spoken(value) == "0 minutes")
+        #expect(DashboardView.compactAgo(value) == "just now")
+    }
+
+    @MainActor
+    @Test func absurdlyLongDurationsAreCappedInsteadOfCrashing() {
+        let huge = Double.greatestFiniteMagnitude
+        #expect(DurationText.clock(huge) == DurationText.clock(DurationText.longest))
+        #expect(DurationText.short(huge) == DurationText.short(DurationText.longest))
+        #expect(!DurationText.spoken(huge).isEmpty)
+        #expect(DashboardView.compactAgo(huge) == DashboardView.compactAgo(DurationText.longest))
+    }
+
     @Test func calendarSidesLeaveOutAnUnusedSide() {
         #expect(FeedText.usedSides(left: 20 * 60, right: 0) == "L 20 min")
         #expect(FeedText.usedSides(left: 0, right: 9 * 60) == "R 9 min")

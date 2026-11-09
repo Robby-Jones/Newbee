@@ -426,6 +426,8 @@ private struct LogRow: View {
                     Text(notes)
                         .font(ReportFont.small.italic())
                         .foregroundStyle(NBColor.secondaryText)
+                        .lineLimit(FeedReportPDF.noteLineLimit)
+                        .truncationMode(.tail)
                         .fixedSize(horizontal: false, vertical: true)
                 }
             }
