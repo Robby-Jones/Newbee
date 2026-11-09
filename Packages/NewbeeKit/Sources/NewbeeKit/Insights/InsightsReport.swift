@@ -42,10 +42,11 @@ public enum InsightsRange: String, Sendable, CaseIterable, Hashable, Identifiabl
             return DateInterval(start: current.start.addingTimeInterval(-86_400), end: current.start)
         default:
             let start = calendar.date(byAdding: .day, value: -dayCount, to: current.start) ?? current.start
-            // Same elapsed share of the last day, so a part-finished today compares fairly.
-            let elapsed = now.timeIntervalSince(calendar.startOfDay(for: now))
-            let lastDay = calendar.date(byAdding: .day, value: -1, to: current.start) ?? current.start
-            let end = min(current.start, lastDay.addingTimeInterval(elapsed))
+            // Up to the same clock time on the period's last day, so a part-finished today
+            // compares fairly. Calendar arithmetic, not elapsed seconds, keeps "10:00" at 10:00
+            // when a daylight saving change makes one of the days 23 or 25 hours long.
+            let sameTime = calendar.date(byAdding: .day, value: -dayCount, to: now) ?? current.start
+            let end = min(current.start, sameTime)
             return DateInterval(start: start, end: max(start, end))
         }
     }
@@ -234,11 +235,12 @@ public struct InsightsReport: Sendable, Hashable {
 
         let today = calendar.startOfDay(for: now)
         let yesterday = calendar.date(byAdding: .day, value: -1, to: today) ?? today
-        let elapsedToday = now.timeIntervalSince(today)
+        // This time yesterday by the clock (see `previousInterval`), not 24 hours ago.
+        let thisTimeYesterday = calendar.date(byAdding: .day, value: -1, to: now) ?? today
         todayVsYesterday = FeedComparison(
             past,
             current: DateInterval(start: today, end: now),
-            previous: DateInterval(start: yesterday, end: min(today, yesterday.addingTimeInterval(elapsedToday)))
+            previous: DateInterval(start: yesterday, end: max(yesterday, min(today, thisTimeYesterday)))
         )
         let week = InsightsRange.week
         weekVsLastWeek = FeedComparison(
