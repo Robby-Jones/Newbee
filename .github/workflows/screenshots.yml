@@ -1,6 +1,7 @@
 name: Screenshots
 
-# Takes the App Store screenshots on a 6.9" iPhone simulator with sample feeds, and uploads them
+# Takes the App Store screenshots on a 6.3" iPhone simulator (1206 x 2622, the size App Store
+# Connect asks for first: "iPhone with Dynamic Island (medium display)") with sample feeds, and uploads them
 # as the "app-store-screenshots" artifact (Actions → Screenshots → latest run → Artifacts).
 # Run on demand: Actions → Screenshots → Run workflow. Test: NewbeeUITests/AppStoreScreenshots.swift.
 
@@ -26,17 +27,17 @@ jobs:
         run: brew install xcodegen xcbeautify
       - name: Generate project
         run: xcodegen generate
-      - name: Pick a 6.9-inch iPhone simulator
+      - name: Pick a 6.3-inch iPhone simulator
         id: sim
         run: |
           UDID="$(xcrun simctl list devices available -j | python3 -c '
           import json, sys
           devices = json.load(sys.stdin)["devices"]
-          phones = [d for rt, ds in sorted(devices.items()) if "iOS" in rt for d in ds if d["name"].startswith("iPhone") and "Pro Max" in d["name"]]
+          phones = [d for rt, ds in sorted(devices.items()) if "iOS" in rt for d in ds if d["name"].startswith("iPhone") and d["name"].endswith(" Pro")]
           print(phones[-1]["udid"] if phones else "")
           ')"
           if [ -z "$UDID" ]; then
-            echo "::error::No iPhone Pro Max simulator available."
+            echo "::error::No 6.3-inch iPhone Pro simulator available."
             xcrun simctl list devices available
             exit 1
           fi
