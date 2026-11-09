@@ -35,6 +35,10 @@ final class AppStoreScreenshots: XCTestCase {
         let calendarMode = app.segmentedControls.buttons["Calendar"].firstMatch
         XCTAssertTrue(calendarMode.waitForExistence(timeout: 5))
         calendarMode.tap()
+        // Month shows two weeks of feeds; Week can be nearly empty early in the week.
+        let month = app.segmentedControls.buttons["Month"].firstMatch
+        XCTAssertTrue(month.waitForExistence(timeout: 5))
+        month.tap()
         settle()
         capture("04-calendar")
 
