@@ -55,15 +55,30 @@ struct SystemNotificationClient: NotificationClient {
             content.title = notification.title
             content.body = notification.body
             content.sound = .default
-            // A wall-clock trigger, so "wait until 6:00" survives the phone sleeping or restarting.
-            let components = Calendar.current.dateComponents(
-                [.year, .month, .day, .hour, .minute, .second],
-                from: notification.fireDate
-            )
-            let trigger = UNCalendarNotificationTrigger(dateMatching: components, repeats: false)
+            let trigger = Self.trigger(for: notification.fireDate)
             let request = UNNotificationRequest(identifier: notification.identifier, content: content, trigger: trigger)
             try? await center.add(request)
         }
+    }
+
+    /// A calendar trigger, so "wait until 6:00" survives the phone sleeping or restarting, that
+    /// fires at exactly `fireDate` wherever the phone is.
+    static func trigger(for fireDate: Date) -> UNCalendarNotificationTrigger {
+        UNCalendarNotificationTrigger(dateMatching: triggerComponents(for: fireDate), repeats: false)
+    }
+
+    /// `fireDate` as calendar components with their calendar and time zone attached (UTC unless
+    /// a test asks for another). Components without a time zone are "floating": iOS reads them
+    /// in whatever zone the phone is in when they come due, so after travel a reminder would fire
+    /// at the same clock time in the new zone, hours early or late, and a time in the hour that
+    /// repeats when clocks fall back could fire an hour early. UTC has neither problem.
+    static func triggerComponents(for fireDate: Date, in timeZone: TimeZone = TimeZone(identifier: "UTC")!) -> DateComponents {
+        var calendar = Calendar(identifier: .gregorian)
+        calendar.timeZone = timeZone
+        return calendar.dateComponents(
+            [.calendar, .timeZone, .year, .month, .day, .hour, .minute, .second],
+            from: fireDate
+        )
     }
 
     func removeAll() async {
