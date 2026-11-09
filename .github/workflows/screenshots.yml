@@ -48,8 +48,16 @@ jobs:
           xcrun simctl boot "$UDID" || true
           xcrun simctl bootstatus "$UDID" -b
           xcrun simctl ui "$UDID" appearance light
-          # No fixed 9:41: the status bar keeps the real time so it matches the feed times on screen.
-          xcrun simctl status_bar "$UDID" override --dataNetwork wifi --wifiMode active \
+          # The sample feeds are relative to now, so a run in the early morning shows a nearly
+          # empty "Today". Run the app in a time zone where it is about 9 PM instead, and show
+          # that local time in the status bar so it matches the feed times on screen.
+          HOUR=$(date -u +%H)
+          OFFSET=$(( (21 - 10#$HOUR + 36) % 24 - 12 ))
+          if [ "$OFFSET" -ge 0 ]; then TZNAME="Etc/GMT-$OFFSET"; else TZNAME="Etc/GMT+$(( -OFFSET ))"; fi
+          LOCAL_TIME="$(TZ="$TZNAME" date +%-I:%M)"
+          echo "App time zone $TZNAME, local time $LOCAL_TIME"
+          echo "TEST_RUNNER_NEWBEE_SCREENSHOT_TZ=$TZNAME" >> "$GITHUB_ENV"
+          xcrun simctl status_bar "$UDID" override --time "$LOCAL_TIME" --dataNetwork wifi --wifiMode active \
             --wifiBars 3 --cellularMode active --cellularBars 4 --batteryState charged --batteryLevel 100
       - name: Capture
         env:

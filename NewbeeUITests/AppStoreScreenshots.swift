@@ -78,6 +78,10 @@ final class AppStoreScreenshots: XCTestCase {
             "-AppleLanguages", "(en-US)", "-AppleLocale", "en_US",
         ]
         if activeFeed { app.launchArguments.append("-screenshotActiveFeed") }
+        // Chosen by the workflow so it is evening in the app, whatever time the run starts.
+        if let timeZone = ProcessInfo.processInfo.environment["NEWBEE_SCREENSHOT_TZ"], !timeZone.isEmpty {
+            app.launchEnvironment["TZ"] = timeZone
+        }
         app.launch()
         return app
     }
