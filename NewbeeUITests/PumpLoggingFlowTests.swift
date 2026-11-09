@@ -8,6 +8,7 @@ final class PumpLoggingFlowTests: XCTestCase {
 
     @MainActor
     func testLogPumpingThenUndo() throws {
+        waitUntilANewSessionStartsToday()
         let app = XCUIApplication()
         app.launchArguments = ["-uiTesting", "-AppleLocale", "en_GB"]
         app.launch()
@@ -29,6 +30,27 @@ final class PumpLoggingFlowTests: XCTestCase {
         undo.tap()
 
         XCTAssertTrue(waitForLabel(of: logPump, containing: "None today"), logPump.label)
+    }
+
+    /// A new session ends now and lasts 15 minutes (`PumpLog.defaultDuration`), so just after
+    /// midnight it starts yesterday and Home's "Today" total rightly stays empty. In that window
+    /// (or just before midnight, when the day could turn mid-test) wait until the session will
+    /// start today. The simulator shares the test runner's clock and time zone.
+    private func waitUntilANewSessionStartsToday() {
+        let calendar = Calendar.current
+        let now = Date()
+        let lastMidnight = calendar.startOfDay(for: now)
+        guard let nextMidnight = calendar.date(byAdding: .day, value: 1, to: lastMidnight) else { return }
+        let safeAfterMidnight: TimeInterval = 17 * 60
+        let wakeUp: Date
+        if now < lastMidnight.addingTimeInterval(safeAfterMidnight) {
+            wakeUp = lastMidnight.addingTimeInterval(safeAfterMidnight)
+        } else if now > nextMidnight.addingTimeInterval(-2 * 60) {
+            wakeUp = nextMidnight.addingTimeInterval(safeAfterMidnight)
+        } else {
+            return
+        }
+        Thread.sleep(until: wakeUp)
     }
 
     private func waitForLabel(of element: XCUIElement, containing text: String) -> Bool {
