@@ -90,7 +90,12 @@ enum FeedReportPDF {
         return pages
     }
 
-    private static func measure(_ block: LogBlock, header: Header, calendar: Calendar) -> CGFloat {
+    /// Lines a note may take in the log. Notes have no length limit in the app, and a row taller
+    /// than a page would be clipped at the page's foot; 20 lines (about 2,000 characters) fit
+    /// with room to spare, and anything longer ends in an ellipsis.
+    static let noteLineLimit = 20
+
+    static func measure(_ block: LogBlock, header: Header, calendar: Calendar) -> CGFloat {
         let renderer = ImageRenderer(content: LogBlockView(block: block, calendar: calendar)
             .frame(width: contentWidth)
             .fixedSize(horizontal: false, vertical: true)

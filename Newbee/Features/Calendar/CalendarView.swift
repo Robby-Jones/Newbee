@@ -396,33 +396,36 @@ private struct DayColumn: View {
     let isSelected: Bool
     let height: CGFloat
 
-    private static let dayLength: TimeInterval = 24 * 3_600
+    /// Shortest block, so a bottle or a very short feed stays visible.
+    private static let minimumBlockHeight: CGFloat = 6
 
     var body: some View {
         ZStack(alignment: .top) {
             RoundedRectangle(cornerRadius: 8, style: .continuous)
                 .fill(isSelected ? NBColor.accent.opacity(0.08) : Color.clear)
             ForEach(entries) { entry in
-                let top = height * CGFloat(max(0, entry.start.timeIntervalSince(day)) / Self.dayLength)
-                FeedBlock(entry: entry, height: blockHeight(from: entry.start, to: entry.end ?? entry.start, top: top))
+                let block = blockFrame(from: entry.start, to: entry.end ?? entry.start)
+                FeedBlock(entry: entry, height: block.height)
                     .padding(.horizontal, 3)
-                    .offset(y: top)
+                    .offset(y: block.top)
             }
             ForEach(pumps) { pump in
-                let top = height * CGFloat(max(0, pump.startedAt.timeIntervalSince(day)) / Self.dayLength)
-                PumpBlock(height: blockHeight(from: pump.startedAt, to: pump.endedAt, top: top))
+                let block = blockFrame(from: pump.startedAt, to: pump.endedAt)
+                PumpBlock(height: block.height)
                     .padding(.horizontal, 3)
-                    .offset(y: top)
+                    .offset(y: block.top)
             }
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
     }
 
-    /// As tall as the entry lasted (at least 6 pt so short ones stay visible), clipped at midnight.
-    private func blockHeight(from start: Date, to end: Date, top: CGFloat) -> CGFloat {
-        let span = end.timeIntervalSince(start)
-        let natural = height * CGFloat(span / Self.dayLength)
-        return max(6, min(natural, height - top))
+    /// Placed at its clock time like the hour axis (so daylight saving days line up too), as tall
+    /// as it lasted, clipped at midnight, and never below the column.
+    private func blockFrame(from start: Date, to end: Date) -> (top: CGFloat, height: CGFloat) {
+        let span = DayTimelineLayout.span(from: start, to: end, onDay: day)
+        let blockHeight = max(Self.minimumBlockHeight, height * CGFloat(span.height))
+        let top = min(height * CGFloat(span.top), max(0, height - blockHeight))
+        return (top, blockHeight)
     }
 }
 
