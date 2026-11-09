@@ -3,7 +3,7 @@ import XCTest
 /// Captures the App Store screenshots with two weeks of sample feeds (`ScreenshotSampleData`).
 ///
 /// Skipped in normal test runs. The Screenshots workflow (`.github/workflows/screenshots.yml`)
-/// runs it on a 6.9" iPhone simulator with `TEST_RUNNER_NEWBEE_SCREENSHOTS=1` and
+/// runs it on a 6.3" iPhone Pro simulator (1206 x 2622) with `TEST_RUNNER_NEWBEE_SCREENSHOTS=1` and
 /// `TEST_RUNNER_NEWBEE_SCREENSHOT_DIR=<folder>`; the PNGs land in that folder and are also kept
 /// as test attachments.
 final class AppStoreScreenshots: XCTestCase {

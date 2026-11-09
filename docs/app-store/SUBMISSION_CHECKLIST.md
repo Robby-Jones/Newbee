@@ -36,7 +36,8 @@ can do them. Copy-paste text lives in [LISTING.md](LISTING.md) and
 
 ## 5. The 1.0 version page (iOS App → 1.0 Prepare for Submission)
 
-- [ ] iPhone 6.9" Display: upload the 6 screenshots in order (01 to 06).
+- [ ] Previews and Screenshots → **iPhone with Dynamic Island (medium display)**: upload the
+      6 screenshots (1206 x 2622) in order, 01 to 06. Skip iPhone Duo, iPad and Apple Watch.
 - [ ] Promotional text, description, keywords (LISTING.md).
 - [ ] Support URL: https://robby-jones.github.io/Newbee/support.html
 - [ ] Marketing URL: optional, https://robby-jones.github.io/Newbee/
