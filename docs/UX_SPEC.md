@@ -99,7 +99,7 @@ Side and feed colors are always paired with a letter or icon.
 Each screen covers: purpose · layout · states (empty / loading / error / active).
 
 ### 3.1 Onboarding (3 steps, all skippable)
-1. **Welcome**: "Track feeds in two taps." Privacy line: "Your data stays on this iPhone."
+1. **Welcome**: "Track feeds in two taps." Privacy line: "Your data stays on this iPhone." A small "Coming from Huckleberry? Import your feeds" link under Get started opens the import sheet (§3.10).
 2. **Baby**: photo, nickname and birth date (all optional). Units: mL / oz.
 3. **Stay in the loop**: explains Live Activities (illustration of the Lock Screen) and asks for notification permission *only if* the parent turns on reminders here. "Not medical advice" footnote.
 
@@ -237,7 +237,13 @@ today and week totals on Home and in Insights, gaps between feeds in History, ma
 History's **+**, and export in Settings.
 
 ### 3.10 Settings
-Baby profile · Units · Bottle presets · Reminders (enable, interval, basis start/end, quiet hours, "still feeding?" threshold) · Live Activities status + dismissal policy · Interval definition · Appearance (system/light/dark) · Data (export, how backup works, **Delete all data** with typed confirmation) · About / privacy / disclaimer.
+Baby profile · Units · Bottle presets · Reminders (enable, interval, basis start/end, quiet hours, "still feeding?" threshold) · Live Activities status + dismissal policy · Interval definition · Appearance (system/light/dark) · Data (export, how backup works, **Import from Huckleberry**, **Remove imported data** (shown only when something was imported; simple alert), **Delete all data** with typed confirmation) · About / privacy / disclaimer.
+
+**Import from Huckleberry.** Huckleberry emails one CSV per child ("Export tracking data as CSV"). The sheet explains how to get the file, then Choose File opens Files. Nothing is saved until the preview's Import button:
+- Ready to import: breastfeeds, bottles and pumping sessions, with the date range.
+- Skipped: rows already in Newbee (same kind starting in the same minute, so importing again is safe) and the count of each Huckleberry type Newbee doesn't track (Sleep, Diaper, Growth…).
+- Couldn't import: rows Newbee can't read or wouldn't accept if typed in (bottle over 500 mL, nursing over 4 hours, future times), each with a reason.
+Format details: Huckleberry gives minutes per side but not the order, so feeds that used both sides start on Left. "Mixed" bottles are saved as Other with the note "Mixed breast milk and formula". Times are read in the phone's time zone. Parser: NewbeeKit `HuckleberryCSV`, `ImportPlan`.
 
 ### 3.11 Recovery sheet
 See `TIMER_ENGINE.md` §5.

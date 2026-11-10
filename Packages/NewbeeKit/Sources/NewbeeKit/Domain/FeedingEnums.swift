@@ -41,4 +41,6 @@ public enum EntrySource: String, Codable, Sendable, CaseIterable, Hashable {
     case manual
     /// Closed by the recovery flow with an estimated end time.
     case recovered
+    /// Brought in from another app's export (Huckleberry). "Remove imported data" deletes these.
+    case imported
 }

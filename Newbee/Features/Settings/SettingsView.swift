@@ -7,7 +7,7 @@ import SwiftUI
 import UIKit
 
 /// Settings (docs/UX_SPEC.md §3.10): baby profile, units and bottle presets, reminders,
-/// Live Activities, appearance, data (export, backup, delete all) and about.
+/// Live Activities, appearance, data (export, import, backup, delete all) and about.
 ///
 /// The Settings tab.
 struct SettingsView: View {
@@ -15,6 +15,11 @@ struct SettingsView: View {
     @Environment(ReminderScheduler.self) private var reminders: ReminderScheduler?
     @State private var dataPresentation: DataPresentation?
     @State private var dataError: String?
+    @State private var isConfirmingRemoveImported = false
+    @Query(FeedingSession.imported()) private var importedSessions: [FeedingSession]
+    @Environment(\.dataManagement) private var actions
+    @Environment(BottleLogUIModel.self) private var bottleModel: BottleLogUIModel?
+    @Environment(PumpLogUIModel.self) private var pumpModel: PumpLogUIModel?
 
     var body: some View {
         Form {
@@ -26,13 +31,30 @@ struct SettingsView: View {
                 LiveActivitiesSection()
                 AppearanceSection(preferences: preferences)
             }
-            DataSection(presentation: $dataPresentation, errorMessage: $dataError)
+            DataSection(
+                presentation: $dataPresentation,
+                errorMessage: $dataError,
+                importedCount: importedSessions.count,
+                isConfirmingRemoveImported: $isConfirmingRemoveImported
+            )
             AboutSection()
         }
         // Presented from the Form, not from the Section: a modifier on a Section applies to each
         // of its rows, so every row tried to present the same sheet and it closed itself again.
         .sheet(item: $dataPresentation) { presentation in
             DataPresentationView(presentation: presentation)
+        }
+        .alert(
+            ImportText.removeTitle(importedSessions.count),
+            isPresented: $isConfirmingRemoveImported
+        ) {
+            Button("Remove", role: .destructive) {
+                Task { await removeImported() }
+            }
+            .accessibilityIdentifier("removeImported.confirm")
+            Button("Cancel", role: .cancel) {}
+        } message: {
+            Text("Feeds and pumping sessions imported from Huckleberry are deleted. Everything you logged in Newbee stays.")
         }
         .alert("Something went wrong", isPresented: Binding(get: { dataError != nil }, set: { if !$0 { dataError = nil } })) {
             Button("OK", role: .cancel) {}
@@ -41,6 +63,20 @@ struct SettingsView: View {
         }
         .navigationTitle("Settings")
         .task { await reminders?.reschedule() }
+    }
+
+    private func removeImported() async {
+        guard let actions else { return }
+        do {
+            _ = try await actions.removeImported()
+            // Undo toasts may refer to entries that no longer exist.
+            bottleModel?.toast = nil
+            bottleModel?.refresh()
+            pumpModel?.toast = nil
+            pumpModel?.refresh()
+        } catch {
+            dataError = error.localizedDescription
+        }
     }
 }
 
@@ -487,12 +523,14 @@ private struct AppearanceSection: View {
 enum DataPresentation: Identifiable {
     case share(SharedFile)
     case report
+    case importHuckleberry
     case deleteAll
 
     var id: String {
         switch self {
         case .share(let file): "share-\(file.url.absoluteString)"
         case .report: "report"
+        case .importHuckleberry: "importHuckleberry"
         case .deleteAll: "deleteAll"
         }
     }
@@ -501,6 +539,8 @@ enum DataPresentation: Identifiable {
 private struct DataSection: View {
     @Binding var presentation: DataPresentation?
     @Binding var errorMessage: String?
+    let importedCount: Int
+    @Binding var isConfirmingRemoveImported: Bool
     @Environment(\.dataManagement) private var actions
 
     var body: some View {
@@ -521,6 +561,25 @@ private struct DataSection: View {
             .disabled(actions == nil)
             .accessibilityIdentifier("settings.exportPDF")
 
+            Button {
+                presentation = .importHuckleberry
+            } label: {
+                Label("Import from Huckleberry", systemImage: "square.and.arrow.down")
+            }
+            .disabled(actions == nil)
+            .accessibilityIdentifier("settings.importHuckleberry")
+
+            if importedCount > 0 {
+                Button(role: .destructive) {
+                    isConfirmingRemoveImported = true
+                } label: {
+                    Label("Remove imported data", systemImage: "arrow.uturn.backward")
+                        .foregroundStyle(NBColor.destructive)
+                }
+                .disabled(actions == nil)
+                .accessibilityIdentifier("settings.removeImported")
+            }
+
             Button(role: .destructive) {
                 presentation = .deleteAll
             } label: {
@@ -532,7 +591,7 @@ private struct DataSection: View {
         } header: {
             Text("Your data")
         } footer: {
-            Text("Feeds are stored only on this iPhone and are included in its iCloud or computer backup. Share a PDF report with your pediatrician, or export a CSV to keep a copy.")
+            Text("Feeds are stored only on this iPhone and are included in its iCloud or computer backup. Share a PDF report with your pediatrician, export a CSV to keep a copy, or bring in your history from Huckleberry.")
         }
     }
 
@@ -562,6 +621,13 @@ private struct DataPresentationView: View {
         case .report:
             if let actions {
                 ExportReportSheet(export: actions.exportPDF)
+            }
+        case .importHuckleberry:
+            if let actions {
+                HuckleberryImportSheet(prepare: actions.prepareHuckleberryImport, commit: actions.commitImport) {
+                    bottleModel?.refresh()
+                    pumpModel?.refresh()
+                }
             }
         case .deleteAll:
             DeleteAllDataSheet { try await deleteAll() }

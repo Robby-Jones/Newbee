@@ -35,7 +35,7 @@ One feeding event of any kind.
 | `endedAt` | `Date?` | nil while active or paused |
 | `timeZoneID` | `String` | `TimeZone.current.identifier` at start |
 | `notes` | `String` = `""` | |
-| `sourceRaw` | `String` = `"timer"` | `timer`, `manual`, `recovered`. Lets insights flag estimated data. |
+| `sourceRaw` | `String` = `"timer"` | `timer`, `manual`, `recovered`, `imported` (from a Huckleberry export; "Remove imported data" deletes exactly these). Lets insights flag estimated data. |
 | `needsReview` | `Bool` = `false` | set by recovery when data is ambiguous |
 | `recoveryAcknowledgedAt` | `Date?` | when the parent last answered "Keep going"; recovery doesn't ask again about older data |
 | `revision` | `Int` = `0` | bumped on every mutation; used for intent idempotency |
