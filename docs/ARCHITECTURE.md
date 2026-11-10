@@ -219,4 +219,7 @@ See PRD §4.1.
 **ADR-009: Local-only Live Activity updates (no push server).**
 All transitions originate on the device (app or intent), so local `Activity.update` covers every case. *Trade-off:* we can't update an activity if the app process can't run. Acceptable, because nothing changes state without the user.
 
+**ADR-011: iCloud sync through SwiftData's CloudKit mirroring, private database (from schema V3).**
+The App Group store syncs with `iCloud.com.robbyjones.newbee`'s private database; settings sync through iCloud key-value storage. *Why:* no server, nothing collected, and the schema was kept CloudKit-ready since V1 (ADR-005). *Trade-off:* SwiftData can't share between Apple IDs, so caregiver sharing needs Core Data's `NSPersistentCloudKitContainer` sharing in a follow-up; its records use the same `CD_` layout, so synced data carries over. Details in `ICLOUD_SYNC.md`.
+
 **ADR-010: No third-party runtime dependencies.**

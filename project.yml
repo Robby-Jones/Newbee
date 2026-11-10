@@ -50,6 +50,11 @@ targets:
         LSApplicationCategoryType: public.app-category.healthcare-fitness
         NSSupportsLiveActivities: true
         NewbeeAppGroup: $(NEWBEE_APP_GROUP)
+        NewbeeCloudKitContainer: $(NEWBEE_CLOUDKIT_CONTAINER)
+        # iCloud sends a silent push when another device changes feeds, so they show up here
+        # without waiting for the next launch.
+        UIBackgroundModes:
+          - remote-notification
         # newbee://home, from the Live Activity's "+".
         CFBundleURLTypes:
           - CFBundleURLName: $(NEWBEE_BUNDLE_ID)
@@ -67,6 +72,15 @@ targets:
       properties:
         com.apple.security.application-groups:
           - $(NEWBEE_APP_GROUP)
+        # iCloud sync (docs/ICLOUD_SYNC.md): feeds in CloudKit, settings in key-value storage,
+        # and pushes so other devices hear about changes. Xcode switches aps-environment to
+        # production when it signs for TestFlight and the App Store.
+        com.apple.developer.icloud-container-identifiers:
+          - $(NEWBEE_CLOUDKIT_CONTAINER)
+        com.apple.developer.icloud-services:
+          - CloudKit
+        com.apple.developer.ubiquity-kvstore-identifier: $(TeamIdentifierPrefix)$(CFBundleIdentifier)
+        aps-environment: development
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: $(NEWBEE_BUNDLE_ID)

@@ -5,6 +5,10 @@ import SwiftUI
 
 /// Small settings kept in App Group `UserDefaults` (docs/DATA_MODEL.md, "Not in SwiftData").
 /// Edited on the Settings screen; the Log Bottle sheet also remembers the last unit used.
+///
+/// With iCloud on, the `Key.synced` settings are mirrored to iCloud key-value storage so every
+/// device signed in to the same Apple ID uses the same units, presets and reminders
+/// (docs/ICLOUD_SYNC.md). The local defaults stay the source the app reads.
 @MainActor
 @Observable
 final class AppPreferences {
@@ -23,6 +27,13 @@ final class AppPreferences {
         static let stillFeedingMinutes = "stillFeeding.minutes"
         static let appearance = "appearance"
         static let onboardingComplete = "onboardingComplete"
+
+        /// Mirrored to iCloud key-value storage. Not `onboardingComplete`: each device walks
+        /// through setup on its own first launch, unless it already has synced data.
+        static let synced: Set<String> = [
+            volumeUnit, bottlePresets, pumpVolumeUnit, pumpPresets, lastBottleContents, reminderEnabled, reminderIntervalMinutes,
+            reminderBasis, quietStart, quietEnd, stillFeedingEnabled, stillFeedingMinutes, appearance,
+        ]
 
         /// Everything "Delete all data" resets. Appearance and `onboardingComplete` are kept
         /// (docs/DATA_MODEL.md), so deleting data doesn't throw the parent back into onboarding.
@@ -57,31 +68,39 @@ final class AppPreferences {
 
     @ObservationIgnored private let defaults: UserDefaults
     @ObservationIgnored private let locale: Locale
+    /// iCloud key-value storage, or `nil` when settings stay on this device.
+    @ObservationIgnored private let cloud: (any CloudKeyValueStore)?
+    /// True while settings from iCloud are being applied, so they aren't sent straight back.
+    @ObservationIgnored private var isApplyingCloudChange = false
+    @ObservationIgnored private var cloudObserver: NSObjectProtocol?
+
+    /// Goes up by one each time settings changed on another device arrive.
+    private(set) var cloudChangeCount = 0
 
     /// The unit bottle amounts are entered and shown in everywhere (History, Insights, the PDF
     /// report…), whatever unit each bottle was logged in. Defaults to oz in US-measurement locales.
     var volumeUnit: VolumeUnit {
-        didSet { defaults.set(volumeUnit.rawValue, forKey: Key.volumeUnit) }
+        didSet { store(volumeUnit.rawValue, forKey: Key.volumeUnit) }
     }
 
     /// The unit pumping amounts are entered and shown in, set separately from bottles. Until the
     /// parent picks one it follows the bottle unit, so nothing changes for existing users.
     var pumpVolumeUnit: VolumeUnit {
-        didSet { defaults.set(pumpVolumeUnit.rawValue, forKey: Key.pumpVolumeUnit) }
+        didSet { store(pumpVolumeUnit.rawValue, forKey: Key.pumpVolumeUnit) }
     }
 
     /// The bottle type saved last (breast milk, formula, other), so the next bottle starts on it.
     var lastBottleContents: BottleContents? {
-        didSet { defaults.set(lastBottleContents?.rawValue, forKey: Key.lastBottleContents) }
+        didSet { store(lastBottleContents?.rawValue, forKey: Key.lastBottleContents) }
     }
 
     /// The parent's own bottle presets in mL, or `nil` for the defaults.
     var bottlePresetsML: [Double]? {
         didSet {
             if let bottlePresetsML {
-                defaults.set(bottlePresetsML, forKey: Key.bottlePresets)
+                store(bottlePresetsML, forKey: Key.bottlePresets)
             } else {
-                defaults.removeObject(forKey: Key.bottlePresets)
+                remove(forKey: Key.bottlePresets)
             }
         }
     }
@@ -90,9 +109,9 @@ final class AppPreferences {
     var pumpPresetsML: [Double]? {
         didSet {
             if let pumpPresetsML {
-                defaults.set(pumpPresetsML, forKey: Key.pumpPresets)
+                store(pumpPresetsML, forKey: Key.pumpPresets)
             } else {
-                defaults.removeObject(forKey: Key.pumpPresets)
+                remove(forKey: Key.pumpPresets)
             }
         }
     }
@@ -103,18 +122,22 @@ final class AppPreferences {
     }
 
     var appearance: Appearance {
-        didSet { defaults.set(appearance.rawValue, forKey: Key.appearance) }
+        didSet { store(appearance.rawValue, forKey: Key.appearance) }
     }
 
     /// Set once first-run onboarding is finished or skipped, or found unneeded because the
     /// store already has data (docs/UX_SPEC.md §3.1).
     var onboardingComplete: Bool {
-        didSet { defaults.set(onboardingComplete, forKey: Key.onboardingComplete) }
+        didSet { store(onboardingComplete, forKey: Key.onboardingComplete) }
     }
 
-    init(defaults: UserDefaults, locale: Locale = .current) {
+    init(defaults: UserDefaults, locale: Locale = .current, cloud: (any CloudKeyValueStore)? = nil) {
         self.defaults = defaults
         self.locale = locale
+        self.cloud = cloud
+        if let cloud {
+            Self.mergeAtLaunch(defaults: defaults, cloud: cloud)
+        }
         volumeUnit = Self.loadUnit(defaults, locale: locale)
         pumpVolumeUnit = Self.loadPumpUnit(defaults, locale: locale)
         bottlePresetsML = defaults.array(forKey: Key.bottlePresets) as? [Double]
@@ -125,9 +148,10 @@ final class AppPreferences {
         onboardingComplete = defaults.bool(forKey: Key.onboardingComplete)
     }
 
-    /// Back to first-launch values, except appearance. Used by "Delete all data".
+    /// Back to first-launch values, except appearance. Used by "Delete all data", which also
+    /// resets them on the parent's other devices.
     func resetToDefaults() {
-        for key in Key.resettable { defaults.removeObject(forKey: key) }
+        for key in Key.resettable { remove(forKey: key) }
         volumeUnit = Self.loadUnit(defaults, locale: locale)
         pumpVolumeUnit = Self.loadPumpUnit(defaults, locale: locale)
         bottlePresetsML = nil
@@ -167,18 +191,98 @@ final class AppPreferences {
     }
 
     private func save(_ settings: ReminderSettings) {
-        defaults.set(settings.isEnabled, forKey: Key.reminderEnabled)
-        defaults.set(Int(settings.interval / 60), forKey: Key.reminderIntervalMinutes)
-        defaults.set(settings.basis.rawValue, forKey: Key.reminderBasis)
+        store(settings.isEnabled, forKey: Key.reminderEnabled)
+        store(Int(settings.interval / 60), forKey: Key.reminderIntervalMinutes)
+        store(settings.basis.rawValue, forKey: Key.reminderBasis)
         if let quiet = settings.quietHours {
-            defaults.set(quiet.startMinute, forKey: Key.quietStart)
-            defaults.set(quiet.endMinute, forKey: Key.quietEnd)
+            store(quiet.startMinute, forKey: Key.quietStart)
+            store(quiet.endMinute, forKey: Key.quietEnd)
         } else {
-            defaults.removeObject(forKey: Key.quietStart)
-            defaults.removeObject(forKey: Key.quietEnd)
+            remove(forKey: Key.quietStart)
+            remove(forKey: Key.quietEnd)
         }
-        defaults.set(settings.stillFeedingEnabled, forKey: Key.stillFeedingEnabled)
-        defaults.set(Int(settings.stillFeedingThreshold / 60), forKey: Key.stillFeedingMinutes)
+        store(settings.stillFeedingEnabled, forKey: Key.stillFeedingEnabled)
+        store(Int(settings.stillFeedingThreshold / 60), forKey: Key.stillFeedingMinutes)
+    }
+
+    // MARK: - Storage and iCloud
+
+    /// Writes a value locally and, for a synced key, to iCloud. `nil` removes it.
+    private func store(_ value: Any?, forKey key: String) {
+        guard let value else {
+            remove(forKey: key)
+            return
+        }
+        defaults.set(value, forKey: key)
+        if let cloud, !isApplyingCloudChange, Key.synced.contains(key) {
+            cloud.set(value, forKey: key)
+        }
+    }
+
+    private func remove(forKey key: String) {
+        defaults.removeObject(forKey: key)
+        if let cloud, !isApplyingCloudChange, Key.synced.contains(key) {
+            cloud.removeObject(forKey: key)
+        }
+    }
+
+    /// At launch iCloud wins for settings it has, so a new device picks up the parent's
+    /// settings. Settings only this device has are sent up, so a first sync loses nothing.
+    private static func mergeAtLaunch(defaults: UserDefaults, cloud: any CloudKeyValueStore) {
+        for key in Key.synced {
+            if let value = cloud.object(forKey: key) {
+                defaults.set(value, forKey: key)
+            } else if let value = defaults.object(forKey: key) {
+                cloud.set(value, forKey: key)
+            }
+        }
+    }
+
+    /// Starts listening for settings changed on other devices. Call once at launch.
+    func startCloudSync() {
+        guard let cloud, cloudObserver == nil else { return }
+        cloudObserver = NotificationCenter.default.addObserver(
+            forName: NSUbiquitousKeyValueStore.didChangeExternallyNotification, object: nil, queue: .main
+        ) { notification in
+            let keys = notification.userInfo?[NSUbiquitousKeyValueStoreChangedKeysKey] as? [String]
+            let reason = notification.userInfo?[NSUbiquitousKeyValueStoreChangeReasonKey] as? Int
+            // Preferences live as long as the app (`AppDependencies.shared`).
+            Task { @MainActor in self.applyCloudChange(keys: keys, reason: reason) }
+        }
+        _ = cloud.synchronize()
+    }
+
+    /// Applies settings that changed in iCloud. Internal for tests.
+    func applyCloudChange(keys: [String]?, reason: Int?) {
+        guard let cloud else { return }
+        if reason == NSUbiquitousKeyValueStoreAccountChange {
+            // A different Apple ID: its settings, if it has any, replace this one's.
+            Self.mergeAtLaunch(defaults: defaults, cloud: cloud)
+        } else {
+            for key in (keys ?? Array(Key.synced)) where Key.synced.contains(key) {
+                if let value = cloud.object(forKey: key) {
+                    defaults.set(value, forKey: key)
+                } else if reason != NSUbiquitousKeyValueStoreInitialSyncChange {
+                    // Removed on another device, e.g. by "Delete all data".
+                    defaults.removeObject(forKey: key)
+                }
+            }
+        }
+        reloadFromDefaults()
+        cloudChangeCount += 1
+    }
+
+    /// Re-reads every setting from the local defaults without sending anything to iCloud.
+    private func reloadFromDefaults() {
+        isApplyingCloudChange = true
+        defer { isApplyingCloudChange = false }
+        volumeUnit = Self.loadUnit(defaults, locale: locale)
+        pumpVolumeUnit = Self.loadPumpUnit(defaults, locale: locale)
+        bottlePresetsML = defaults.array(forKey: Key.bottlePresets) as? [Double]
+        pumpPresetsML = defaults.array(forKey: Key.pumpPresets) as? [Double]
+        lastBottleContents = defaults.string(forKey: Key.lastBottleContents).flatMap(BottleContents.init(rawValue:))
+        reminders = Self.loadReminders(defaults)
+        appearance = defaults.string(forKey: Key.appearance).flatMap(Appearance.init(rawValue:)) ?? .system
     }
 
     /// The App Group defaults, or a throwaway domain under UI tests so runs don't leak into each other.
@@ -192,3 +296,13 @@ final class AppPreferences {
         return UserDefaults(suiteName: AppConfiguration.appGroupID) ?? .standard
     }
 }
+
+/// The parts of `NSUbiquitousKeyValueStore` the app uses, so tests can use a fake.
+protocol CloudKeyValueStore: AnyObject {
+    func object(forKey key: String) -> Any?
+    func set(_ value: Any?, forKey key: String)
+    func removeObject(forKey key: String)
+    @discardableResult func synchronize() -> Bool
+}
+
+extension NSUbiquitousKeyValueStore: CloudKeyValueStore {}

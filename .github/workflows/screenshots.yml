@@ -73,6 +73,7 @@ jobs:
             -only-testing:NewbeeUITests/AppStoreScreenshots \
             -resultBundlePath Screenshots.xcresult \
             CODE_SIGNING_ALLOWED=NO \
+            NEWBEE_CLOUDKIT_CONTAINER= \
             | xcbeautify --renderer github-actions
           ls -l "$RUNNER_TEMP/screenshots"
           sips -g pixelWidth -g pixelHeight "$RUNNER_TEMP"/screenshots/*.png

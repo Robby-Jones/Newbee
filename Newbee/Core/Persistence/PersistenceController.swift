@@ -13,27 +13,57 @@ enum PersistenceController {
         case file(URL)
     }
 
+    /// The opened store, and whether it syncs with iCloud.
+    struct OpenedStore {
+        let container: ModelContainer
+        /// The iCloud container the store syncs with, or `nil` when it stays on this device.
+        let cloudKitContainerID: String?
+        /// Why the store couldn't be opened with iCloud sync, if it was meant to be.
+        let cloudKitError: Error?
+    }
+
     static func makeContainer(_ storage: Storage) throws -> ModelContainer {
-        let schema = Schema(versionedSchema: NewbeeSchemaV2.self)
-        let configuration: ModelConfiguration
+        try open(storage).container
+    }
+
+    /// Opens the store. The App Group store syncs with the private database of the parent's
+    /// iCloud account when the build has an iCloud container (docs/ARCHITECTURE.md, ADR-011).
+    /// Every other store stays on the device.
+    static func open(_ storage: Storage, cloudKitContainerID: String? = AppConfiguration.cloudKitContainerID) throws -> OpenedStore {
+        let schema = Schema(versionedSchema: NewbeeSchemaV3.self)
         switch storage {
         case .inMemory:
-            configuration = ModelConfiguration(schema: schema, isStoredInMemoryOnly: true, cloudKitDatabase: .none)
+            let configuration = ModelConfiguration(schema: schema, isStoredInMemoryOnly: true, cloudKitDatabase: .none)
+            return OpenedStore(container: try makeContainer(schema, configuration), cloudKitContainerID: nil, cloudKitError: nil)
         case .file(let url):
-            configuration = ModelConfiguration(schema: schema, url: url, cloudKitDatabase: .none)
+            let configuration = ModelConfiguration(schema: schema, url: url, cloudKitDatabase: .none)
+            return OpenedStore(container: try makeContainer(schema, configuration), cloudKitContainerID: nil, cloudKitError: nil)
         case .appGroup:
             let url = try storeURL()
-            configuration = ModelConfiguration(schema: schema, url: url, cloudKitDatabase: .none)
-            let container = try ModelContainer(
-                for: schema,
-                migrationPlan: NewbeeMigrationPlan.self,
-                configurations: configuration
-            )
+            var cloudKitError: Error?
+            var opened: OpenedStore?
+            if let cloudKitContainerID {
+                do {
+                    let configuration = ModelConfiguration(schema: schema, url: url, cloudKitDatabase: .private(cloudKitContainerID))
+                    opened = OpenedStore(container: try makeContainer(schema, configuration), cloudKitContainerID: cloudKitContainerID, cloudKitError: nil)
+                } catch {
+                    // Feeds must stay usable, so fall back to the same store without sync. Settings
+                    // shows the reason. The next launch tries iCloud again.
+                    cloudKitError = error
+                }
+            }
+            if opened == nil {
+                let configuration = ModelConfiguration(schema: schema, url: url, cloudKitDatabase: .none)
+                opened = OpenedStore(container: try makeContainer(schema, configuration), cloudKitContainerID: nil, cloudKitError: cloudKitError)
+            }
             // SQLite creates the -wal and -shm files on open, so protect them once they exist.
             allowAccessWhileLocked(storeFilesFor: url)
-            return container
+            return opened!
         }
-        return try ModelContainer(for: schema, migrationPlan: NewbeeMigrationPlan.self, configurations: configuration)
+    }
+
+    private static func makeContainer(_ schema: Schema, _ configuration: ModelConfiguration) throws -> ModelContainer {
+        try ModelContainer(for: schema, migrationPlan: NewbeeMigrationPlan.self, configurations: configuration)
     }
 
     /// `<App Group>/Library/Application Support/Newbee.store`

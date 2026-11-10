@@ -1,0 +1,139 @@
+// The CloudKit schema for Newbee's iCloud sync (docs/ICLOUD_SYNC.md).
+//
+// SwiftData syncs through Core Data's CloudKit mirroring, which stores each model as a record
+// type named CD_<model> with a CD_<property> field per property, CD_entityName, a STRING field
+// holding the related record's name for each to-one relationship (nothing for to-many), and an
+// extra CD_<property>_ckAsset ASSET for strings and data that grow past the record size limit.
+//
+// Generated from NewbeeSchemaV3; CloudKitSchemaTests checks it still matches the models.
+// Upload it with the "CloudKit schema" workflow, then deploy it to production in CloudKit Console.
+// Fields can never be removed from production, so only ever add to this file.
+
+DEFINE SCHEMA
+
+    RECORD TYPE Users (
+        "___createTime" TIMESTAMP,
+        "___createdBy"  REFERENCE,
+        "___etag"       STRING,
+        "___modTime"    TIMESTAMP,
+        "___modifiedBy" REFERENCE,
+        "___recordID"   REFERENCE,
+        roles           LIST<INT64>,
+        GRANT WRITE TO "_creator",
+        GRANT READ TO "_world"
+    );
+
+    RECORD TYPE CD_Baby (
+        "___createTime"      TIMESTAMP,
+        "___createdBy"       REFERENCE,
+        "___etag"            STRING,
+        "___modTime"         TIMESTAMP,
+        "___modifiedBy"      REFERENCE,
+        "___recordID"        REFERENCE QUERYABLE,
+        CD_birthDate         TIMESTAMP QUERYABLE SORTABLE,
+        CD_createdAt         TIMESTAMP QUERYABLE SORTABLE,
+        CD_entityName        STRING QUERYABLE SEARCHABLE SORTABLE,
+        CD_id                STRING QUERYABLE SEARCHABLE SORTABLE,
+        CD_name              STRING QUERYABLE SEARCHABLE SORTABLE,
+        CD_name_ckAsset      ASSET,
+        CD_photoData         BYTES,
+        CD_photoData_ckAsset ASSET,
+        GRANT WRITE TO "_creator",
+        GRANT CREATE TO "_icloud",
+        GRANT READ TO "_world"
+    );
+
+    RECORD TYPE CD_BottleDetails (
+        "___createTime"           TIMESTAMP,
+        "___createdBy"            REFERENCE,
+        "___etag"                 STRING,
+        "___modTime"              TIMESTAMP,
+        "___modifiedBy"           REFERENCE,
+        "___recordID"             REFERENCE QUERYABLE,
+        CD_amountML               DOUBLE QUERYABLE SORTABLE,
+        CD_contentsRaw            STRING QUERYABLE SEARCHABLE SORTABLE,
+        CD_contentsRaw_ckAsset    ASSET,
+        CD_durationSeconds        DOUBLE QUERYABLE SORTABLE,
+        CD_enteredUnitRaw         STRING QUERYABLE SEARCHABLE SORTABLE,
+        CD_enteredUnitRaw_ckAsset ASSET,
+        CD_entityName             STRING QUERYABLE SEARCHABLE SORTABLE,
+        CD_session                STRING QUERYABLE SEARCHABLE SORTABLE,
+        GRANT WRITE TO "_creator",
+        GRANT CREATE TO "_icloud",
+        GRANT READ TO "_world"
+    );
+
+    RECORD TYPE CD_FeedingSegment (
+        "___createTime"        TIMESTAMP,
+        "___createdBy"         REFERENCE,
+        "___etag"              STRING,
+        "___modTime"           TIMESTAMP,
+        "___modifiedBy"        REFERENCE,
+        "___recordID"          REFERENCE QUERYABLE,
+        CD_endedAt             TIMESTAMP QUERYABLE SORTABLE,
+        CD_entityName          STRING QUERYABLE SEARCHABLE SORTABLE,
+        CD_id                  STRING QUERYABLE SEARCHABLE SORTABLE,
+        CD_session             STRING QUERYABLE SEARCHABLE SORTABLE,
+        CD_sideRaw             STRING QUERYABLE SEARCHABLE SORTABLE,
+        CD_sideRaw_ckAsset     ASSET,
+        CD_startBootID         STRING QUERYABLE SEARCHABLE SORTABLE,
+        CD_startBootID_ckAsset ASSET,
+        CD_startMonotonic      DOUBLE QUERYABLE SORTABLE,
+        CD_startedAt           TIMESTAMP QUERYABLE SORTABLE,
+        GRANT WRITE TO "_creator",
+        GRANT CREATE TO "_icloud",
+        GRANT READ TO "_world"
+    );
+
+    RECORD TYPE CD_FeedingSession (
+        "___createTime"           TIMESTAMP,
+        "___createdBy"            REFERENCE,
+        "___etag"                 STRING,
+        "___modTime"              TIMESTAMP,
+        "___modifiedBy"           REFERENCE,
+        "___recordID"             REFERENCE QUERYABLE,
+        CD_baby                   STRING QUERYABLE SEARCHABLE SORTABLE,
+        CD_bottle                 STRING QUERYABLE SEARCHABLE SORTABLE,
+        CD_createdAt              TIMESTAMP QUERYABLE SORTABLE,
+        CD_endedAt                TIMESTAMP QUERYABLE SORTABLE,
+        CD_entityName             STRING QUERYABLE SEARCHABLE SORTABLE,
+        CD_id                     STRING QUERYABLE SEARCHABLE SORTABLE,
+        CD_kindRaw                STRING QUERYABLE SEARCHABLE SORTABLE,
+        CD_kindRaw_ckAsset        ASSET,
+        CD_modifiedAt             TIMESTAMP QUERYABLE SORTABLE,
+        CD_needsReview            INT64 QUERYABLE SORTABLE,
+        CD_notes                  STRING QUERYABLE SEARCHABLE SORTABLE,
+        CD_notes_ckAsset          ASSET,
+        CD_pump                   STRING QUERYABLE SEARCHABLE SORTABLE,
+        CD_recoveryAcknowledgedAt TIMESTAMP QUERYABLE SORTABLE,
+        CD_revision               INT64 QUERYABLE SORTABLE,
+        CD_sourceRaw              STRING QUERYABLE SEARCHABLE SORTABLE,
+        CD_sourceRaw_ckAsset      ASSET,
+        CD_startedAt              TIMESTAMP QUERYABLE SORTABLE,
+        CD_statusRaw              STRING QUERYABLE SEARCHABLE SORTABLE,
+        CD_statusRaw_ckAsset      ASSET,
+        CD_timeZoneID             STRING QUERYABLE SEARCHABLE SORTABLE,
+        CD_timeZoneID_ckAsset     ASSET,
+        GRANT WRITE TO "_creator",
+        GRANT CREATE TO "_icloud",
+        GRANT READ TO "_world"
+    );
+
+    RECORD TYPE CD_PumpDetails (
+        "___createTime"           TIMESTAMP,
+        "___createdBy"            REFERENCE,
+        "___etag"                 STRING,
+        "___modTime"              TIMESTAMP,
+        "___modifiedBy"           REFERENCE,
+        "___recordID"             REFERENCE QUERYABLE,
+        CD_durationSeconds        DOUBLE QUERYABLE SORTABLE,
+        CD_enteredUnitRaw         STRING QUERYABLE SEARCHABLE SORTABLE,
+        CD_enteredUnitRaw_ckAsset ASSET,
+        CD_entityName             STRING QUERYABLE SEARCHABLE SORTABLE,
+        CD_leftML                 DOUBLE QUERYABLE SORTABLE,
+        CD_rightML                DOUBLE QUERYABLE SORTABLE,
+        CD_session                STRING QUERYABLE SEARCHABLE SORTABLE,
+        GRANT WRITE TO "_creator",
+        GRANT CREATE TO "_icloud",
+        GRANT READ TO "_world"
+    );

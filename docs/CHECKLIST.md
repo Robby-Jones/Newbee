@@ -67,3 +67,9 @@ Legend: `[x]` done · `[ ]` pending · `[!]` blocked (reason noted). Updated by 
 - [x] Screenshots (Screenshots workflow), description (docs/app-store/LISTING.md)
 - [x] TestFlight build
 - [ ] App Store submission (Robby: docs/app-store/SUBMISSION_CHECKLIST.md)
+
+## Post-v1
+- [x] iCloud sync between devices on the same Apple ID (docs/ICLOUD_SYNC.md): schema V3, CloudKit schema file + workflow
+- [ ] Robby: iCloud container + App ID capabilities, management token, deploy schema to production (docs/ICLOUD_SYNC.md §One-time setup)
+- [ ] Device check: two devices on one Apple ID sync feeds, photo and settings
+- [ ] Sharing with a partner on another Apple ID (CKShare, Core Data sharing)

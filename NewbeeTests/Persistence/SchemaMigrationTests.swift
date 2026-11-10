@@ -8,8 +8,9 @@ import Testing
 /// update locks parents out of their history, so:
 /// - every older schema must still migrate, including a feed that was running when the app
 ///   was updated, and
-/// - the shipped schema must never change silently. Editing a `NewbeeSchemaV2` model without
-///   adding `NewbeeSchemaV3` and a migration stage makes SwiftData refuse the existing store.
+/// - the shipped schemas must never change silently. Editing a `NewbeeSchemaV3` model without
+///   adding `NewbeeSchemaV4` and a migration stage makes SwiftData refuse the existing store, and
+///   V3 is also the CloudKit schema (`cloudkit/schema.ckdb`, see `CloudKitSchemaTests`).
 @MainActor
 @Suite("Schema migration")
 struct SchemaMigrationTests {
@@ -129,18 +130,15 @@ struct SchemaMigrationTests {
 
     @Test func theAppOpensTheNewestSchemaInThePlan() {
         let schemas = NewbeeMigrationPlan.schemas
-        #expect(ObjectIdentifier(schemas.last!) == ObjectIdentifier(NewbeeSchemaV2.self))
+        #expect(ObjectIdentifier(schemas.last!) == ObjectIdentifier(NewbeeSchemaV3.self))
         #expect(NewbeeMigrationPlan.stages.count == schemas.count - 1)
         // Each version is new, so SwiftData can tell the stored version from the current one.
         let versions = schemas.map { "\($0.versionIdentifier)" }
         #expect(Set(versions).count == versions.count)
     }
 
-    /// The shape of the shipped schema. If this fails, don't update the list: copy V2 to a new
-    /// `NewbeeSchemaV3`, make the change there, point the aliases and `PersistenceController`
-    /// at V3, and add a V2 → V3 stage to `NewbeeMigrationPlan` (docs/DATA_MODEL.md).
-    @Test func versionTwoIsFrozen() {
-        let schema = Schema(versionedSchema: NewbeeSchemaV2.self)
+    static func shape(of versionedSchema: any VersionedSchema.Type) -> [String] {
+        let schema = Schema(versionedSchema: versionedSchema)
         var shape: [String] = []
         for entity in schema.entities {
             for (name, attribute) in entity.attributesByName {
@@ -150,46 +148,94 @@ struct SchemaMigrationTests {
                 shape.append("\(entity.name).\(name) -> \(relationship.destination)")
             }
         }
-        #expect(shape.sorted() == [
-            "Baby.birthDate?",
-            "Baby.createdAt",
-            "Baby.id",
-            "Baby.name",
-            "Baby.sessions -> FeedingSession",
-            "BottleDetails.amountML",
-            "BottleDetails.contentsRaw",
-            "BottleDetails.durationSeconds?",
-            "BottleDetails.enteredUnitRaw",
-            "BottleDetails.session -> FeedingSession",
-            "FeedingSegment.endedAt?",
-            "FeedingSegment.id",
-            "FeedingSegment.session -> FeedingSession",
-            "FeedingSegment.sideRaw",
-            "FeedingSegment.startBootID?",
-            "FeedingSegment.startMonotonic?",
-            "FeedingSegment.startedAt",
-            "FeedingSession.baby -> Baby",
-            "FeedingSession.bottle -> BottleDetails",
-            "FeedingSession.createdAt",
-            "FeedingSession.endedAt?",
-            "FeedingSession.id",
-            "FeedingSession.kindRaw",
-            "FeedingSession.modifiedAt",
-            "FeedingSession.needsReview",
-            "FeedingSession.notes",
-            "FeedingSession.pump -> PumpDetails",
-            "FeedingSession.recoveryAcknowledgedAt?",
-            "FeedingSession.revision",
-            "FeedingSession.segments -> FeedingSegment",
-            "FeedingSession.sourceRaw",
-            "FeedingSession.startedAt",
-            "FeedingSession.statusRaw",
-            "FeedingSession.timeZoneID",
-            "PumpDetails.durationSeconds?",
-            "PumpDetails.enteredUnitRaw",
-            "PumpDetails.leftML",
-            "PumpDetails.rightML",
-            "PumpDetails.session -> FeedingSession",
-        ])
+        return shape.sorted()
+    }
+
+    static let versionTwoShape = [
+        "Baby.birthDate?",
+        "Baby.createdAt",
+        "Baby.id",
+        "Baby.name",
+        "Baby.sessions -> FeedingSession",
+        "BottleDetails.amountML",
+        "BottleDetails.contentsRaw",
+        "BottleDetails.durationSeconds?",
+        "BottleDetails.enteredUnitRaw",
+        "BottleDetails.session -> FeedingSession",
+        "FeedingSegment.endedAt?",
+        "FeedingSegment.id",
+        "FeedingSegment.session -> FeedingSession",
+        "FeedingSegment.sideRaw",
+        "FeedingSegment.startBootID?",
+        "FeedingSegment.startMonotonic?",
+        "FeedingSegment.startedAt",
+        "FeedingSession.baby -> Baby",
+        "FeedingSession.bottle -> BottleDetails",
+        "FeedingSession.createdAt",
+        "FeedingSession.endedAt?",
+        "FeedingSession.id",
+        "FeedingSession.kindRaw",
+        "FeedingSession.modifiedAt",
+        "FeedingSession.needsReview",
+        "FeedingSession.notes",
+        "FeedingSession.pump -> PumpDetails",
+        "FeedingSession.recoveryAcknowledgedAt?",
+        "FeedingSession.revision",
+        "FeedingSession.segments -> FeedingSegment",
+        "FeedingSession.sourceRaw",
+        "FeedingSession.startedAt",
+        "FeedingSession.statusRaw",
+        "FeedingSession.timeZoneID",
+        "PumpDetails.durationSeconds?",
+        "PumpDetails.enteredUnitRaw",
+        "PumpDetails.leftML",
+        "PumpDetails.rightML",
+        "PumpDetails.session -> FeedingSession",
+    ]
+
+    /// The shape of the schema shipped in 1.0. It must never change.
+    @Test func versionTwoIsFrozen() {
+        #expect(Self.shape(of: NewbeeSchemaV2.self) == Self.versionTwoShape)
+    }
+
+    /// The shape of the current schema, which is also the CloudKit schema in production, where
+    /// fields can never be removed. If this fails, don't update the list: copy V3 to a new
+    /// `NewbeeSchemaV4`, make the change there, point the aliases and `PersistenceController` at
+    /// V4, add a V3 → V4 stage to `NewbeeMigrationPlan`, and update `cloudkit/schema.ckdb`
+    /// (docs/DATA_MODEL.md, docs/ICLOUD_SYNC.md).
+    @Test func versionThreeIsFrozen() {
+        #expect(Self.shape(of: NewbeeSchemaV3.self) == (Self.versionTwoShape + ["Baby.photoData?"]).sorted())
+    }
+
+    /// The V2 → V3 update (the photo moves into the store) keeps every feed and the baby.
+    @Test func versionTwoStoresMigrateToVersionThree() throws {
+        let url = try temporaryStoreURL()
+        defer { try? FileManager.default.removeItem(at: url.deletingLastPathComponent()) }
+        let sessionID = UUID()
+        do {
+            let schema = Schema(versionedSchema: NewbeeSchemaV2.self)
+            let container = try ModelContainer(for: schema, configurations: ModelConfiguration(schema: schema, url: url, cloudKitDatabase: .none))
+            let context = container.mainContext
+            let baby = NewbeeSchemaV2.Baby(name: "Millie")
+            context.insert(baby)
+            let session = NewbeeSchemaV2.FeedingSession(id: sessionID, kind: .pump, status: .completed, startedAt: now, source: .manual)
+            session.endedAt = now.addingTimeInterval(900)
+            context.insert(session)
+            session.baby = baby
+            let details = NewbeeSchemaV2.PumpDetails(leftML: 60, rightML: 45, enteredUnit: .milliliters)
+            context.insert(details)
+            session.pump = details
+            try context.save()
+        }
+
+        let container = try PersistenceController.makeContainer(.file(url))
+        let babies = try container.mainContext.fetch(FetchDescriptor<Baby>())
+        #expect(babies.map(\.name) == ["Millie"])
+        #expect(babies.first?.photoData == nil)
+        let session = try #require(try container.mainContext.fetch(FetchDescriptor<FeedingSession>()).first)
+        #expect(session.id == sessionID)
+        #expect(session.baby?.name == "Millie")
+        #expect(session.pump?.leftML == 60)
+        #expect(session.pump?.rightML == 45)
     }
 }

@@ -28,6 +28,8 @@ struct NewbeeApp: App {
     init() {
         // Before any scene exists: Live Activity intents can launch the app in the background.
         dependencies.registerLiveActivityIntents()
+        // Also before any scene: iOS can launch the app in the background to deliver iCloud changes.
+        dependencies.startCloudSync()
         // Reminders show as banners while the app is open, too.
         UNUserNotificationCenter.current().delegate = ForegroundNotificationPresenter.shared
     }
@@ -41,6 +43,7 @@ struct NewbeeApp: App {
                     .environment(dependencies.preferences)
                     .environment(dependencies.reminders)
                     .environment(dependencies.babyPhoto)
+                    .environment(dependencies.cloudSync)
                     .environment(\.dataManagement, DataManagementActions(dependencies: dependencies))
                     // Restore any session interrupted by termination, reboot or a clock change
                     // (docs/TIMER_ENGINE.md §5). Reconciling is idempotent, so overlapping
@@ -63,6 +66,15 @@ struct NewbeeApp: App {
                     // Re-draws the since-last-feed count from the newly chosen start or end.
                     .onChange(of: dependencies.preferences.reminders.basis) {
                         Task { await dependencies.sessionManager.reload() }
+                    }
+                    // Feeds from another device can change today's bottle and pumping totals.
+                    .onChange(of: dependencies.cloudSync.importCount) {
+                        bottleModel.refresh()
+                        pumpModel.refresh()
+                    }
+                    // Reminder settings changed on another device.
+                    .onChange(of: dependencies.preferences.cloudChangeCount) {
+                        Task { await dependencies.reminders.reschedule() }
                     }
                     .onReceive(NotificationCenter.default.publisher(for: .NSSystemClockDidChange)) { _ in
                         Task { await recovery.reconcile() }
