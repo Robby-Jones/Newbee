@@ -45,7 +45,7 @@ can do them. Copy-paste text lives in [LISTING.md](LISTING.md) and
 - [ ] Build: click **+** and pick the 1.0.0 build from TestFlight.
       If asked about encryption: the app declares it uses none, so no documents are needed.
 - [ ] App Review Information: sign-in **not required**; your name, phone and email;
-      paste the reviewer notes from LISTING.md.
+      paste the reviewer notes from APP_REVIEW_NOTES.md and attach the screen recording.
 - [ ] Version Release: **Manually release this version**.
 
 ## 6. Submit (only when you're ready)
