@@ -68,7 +68,8 @@ final class BottleLogUIModel {
     /// Opens the sheet on an existing bottle feed (for example from a History row).
     func presentEdit(sessionID: UUID) {
         do {
-            if let draft = try log.editDraft(id: sessionID) {
+            // Shown in the current unit, like everywhere else, whatever unit it was logged in.
+            if let draft = try log.editDraft(id: sessionID, unit: unit) {
                 editor = EditorRequest(draft: draft)
             } else {
                 errorMessage = String(localized: "That bottle feed no longer exists.")

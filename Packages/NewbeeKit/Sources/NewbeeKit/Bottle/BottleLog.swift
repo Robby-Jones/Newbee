@@ -45,9 +45,10 @@ public final class BottleLog {
         )
     }
 
-    /// A draft for editing the entry with `id`, or `nil` if it no longer exists.
-    public func editDraft(id: UUID) throws -> BottleDraft? {
-        try repository.bottle(id: id).map(BottleDraft.init(editing:))
+    /// A draft for editing the entry with `id`, shown in `unit` (default: the unit it was
+    /// entered in), or `nil` if it no longer exists.
+    public func editDraft(id: UUID, unit: VolumeUnit? = nil) throws -> BottleDraft? {
+        try repository.bottle(id: id).map { BottleDraft(editing: $0, unit: unit) }
     }
 
     public func problems(with draft: BottleDraft) -> [BottleValidationError] {

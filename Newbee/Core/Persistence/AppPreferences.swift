@@ -11,6 +11,8 @@ final class AppPreferences {
     enum Key {
         static let volumeUnit = "volumeUnit"
         static let bottlePresets = "bottlePresets"
+        static let pumpVolumeUnit = "pump.volumeUnit"
+        static let pumpPresets = "pump.presets"
         static let lastBottleContents = "bottle.lastContents"
         static let reminderEnabled = "reminder.enabled"
         static let reminderIntervalMinutes = "reminder.intervalMinutes"
@@ -25,7 +27,7 @@ final class AppPreferences {
         /// Everything "Delete all data" resets. Appearance and `onboardingComplete` are kept
         /// (docs/DATA_MODEL.md), so deleting data doesn't throw the parent back into onboarding.
         static let resettable = [
-            volumeUnit, bottlePresets, lastBottleContents, reminderEnabled, reminderIntervalMinutes, reminderBasis,
+            volumeUnit, bottlePresets, pumpVolumeUnit, pumpPresets, lastBottleContents, reminderEnabled, reminderIntervalMinutes, reminderBasis,
             quietStart, quietEnd, stillFeedingEnabled, stillFeedingMinutes,
         ]
     }
@@ -56,9 +58,16 @@ final class AppPreferences {
     @ObservationIgnored private let defaults: UserDefaults
     @ObservationIgnored private let locale: Locale
 
-    /// The unit bottle amounts are entered and shown in. Defaults to oz in US-measurement locales.
+    /// The unit bottle amounts are entered and shown in everywhere (History, Insights, the PDF
+    /// report…), whatever unit each bottle was logged in. Defaults to oz in US-measurement locales.
     var volumeUnit: VolumeUnit {
         didSet { defaults.set(volumeUnit.rawValue, forKey: Key.volumeUnit) }
+    }
+
+    /// The unit pumping amounts are entered and shown in, set separately from bottles. Until the
+    /// parent picks one it follows the bottle unit, so nothing changes for existing users.
+    var pumpVolumeUnit: VolumeUnit {
+        didSet { defaults.set(pumpVolumeUnit.rawValue, forKey: Key.pumpVolumeUnit) }
     }
 
     /// The bottle type saved last (breast milk, formula, other), so the next bottle starts on it.
@@ -73,6 +82,17 @@ final class AppPreferences {
                 defaults.set(bottlePresetsML, forKey: Key.bottlePresets)
             } else {
                 defaults.removeObject(forKey: Key.bottlePresets)
+            }
+        }
+    }
+
+    /// The parent's own pumping presets (per side) in mL, or `nil` for the defaults.
+    var pumpPresetsML: [Double]? {
+        didSet {
+            if let pumpPresetsML {
+                defaults.set(pumpPresetsML, forKey: Key.pumpPresets)
+            } else {
+                defaults.removeObject(forKey: Key.pumpPresets)
             }
         }
     }
@@ -96,7 +116,9 @@ final class AppPreferences {
         self.defaults = defaults
         self.locale = locale
         volumeUnit = Self.loadUnit(defaults, locale: locale)
+        pumpVolumeUnit = Self.loadPumpUnit(defaults, locale: locale)
         bottlePresetsML = defaults.array(forKey: Key.bottlePresets) as? [Double]
+        pumpPresetsML = defaults.array(forKey: Key.pumpPresets) as? [Double]
         lastBottleContents = defaults.string(forKey: Key.lastBottleContents).flatMap(BottleContents.init(rawValue:))
         reminders = Self.loadReminders(defaults)
         appearance = defaults.string(forKey: Key.appearance).flatMap(Appearance.init(rawValue:)) ?? .system
@@ -107,7 +129,9 @@ final class AppPreferences {
     func resetToDefaults() {
         for key in Key.resettable { defaults.removeObject(forKey: key) }
         volumeUnit = Self.loadUnit(defaults, locale: locale)
+        pumpVolumeUnit = Self.loadPumpUnit(defaults, locale: locale)
         bottlePresetsML = nil
+        pumpPresetsML = nil
         lastBottleContents = nil
         reminders = Self.loadReminders(defaults)
     }
@@ -115,6 +139,11 @@ final class AppPreferences {
     private static func loadUnit(_ defaults: UserDefaults, locale: Locale) -> VolumeUnit {
         defaults.string(forKey: Key.volumeUnit).flatMap(VolumeUnit.init(rawValue:))
             ?? (locale.measurementSystem == .us ? .fluidOunces : .milliliters)
+    }
+
+    private static func loadPumpUnit(_ defaults: UserDefaults, locale: Locale) -> VolumeUnit {
+        defaults.string(forKey: Key.pumpVolumeUnit).flatMap(VolumeUnit.init(rawValue:))
+            ?? loadUnit(defaults, locale: locale)
     }
 
     private static func loadReminders(_ defaults: UserDefaults) -> ReminderSettings {

@@ -41,6 +41,7 @@ extension AppDependencies {
             babyName: baby?.name.trimmingCharacters(in: .whitespacesAndNewlines) ?? "",
             age: baby?.birthDate.map { BabyAge.text(from: $0, now: clock.now) },
             volumeUnit: preferences.volumeUnit,
+            pumpVolumeUnit: preferences.pumpVolumeUnit,
             generatedAt: clock.now
         )
 

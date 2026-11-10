@@ -45,8 +45,13 @@ final class PumpLogUIModel {
         refresh()
     }
 
-    /// Pumping shares the parent's volume unit with bottles.
-    var unit: VolumeUnit { preferences.volumeUnit }
+    /// Pumping has its own unit setting, separate from bottles.
+    var unit: VolumeUnit { preferences.pumpVolumeUnit }
+
+    /// Per-side quick amounts on the Log Pumping sheet.
+    var presets: [BottleAmount] {
+        PumpPresets.amounts(storedML: preferences.pumpPresetsML, unit: unit, rules: log.rules)
+    }
 
     // MARK: - Presentation
 
@@ -58,7 +63,8 @@ final class PumpLogUIModel {
     /// Opens the sheet on an existing session (for example from a History row).
     func presentEdit(sessionID: UUID) {
         do {
-            if let draft = try log.editDraft(id: sessionID) {
+            // Shown in the current unit, like everywhere else, whatever unit it was logged in.
+            if let draft = try log.editDraft(id: sessionID, unit: unit) {
                 editor = EditorRequest(draft: draft)
             } else {
                 errorMessage = String(localized: "That pumping session no longer exists.")
@@ -80,10 +86,10 @@ final class PumpLogUIModel {
     func save(_ draft: PumpDraft) -> Bool {
         do {
             let result = try log.save(draft)
-            preferences.volumeUnit = draft.unit
+            preferences.pumpVolumeUnit = draft.unit
             editor = nil
             feedback = FeedbackEvent(kind: .success)
-            let what = result.saved.totalAmount.formatted
+            let what = result.saved.totalAmount(in: unit).formatted
             toast = Toast(
                 message: result.previous == nil
                     ? String(localized: "Pumping saved · \(what)")

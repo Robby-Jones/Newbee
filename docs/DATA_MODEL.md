@@ -86,7 +86,7 @@ A pumping session is a completed `FeedingSession` with `kind = pump`, `source = 
 - **Diaper/sleep logs**: separate `@Model`s on `Baby`, not overloading `FeedingSession`.
 
 ### Not in SwiftData
-- **AppPreferences**: App Group `UserDefaults` keys: `volumeUnit`, `bottlePresets` (JSON `[Double]` in mL), `reminder.enabled`, `reminder.intervalMinutes`, `reminder.quietStart`, `reminder.quietEnd`, `reminder.basis` (`start`/`end`), `stillFeeding.minutes`, `appearance`, `intervalDefinition`, `onboardingComplete`, `schemaVersionSeen`.
+- **AppPreferences**: App Group `UserDefaults` keys: `volumeUnit`, `bottlePresets` (JSON `[Double]` in mL), `pump.volumeUnit` (follows `volumeUnit` until set), `pump.presets` (per-side `[Double]` in mL), `reminder.enabled`, `reminder.intervalMinutes`, `reminder.quietStart`, `reminder.quietEnd`, `reminder.basis` (`start`/`end`), `stillFeeding.minutes`, `appearance`, `intervalDefinition`, `onboardingComplete`, `schemaVersionSeen`.
 - **Bottle presets** are prefs, not entities.
 - **Baby photo**: one JPEG (longest side 600 px) at `Application Support/BabyPhoto/photo.jpg`, app container only (not the App Group, not synced). Written by `BabyPhotoStore`; removed by "Delete all data".
 

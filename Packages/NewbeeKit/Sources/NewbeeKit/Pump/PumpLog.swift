@@ -39,7 +39,7 @@ public final class PumpLog {
     public func newDraft(unit: VolumeUnit, endingAt time: Date? = nil) -> PumpDraft {
         let now = min(time ?? clock.now, clock.now)
         let last = try? repository.recentPumps(limit: 1).first
-        let fallback = BottlePresets.defaults(for: unit)[0]
+        let fallback = PumpPresets.defaults(for: unit)[1]
         let left = last.map { BottleAmount(milliliters: $0.leftML).converted(to: unit) } ?? fallback
         let right = last.map { BottleAmount(milliliters: $0.rightML).converted(to: unit) } ?? fallback
         let duration = last.map { $0.durationSeconds ?? Self.defaultDuration } ?? Self.defaultDuration
@@ -52,9 +52,10 @@ public final class PumpLog {
         )
     }
 
-    /// A draft for editing the entry with `id`, or `nil` if it no longer exists.
-    public func editDraft(id: UUID) throws -> PumpDraft? {
-        try repository.pump(id: id).map(PumpDraft.init(editing:))
+    /// A draft for editing the entry with `id`, shown in `unit` (default: the unit it was
+    /// entered in), or `nil` if it no longer exists.
+    public func editDraft(id: UUID, unit: VolumeUnit? = nil) throws -> PumpDraft? {
+        try repository.pump(id: id).map { PumpDraft(editing: $0, unit: unit) }
     }
 
     public func problems(with draft: PumpDraft) -> [PumpValidationError] {
