@@ -52,11 +52,13 @@ struct DashboardView: View {
     }
 
     /// "2 h ago", "14 min ago", "just now": short enough to sit under a round button.
+    /// Past a day it counts days, hours and minutes like the card above ("1 d 2 h 5 min ago").
     static func compactAgo(_ interval: TimeInterval) -> String {
         let interval = DurationText.sanitized(interval)
         if interval < 60 { return String(localized: "just now") }
         if interval < 3_600 { return String(localized: "\(Int(interval / 60)) min ago") }
-        return String(localized: "\(Int(interval / 3_600)) h ago")
+        if interval < 86_400 { return String(localized: "\(Int(interval / 3_600)) h ago") }
+        return String(localized: "\(DurationText.sinceLastFeed(interval)) ago")
     }
 }
 
@@ -92,7 +94,7 @@ private struct ProfileHeader: View {
     }
 }
 
-/// "Time since last feed · 2 h 14 min · Breast · L 12 min · R 9 min · 9:41 PM", centered and large.
+/// "Time since last feed · 2 h 14 min (1 d 2 h 5 min past a day) · Breast · L 12 min · R 9 min · 9:41 PM", centered and large.
 /// The side to start on next is marked on the round buttons below, not repeated here.
 private struct LastFeedCard: View {
     let summary: DashboardSummary
@@ -109,7 +111,7 @@ private struct LastFeedCard: View {
                         .font(.caption.weight(.semibold))
                         .textCase(.uppercase)
                         .foregroundStyle(NBColor.secondaryText)
-                    Text(since < 60 ? String(localized: "Just now") : DurationText.short(since))
+                    Text(since < 60 ? String(localized: "Just now") : DurationText.sinceLastFeed(since))
                         .font(.system(size: 44, weight: .bold, design: .rounded))
                         .monospacedDigit()
                         .lineLimit(1)
@@ -334,10 +336,12 @@ private struct QuickActionCircle: View {
                             .offset(y: -9)
                     }
                 }
+                // Two lines so "1 d 2 h 5 min ago" fits on a small phone instead of truncating.
                 Text(caption)
                     .font(.footnote)
                     .foregroundStyle(NBColor.secondaryText)
-                    .lineLimit(1)
+                    .multilineTextAlignment(.center)
+                    .lineLimit(2)
                     .minimumScaleFactor(0.8)
             }
             .frame(maxWidth: .infinity)

@@ -39,6 +39,21 @@ enum DurationText {
         return String(localized: "\(hours) h \(rest) min")
     }
 
+    /// Time since the last feed: like `short` under a day ("2 h 14 min"), then with days in
+    /// front ("1 d 2 h 5 min"). Parts that are zero are left out, as in `short` ("2 d 3 h").
+    static func sinceLastFeed(_ interval: TimeInterval) -> String {
+        let interval = sanitized(interval)
+        let totalMinutes = Int(interval / 60)
+        let days = totalMinutes / (24 * 60)
+        guard days > 0 else { return short(interval) }
+        let hours = (totalMinutes % (24 * 60)) / 60
+        let minutes = totalMinutes % 60
+        var parts = [String(localized: "\(days) d")]
+        if hours > 0 { parts.append(String(localized: "\(hours) h")) }
+        if minutes > 0 { parts.append(String(localized: "\(minutes) min")) }
+        return parts.joined(separator: " ")
+    }
+
     /// VoiceOver, minute granularity so it isn't re-announced every second: "12 minutes".
     static func spoken(_ interval: TimeInterval) -> String {
         let interval = sanitized(interval)
@@ -46,6 +61,6 @@ enum DurationText {
         let minutes = Int(interval / 60)
         if minutes < 1 { return String(localized: "less than a minute") }
         return Duration.seconds(minutes * 60)
-            .formatted(.units(allowed: [.hours, .minutes], width: .wide))
+            .formatted(.units(allowed: [.days, .hours, .minutes], width: .wide))
     }
 }
