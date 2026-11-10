@@ -15,13 +15,14 @@ Why each likely category is "not collected":
 
 | Data | Where it lives | Collected? |
 |---|---|---|
-| Feeds, pumping, notes (Health & Fitness) | On device only | No |
-| Baby's nickname and photo | On device only (photo chosen with the system picker, no library permission) | No |
-| Settings and reminders | On device only | No |
+| Feeds, pumping, notes (Health & Fitness) | On device, and in the user's own private iCloud when iCloud sync is on | No |
+| Baby's nickname and photo | On device and in the user's private iCloud (photo chosen with the system picker, no library permission) | No |
+| Settings and reminders | On device and in the user's iCloud key-value storage | No |
 | Crash reports | Apple's own opt-in diagnostics only; no SDK in the app | No |
 
-If iCloud sync is added later, data stored in the user's own private iCloud database is still
-not "collected" by us, but these answers should be reviewed again then.
+iCloud sync (from 1.1) keeps data in the user's own private iCloud database and key-value
+storage. Apple's guidance is that data the developer can't access isn't "collected", so the
+answers stay "Data Not Collected".
 
 ## Tracking
 

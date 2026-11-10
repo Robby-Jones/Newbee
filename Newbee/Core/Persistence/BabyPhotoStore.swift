@@ -1,11 +1,13 @@
 import Foundation
 import Observation
+import SwiftData
 import UIKit
 
 /// The baby's profile photo, chosen in Settings and shown at the top of Home.
 ///
-/// Kept as a small JPEG file in Application Support rather than in SwiftData, so adding it
-/// needs no schema change (docs/DATA_MODEL.md, "Not in SwiftData"). Only stored on this iPhone.
+/// Kept as a small JPEG in `Baby.photoData` (schema V3), so it syncs through iCloud with the rest
+/// of the baby's profile. Builds before V3 kept it in a file in Application Support; that file is
+/// moved into the store on the first launch after the update.
 @MainActor
 @Observable
 final class BabyPhotoStore {
@@ -15,37 +17,91 @@ final class BabyPhotoStore {
     /// The current photo, or `nil` when none is set.
     private(set) var image: UIImage?
 
-    @ObservationIgnored private let fileURL: URL
+    @ObservationIgnored private let container: ModelContainer?
+    @ObservationIgnored private let legacyFileURL: URL?
+    /// The bytes `image` was decoded from, so `reload()` only decodes a changed photo.
+    @ObservationIgnored private var loadedData: Data?
 
-    init(directory: URL? = nil) {
-        let base = directory
-            ?? FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask).first
-            ?? FileManager.default.temporaryDirectory
-        fileURL = base.appendingPathComponent("BabyPhoto", isDirectory: true).appendingPathComponent("photo.jpg")
-        image = (try? Data(contentsOf: fileURL)).flatMap(UIImage.init(data:))
+    /// - Parameters:
+    ///   - container: The store holding the baby. `nil` when the store couldn't be opened; the
+    ///     photo is then only kept in memory.
+    ///   - legacyDirectory: Where builds before schema V3 saved the photo file, to move it into
+    ///     the store. Only the real store passes it.
+    init(container: ModelContainer?, legacyDirectory: URL? = nil) {
+        self.container = container
+        legacyFileURL = legacyDirectory?
+            .appendingPathComponent("BabyPhoto", isDirectory: true)
+            .appendingPathComponent("photo.jpg")
+        moveLegacyFileIntoStore()
+        reload()
     }
 
-    /// A fresh, empty throwaway location for in-memory stores (UI tests, previews, unit tests),
-    /// so they never touch the real photo or each other's.
+    /// Application Support, where builds before schema V3 kept `BabyPhoto/photo.jpg`.
+    static var legacyDirectory: URL? {
+        FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask).first
+    }
+
+    /// A store on its own empty in-memory container, for previews.
     static func temporary() -> BabyPhotoStore {
-        let directory = FileManager.default.temporaryDirectory.appendingPathComponent("BabyPhoto-\(UUID().uuidString)", isDirectory: true)
-        return BabyPhotoStore(directory: directory)
+        BabyPhotoStore(container: try? PersistenceController.makeContainer(.inMemory))
     }
 
     /// Saves picked image data (any format UIKit reads), scaled down and re-encoded as JPEG.
+    /// Creates the baby profile if there isn't one yet.
     func save(_ data: Data) throws {
         guard let picked = UIImage(data: data) else { throw PhotoError.unreadable }
         let scaled = Self.scaled(picked, maxPixelSize: Self.maxPixelSize)
         guard let jpeg = scaled.jpegData(compressionQuality: 0.85) else { throw PhotoError.unreadable }
-        try FileManager.default.createDirectory(at: fileURL.deletingLastPathComponent(), withIntermediateDirectories: true)
-        try jpeg.write(to: fileURL, options: [.atomic, .completeFileProtectionUntilFirstUserAuthentication])
+        if let context = container?.mainContext {
+            do {
+                Baby.primary(in: context, creatingIfMissing: true)?.photoData = jpeg
+                try context.save()
+            } catch {
+                context.rollback()
+                throw error
+            }
+        }
         image = scaled
+        loadedData = jpeg
     }
 
     /// Removes the photo. Also used by "Delete all data".
     func remove() {
-        try? FileManager.default.removeItem(at: fileURL)
+        if let context = container?.mainContext, let baby = Baby.primary(in: context), baby.photoData != nil {
+            baby.photoData = nil
+            try? context.save()
+        }
+        if let legacyFileURL {
+            try? FileManager.default.removeItem(at: legacyFileURL)
+        }
         image = nil
+        loadedData = nil
+    }
+
+    /// Reads the photo from the store again, e.g. after iCloud brought in a change from another
+    /// device or two baby profiles were merged.
+    func reload() {
+        guard let context = container?.mainContext else { return }
+        let data = Baby.primary(in: context)?.photoData
+        guard data != loadedData else { return }
+        loadedData = data
+        image = data.flatMap(UIImage.init(data:))
+    }
+
+    /// Moves a photo saved by a build before schema V3 into the store, unless the baby already
+    /// has one (e.g. from another device). On failure the file stays for the next launch.
+    private func moveLegacyFileIntoStore() {
+        guard let legacyFileURL, let context = container?.mainContext,
+              let data = try? Data(contentsOf: legacyFileURL) else { return }
+        do {
+            if let baby = Baby.primary(in: context, creatingIfMissing: true), baby.photoData == nil {
+                baby.photoData = data
+            }
+            try context.save()
+            try? FileManager.default.removeItem(at: legacyFileURL)
+        } catch {
+            context.rollback()
+        }
     }
 
     enum PhotoError: LocalizedError {

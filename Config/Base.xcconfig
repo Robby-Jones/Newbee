@@ -8,4 +8,6 @@ NEWBEE_DEVELOPMENT_TEAM =
 
 NEWBEE_BUNDLE_ID = $(NEWBEE_BUNDLE_PREFIX).newbee
 NEWBEE_APP_GROUP = group.$(NEWBEE_BUNDLE_ID)
+// The iCloud (CloudKit) container feeds sync with. Unsigned test builds set it empty.
+NEWBEE_CLOUDKIT_CONTAINER = iCloud.$(NEWBEE_BUNDLE_ID)
 DEVELOPMENT_TEAM = $(NEWBEE_DEVELOPMENT_TEAM)

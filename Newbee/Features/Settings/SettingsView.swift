@@ -31,6 +31,7 @@ struct SettingsView: View {
                 LiveActivitiesSection()
                 AppearanceSection(preferences: preferences)
             }
+            ICloudSyncSection()
             DataSection(
                 presentation: $dataPresentation,
                 errorMessage: $dataError,
@@ -120,7 +121,7 @@ private struct BabyProfileSection: View {
             if let birthDate = baby?.birthDate {
                 Text(BabyAge.text(from: birthDate))
             } else {
-                Text("Optional. Shown on Home and only stored on this iPhone.")
+                Text("Optional. Shown on Home.")
             }
         }
     }
@@ -582,6 +583,71 @@ private struct LiveActivitiesSection: View {
     }
 }
 
+// MARK: - iCloud sync
+
+/// Whether feeds are syncing with the parent's iCloud, and why not when they aren't.
+private struct ICloudSyncSection: View {
+    @Environment(CloudSyncMonitor.self) private var monitor: CloudSyncMonitor?
+
+    var body: some View {
+        if let monitor, monitor.status != .unavailable {
+            Section {
+                LabeledContent("iCloud sync") {
+                    HStack(spacing: 6) {
+                        if monitor.status == .syncing || monitor.status == .checking {
+                            ProgressView()
+                        }
+                        Text(Self.value(for: monitor.status))
+                    }
+                }
+                .accessibilityIdentifier("settings.iCloudSync")
+                if case .upToDate(let date?) = monitor.status {
+                    LabeledContent("Last synced") {
+                        Text(date, format: .relative(presentation: .named))
+                    }
+                }
+            } header: {
+                Text("iCloud")
+            } footer: {
+                Text(Self.footer(for: monitor.status))
+            }
+            .onReceive(NotificationCenter.default.publisher(for: UIApplication.didBecomeActiveNotification)) { _ in
+                // Picks up signing in to iCloud in iOS Settings.
+                Task { await monitor.refreshAccountStatus() }
+            }
+        }
+    }
+
+    static func value(for status: CloudSyncMonitor.Status) -> String {
+        switch status {
+        case .unavailable, .failedToStart, .signedOut, .restricted: String(localized: "Off")
+        case .checking: String(localized: "Checking")
+        case .temporarilyUnavailable: String(localized: "Paused")
+        case .syncing: String(localized: "Syncing")
+        case .failed: String(localized: "Not synced")
+        case .upToDate: String(localized: "Up to date")
+        }
+    }
+
+    static func footer(for status: CloudSyncMonitor.Status) -> String {
+        let about = String(localized: "Feeds, the baby profile and settings sync through your private iCloud to every iPhone and iPad signed in to your Apple ID. Only you can see them.")
+        switch status {
+        case .unavailable, .checking, .syncing, .upToDate:
+            return about
+        case .signedOut:
+            return String(localized: "Sign in to iCloud in the Settings app, and check that iCloud is on for Newbee, to sync your feeds to your other devices. Until then they're kept on this iPhone.")
+        case .restricted:
+            return String(localized: "iCloud is restricted on this iPhone, so feeds are kept on this iPhone only.")
+        case .temporarilyUnavailable:
+            return String(localized: "iCloud can't be reached right now. Feeds are safe on this iPhone and sync when iCloud is back.")
+        case .failed(let message):
+            return String(localized: "The last sync didn't finish: \(message) Your feeds are safe on this iPhone, and Newbee keeps trying.")
+        case .failedToStart(let message):
+            return String(localized: "iCloud sync couldn't start: \(message) Your feeds are safe on this iPhone. Newbee tries again the next time it opens.")
+        }
+    }
+}
+
 // MARK: - Appearance
 
 private struct AppearanceSection: View {
@@ -672,7 +738,7 @@ private struct DataSection: View {
         } header: {
             Text("Your data")
         } footer: {
-            Text("Feeds are stored only on this iPhone and are included in its iCloud or computer backup. Share a PDF report with your pediatrician, export a CSV to keep a copy, or bring in your history from Huckleberry.")
+            Text("Feeds are stored on this iPhone and, with iCloud sync on, in your private iCloud. Share a PDF report with your pediatrician, export a CSV to keep a copy, or bring in your history from Huckleberry.")
         }
     }
 
@@ -746,7 +812,7 @@ struct DeleteAllDataSheet: View {
         NavigationStack {
             Form {
                 Section {
-                    Text("This permanently deletes every feed, the baby profile and your settings on this iPhone. It can't be undone.")
+                    Text("This permanently deletes every feed, the baby profile and your settings, on this iPhone and on your other devices that sync with the same iCloud account. It can't be undone.")
                     TextField("Type \(Self.confirmationWord) to confirm", text: $typed)
                         .textInputAutocapitalization(.characters)
                         .autocorrectionDisabled()
@@ -805,7 +871,7 @@ private struct AboutSection: View {
     var body: some View {
         Section {
             LabeledContent("Version", value: Self.version)
-            Label("Newbee collects no data. Nothing leaves your iPhone unless you export it.", systemImage: "lock.shield")
+            Label("Newbee collects no data. Your feeds sync only through your own private iCloud, and nothing else leaves your iPhone unless you export it.", systemImage: "lock.shield")
                 .font(.footnote)
             Label("Newbee is a log, not medical advice. Ask your pediatrician about feeding concerns.", systemImage: "stethoscope")
                 .font(.footnote)

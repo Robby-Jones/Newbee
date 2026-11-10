@@ -33,6 +33,8 @@ final class AppDependencies {
     let reminders: ReminderScheduler
     /// The baby's profile photo (Settings, Home).
     let babyPhoto: BabyPhotoStore
+    /// iCloud sync status, and the signal that another device's changes arrived.
+    let cloudSync: CloudSyncMonitor
 
     init(
         clock: any AppClock = SystemClock(),
@@ -45,8 +47,13 @@ final class AppDependencies {
         let resolvedStorage = storage ?? (AppConfiguration.isUITesting ? .inMemory : .appGroup)
         let container: ModelContainer?
         let error: Error?
+        var cloudKitContainerID: String?
+        var cloudKitError: Error?
         do {
-            container = try PersistenceController.makeContainer(resolvedStorage)
+            let opened = try PersistenceController.open(resolvedStorage)
+            container = opened.container
+            cloudKitContainerID = opened.cloudKitContainerID
+            cloudKitError = opened.cloudKitError
             error = nil
         } catch let openError {
             container = nil
@@ -54,6 +61,7 @@ final class AppDependencies {
         }
         modelContainer = container
         storeError = error
+        cloudSync = CloudSyncMonitor(containerID: cloudKitContainerID, startError: cloudKitError)
         if let container, ScreenshotSampleData.isRequested {
             ScreenshotSampleData.seed(into: container, clock: clock)
         }
@@ -73,15 +81,19 @@ final class AppDependencies {
         }
         bottleLog = BottleLog(repository: bottleRepository, clock: clock)
         pumpLog = PumpLog(repository: pumpRepository, clock: clock)
-        let preferences = AppPreferences(defaults: defaults ?? AppPreferences.makeDefaults())
+        // Settings follow the parent's iCloud account whenever feeds do.
+        let preferences = AppPreferences(
+            defaults: defaults ?? AppPreferences.makeDefaults(),
+            cloud: cloudKitContainerID == nil ? nil : NSUbiquitousKeyValueStore.default
+        )
         self.preferences = preferences
 
         let isInMemory: Bool
         if case .inMemory = resolvedStorage { isInMemory = true } else { isInMemory = false }
-        // In-memory stores (UI tests, previews, unit tests) get a throwaway photo folder.
-        babyPhoto = isInMemory ? BabyPhotoStore.temporary() : BabyPhotoStore()
         let isAppStore: Bool
         if case .appGroup = resolvedStorage { isAppStore = true } else { isAppStore = false }
+        // Only the real store takes over a photo file saved by builds before schema V3.
+        babyPhoto = BabyPhotoStore(container: container, legacyDirectory: isAppStore ? BabyPhotoStore.legacyDirectory : nil)
         let reminders = ReminderScheduler(
             preferences: preferences,
             feedingRepository: repository,

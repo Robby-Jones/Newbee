@@ -88,7 +88,8 @@ A pumping session is a completed `FeedingSession` with `kind = pump`, `source = 
 ### Not in SwiftData
 - **AppPreferences**: App Group `UserDefaults` keys: `volumeUnit`, `bottlePresets` (JSON `[Double]` in mL), `pump.volumeUnit` (follows `volumeUnit` until set), `pump.presets` (per-side `[Double]` in mL), `reminder.enabled`, `reminder.intervalMinutes`, `reminder.quietStart`, `reminder.quietEnd`, `reminder.basis` (`start`/`end`), `stillFeeding.minutes`, `appearance`, `intervalDefinition`, `onboardingComplete`, `schemaVersionSeen`.
 - **Bottle presets** are prefs, not entities.
-- **Baby photo**: one JPEG (longest side 600 px) at `Application Support/BabyPhoto/photo.jpg`, app container only (not the App Group, not synced). Written by `BabyPhotoStore`; removed by "Delete all data".
+- **Baby photo** (until V3): one JPEG at `Application Support/BabyPhoto/photo.jpg`. From V3 it lives in `Baby.photoData`, and `BabyPhotoStore` moves an old file into the store on the first launch after the update.
+- With iCloud on, most `AppPreferences` keys are mirrored to iCloud key-value storage (`AppPreferences.Key.synced`; not `onboardingComplete`). See `ICLOUD_SYNC.md`.
 
 ## 3. Invariants (enforced by `SessionEngine` + repository, covered by tests)
 
@@ -120,4 +121,5 @@ A pumping session is a completed `FeedingSession` with `kind = pump`, `source = 
 
 - `NewbeeSchemaV1` ships at 1.0. Every model change adds `NewbeeSchemaV(n+1)` plus a stage in `NewbeeMigrationPlan`.
 - **V2** adds `PumpDetails` and `FeedingSession.pump`. V1 → V2 is a lightweight stage (new entity plus an optional relationship). V1 stays in the code, frozen, so older stores can migrate. `PumpPersistenceTests.versionOneStoreMigrates` writes a V1 store and opens it with V2.
+- **V3** adds `Baby.photoData` (`@Attribute(.externalStorage)`, a JPEG with its longest side 600 px) so the photo syncs, and changes `Baby.sessions` from `.cascade` to `.nullify` so merging duplicate profiles from two devices can never delete feeds (`BabyMerge`). V2 → V3 is lightweight. V3 is the first schema synced with CloudKit: `cloudkit/schema.ckdb` describes it, `CloudKitSchemaTests` keeps the two in step, and production CloudKit fields can never be removed, so later versions only add (`ICLOUD_SYNC.md`).
 - A test loads a V1 fixture store and migrates it (see `TESTING.md`).

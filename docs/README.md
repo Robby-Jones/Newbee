@@ -13,4 +13,5 @@ Planning deliverables (master guide §20). Read in this order:
 | 11 | Persistent timer engine | [TIMER_ENGINE.md](TIMER_ENGINE.md) |
 | 12 | ActivityKit & Dynamic Island plan | [LIVE_ACTIVITIES.md](LIVE_ACTIVITIES.md) |
 | 13 | iOS limitations & risks | [RISKS.md](RISKS.md) |
+| — | iCloud sync and its one-time setup | [ICLOUD_SYNC.md](ICLOUD_SYNC.md) |
 | — | Living development checklist | [CHECKLIST.md](CHECKLIST.md) |

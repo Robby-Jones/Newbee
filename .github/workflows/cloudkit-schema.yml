@@ -1,0 +1,90 @@
+name: CloudKit schema
+
+# Uploads cloudkit/schema.ckdb to the iCloud container's development environment, then reports
+# what still has to be deployed to production in CloudKit Console (docs/ICLOUD_SYNC.md).
+# TestFlight and App Store builds only sync with the production schema.
+#
+# Run it by hand: Actions → CloudKit schema → Run workflow. Needs these repository secrets:
+#   APPLE_TEAM_ID               Apple Developer Team ID (already used by TestFlight)
+#   CLOUDKIT_MANAGEMENT_TOKEN   A CloudKit Console management token for the team
+
+on:
+  workflow_dispatch:
+    inputs:
+      upload:
+        description: Upload the schema to development (off just reports what production is missing)
+        type: boolean
+        default: true
+
+jobs:
+  schema:
+    name: Upload and compare
+    runs-on: macos-15
+    timeout-minutes: 15
+    env:
+      APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+      CLOUDKIT_MANAGEMENT_TOKEN: ${{ secrets.CLOUDKIT_MANAGEMENT_TOKEN }}
+      CONTAINER_ID: iCloud.com.robbyjones.newbee
+    steps:
+      - name: Check secrets
+        run: |
+          if [ -z "$APPLE_TEAM_ID" ] || [ -z "$CLOUDKIT_MANAGEMENT_TOKEN" ]; then
+            echo "::error::Set the APPLE_TEAM_ID and CLOUDKIT_MANAGEMENT_TOKEN repository secrets first (docs/ICLOUD_SYNC.md)."
+            exit 1
+          fi
+
+      - uses: actions/checkout@v4
+
+      - name: Select Xcode
+        run: scripts/select-xcode.sh 26
+
+      # A copy of what was there before, in case anything needs comparing later.
+      - name: Export the current development schema
+        run: |
+          xcrun cktool export-schema --team-id "$APPLE_TEAM_ID" --container-id "$CONTAINER_ID" \
+            --environment development --output-file "$RUNNER_TEMP/development-before.ckdb"
+          cat "$RUNNER_TEMP/development-before.ckdb"
+
+      - name: Validate
+        if: inputs.upload
+        run: |
+          xcrun cktool validate-schema --team-id "$APPLE_TEAM_ID" --container-id "$CONTAINER_ID" \
+            --environment development --file cloudkit/schema.ckdb
+
+      - name: Upload to development
+        if: inputs.upload
+        run: |
+          xcrun cktool import-schema --team-id "$APPLE_TEAM_ID" --container-id "$CONTAINER_ID" \
+            --environment development --file cloudkit/schema.ckdb
+          echo "::notice::Schema uploaded to development."
+
+      - name: Compare with production
+        run: |
+          xcrun cktool export-schema --team-id "$APPLE_TEAM_ID" --container-id "$CONTAINER_ID" \
+            --environment production --output-file "$RUNNER_TEMP/production.ckdb"
+          MISSING="$(python3 scripts/cloudkit-schema-diff.py cloudkit/schema.ckdb "$RUNNER_TEMP/production.ckdb")"
+          if [ -z "$MISSING" ]; then
+            echo "::notice::Production has the whole schema. Nothing to deploy."
+            echo "Production has the whole schema. Nothing to deploy." >> "$GITHUB_STEP_SUMMARY"
+          else
+            echo "$MISSING"
+            COUNT="$(printf '%s\n' "$MISSING" | wc -l | tr -d ' ')"
+            echo "::warning::Production is missing $COUNT schema changes. Deploy them in CloudKit Console: CloudKit Database → $CONTAINER_ID → Deploy Schema Changes."
+            {
+              echo "### Production still needs $COUNT schema changes"
+              echo
+              echo "Open [CloudKit Console](https://icloud.developer.apple.com/dashboard/), choose **CloudKit Database** → **$CONTAINER_ID**, then **Deploy Schema Changes…** → **Deploy**."
+              echo
+              echo '```'
+              echo "$MISSING"
+              echo '```'
+            } >> "$GITHUB_STEP_SUMMARY"
+          fi
+
+      - name: Keep the exported schemas
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: cloudkit-schemas
+          path: ${{ runner.temp }}/*.ckdb
+          if-no-files-found: ignore
