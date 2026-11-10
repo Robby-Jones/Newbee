@@ -89,14 +89,8 @@ bottles) are indexed anyway, so they are not repeated. No competitor names (Appl
 
 - **Sign-in required:** No (there is no account).
 - **Contact:** Robby's name, phone and email (only Apple sees these).
-- **Notes for the reviewer:**
-
-> Newbee has no account and no server. All data stays on the device.
-> To try the main feature: tap Breastfeed on Home, choose Left or Right, then lock the phone.
-> The timer appears as a Live Activity on the Lock Screen and in the Dynamic Island, where you
-> can switch sides, pause, or end the feed. Bottle and Pump on Home log other feeds.
-> Settings → Your data exports a PDF report or CSV. Notifications are optional and only used
-> for feeding reminders the parent sets up.
+- **Notes for the reviewer:** the full text Apple asked for under Guideline 2.1, and the shot
+  list for the screen recording, are in [APP_REVIEW_NOTES.md](APP_REVIEW_NOTES.md).
 
 ## Screenshots
 
