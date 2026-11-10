@@ -46,6 +46,30 @@ final class SettingsFlowTests: XCTestCase {
         XCTAssertTrue(app.navigationBars["Settings"].waitForExistence(timeout: 5))
     }
 
+    /// Settings → Import from Huckleberry opens the how-to with Choose File, and stays open.
+    @MainActor
+    func testHuckleberryImportSheetOpensFromSettings() throws {
+        let app = XCUIApplication()
+        app.launchArguments = ["-uiTesting"]
+        app.launch()
+
+        let tab = app.tabBars.firstMatch.buttons["Settings"]
+        XCTAssertTrue(tab.waitForExistence(timeout: 10))
+        tab.tap()
+        let importButton = app.buttons["settings.importHuckleberry"]
+        for _ in 0..<6 where !(importButton.exists && importButton.isHittable) { app.swipeUp() }
+        importButton.tap()
+
+        XCTAssertTrue(app.navigationBars["Import from Huckleberry"].waitForExistence(timeout: 5))
+        Thread.sleep(forTimeInterval: 1.5)
+        XCTAssertTrue(app.navigationBars["Import from Huckleberry"].exists, "The sheet closed itself")
+        XCTAssertTrue(app.buttons["import.chooseFile"].exists)
+        app.buttons["Cancel"].tap()
+        XCTAssertTrue(app.navigationBars["Settings"].waitForExistence(timeout: 5))
+        // Nothing imported yet, so there's nothing to remove.
+        XCTAssertFalse(app.buttons["settings.removeImported"].exists)
+    }
+
     /// Delete all data opens its confirmation on the first tap and stays open.
     @MainActor
     func testDeleteAllSheetStaysOpenOnFirstTap() throws {

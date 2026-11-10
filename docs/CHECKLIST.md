@@ -56,6 +56,7 @@ Legend: `[x]` done · `[ ]` pending · `[!]` blocked (reason noted). Updated by 
 - [x] Navigation simplified to 4 tabs; Calendar is a mode of History; Settings is a tab
 - [x] CSV / PDF export (PDF: summary page, chart and day-by-day log, US Letter, Settings → Your data)
 - [x] Settings + onboarding + delete all data (onboarding added 2026-11-08)
+- [x] Import from Huckleberry CSV (Settings → Your data and onboarding welcome; remove imported data) (2026-11-10)
 
 ## Phase 6: Testing & refinement
 - [ ] Full regression, 0 warnings, perf with 1 year of data, accessibility audit

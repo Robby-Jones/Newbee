@@ -3,12 +3,18 @@ import NewbeeKit
 import SwiftUI
 import UIKit
 
-/// Export and delete-all, passed through the environment so Settings doesn't reach for
+/// Export, import and delete-all, passed through the environment so Settings doesn't reach for
 /// `AppDependencies.shared` (and previews can leave them out).
 struct DataManagementActions: Sendable {
     var exportCSV: @MainActor @Sendable () throws -> URL
     var exportPDF: @MainActor @Sendable (FeedReportRange) throws -> URL
     var deleteAll: @MainActor @Sendable () async throws -> Void
+    /// Reads a Huckleberry export and returns what importing it would add, saving nothing.
+    var prepareHuckleberryImport: @MainActor @Sendable (URL) throws -> ImportPlan
+    /// Saves a prepared import; returns how many entries were added.
+    var commitImport: @MainActor @Sendable (ImportPlan) async throws -> Int
+    /// Deletes every imported entry; returns how many were removed.
+    var removeImported: @MainActor @Sendable () async throws -> Int
 }
 
 extension DataManagementActions {
@@ -17,6 +23,9 @@ extension DataManagementActions {
         exportCSV = { try dependencies.exportCSV() }
         exportPDF = { try dependencies.exportPDF(range: $0) }
         deleteAll = { try await dependencies.deleteAllData() }
+        prepareHuckleberryImport = { try dependencies.prepareHuckleberryImport(from: $0) }
+        commitImport = { try await dependencies.commitImport($0) }
+        removeImported = { try await dependencies.removeImportedData() }
     }
 }
 

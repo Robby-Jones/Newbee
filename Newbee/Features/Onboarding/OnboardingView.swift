@@ -7,7 +7,7 @@ import UIKit
 
 /// First-run onboarding (docs/UX_SPEC.md §3.1): three full-screen steps, all skippable.
 ///
-/// 1. Welcome, with the privacy promise.
+/// 1. Welcome, with the privacy promise, and a way in for parents switching from Huckleberry.
 /// 2. Baby: photo, nickname and birth date (all optional) and the bottle unit.
 /// 3. Stay in the loop: what the Live Activity shows, and an optional feeding reminder.
 ///    Notification permission is asked for only if the parent turns the reminder on here.
@@ -26,6 +26,10 @@ struct OnboardingView: View {
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @State private var step: Step = .welcome
     @State private var draft = OnboardingProfile.Draft()
+    @State private var isImporting = false
+    @Environment(\.dataManagement) private var dataActions
+    @Environment(BottleLogUIModel.self) private var bottleModel: BottleLogUIModel?
+    @Environment(PumpLogUIModel.self) private var pumpModel: PumpLogUIModel?
 
     var body: some View {
         VStack(spacing: 0) {
@@ -53,6 +57,18 @@ struct OnboardingView: View {
                 }
                 .buttonStyle(.plain)
                 .accessibilityIdentifier("onboarding.next")
+
+                if step == .welcome, dataActions != nil {
+                    Button {
+                        isImporting = true
+                    } label: {
+                        Text("Coming from Huckleberry? **Import your feeds**")
+                            .font(.subheadline)
+                            .frame(minHeight: NBLayout.minHitTarget)
+                    }
+                    .foregroundStyle(NBColor.accent)
+                    .accessibilityIdentifier("onboarding.importHuckleberry")
+                }
             }
             .padding(.horizontal, NBSpacing.xl)
             .padding(.bottom, NBSpacing.l)
@@ -60,6 +76,14 @@ struct OnboardingView: View {
         .background(NBColor.canvas.ignoresSafeArea())
         .interactiveDismissDisabled()
         .animation(reduceMotion ? nil : .nbState, value: step)
+        .sheet(isPresented: $isImporting) {
+            if let dataActions {
+                HuckleberryImportSheet(prepare: dataActions.prepareHuckleberryImport, commit: dataActions.commitImport) {
+                    bottleModel?.refresh()
+                    pumpModel?.refresh()
+                }
+            }
+        }
     }
 
     private var topBar: some View {
