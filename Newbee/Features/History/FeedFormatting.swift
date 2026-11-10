@@ -51,9 +51,9 @@ enum FeedText {
         return day.formatted(.dateTime.weekday(.abbreviated).day().month(.abbreviated))
     }
 
-    /// "2 h 14 min ago", or "Just now" under a minute.
+    /// "2 h 14 min ago", "1 d 2 h 5 min ago" past a day, or "Just now" under a minute.
     static func ago(_ interval: TimeInterval) -> String {
-        interval < 60 ? String(localized: "Just now") : String(localized: "\(DurationText.short(interval)) ago")
+        interval < 60 ? String(localized: "Just now") : String(localized: "\(DurationText.sinceLastFeed(interval)) ago")
     }
 }
 

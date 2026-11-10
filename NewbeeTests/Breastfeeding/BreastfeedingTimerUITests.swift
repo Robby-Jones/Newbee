@@ -179,6 +179,24 @@ struct DurationTextTests {
         #expect(DurationText.short(65 * 60) == "1 h 5 min")
     }
 
+    @Test func sinceLastFeedAddsDaysPastADay() {
+        #expect(DurationText.sinceLastFeed(30) == "<1 min")
+        #expect(DurationText.sinceLastFeed(14 * 60) == "14 min")
+        #expect(DurationText.sinceLastFeed(23 * 3_600 + 59 * 60) == "23 h 59 min")
+        #expect(DurationText.sinceLastFeed(24 * 3_600) == "1 d")
+        #expect(DurationText.sinceLastFeed(26 * 3_600 + 5 * 60 + 40) == "1 d 2 h 5 min")
+        #expect(DurationText.sinceLastFeed(2 * 86_400 + 3 * 3_600) == "2 d 3 h")
+        #expect(DurationText.sinceLastFeed(3 * 86_400 + 7 * 60) == "3 d 7 min")
+    }
+
+    @MainActor
+    @Test func quickActionCaptionsAddDaysPastADay() {
+        #expect(DashboardView.compactAgo(14 * 60) == "14 min ago")
+        #expect(DashboardView.compactAgo(23 * 3_600 + 59 * 60) == "23 h ago")
+        #expect(DashboardView.compactAgo(26 * 3_600 + 5 * 60) == "1 d 2 h 5 min ago")
+        #expect(FeedText.ago(26 * 3_600 + 5 * 60) == "1 d 2 h 5 min ago")
+    }
+
     /// `Int(_:)` traps on NaN, infinity and values past `Int.max`, so a bad duration must never
     /// reach it: it reads as zero (or the cap) instead of crashing the screen that shows it.
     @MainActor
