@@ -243,7 +243,7 @@ Baby profile · Bottle and pumping (a unit for each, shown everywhere including 
 - Ready to import: breastfeeds, bottles and pumping sessions, with the date range.
 - Skipped: rows already in Newbee (same kind starting in the same minute, so importing again is safe) and the count of each Huckleberry type Newbee doesn't track (Sleep, Diaper, Growth…).
 - Couldn't import: rows Newbee can't read or wouldn't accept if typed in (bottle over 500 mL, nursing over 4 hours, future times), each with a reason.
-Format details: Huckleberry gives minutes per side but not the order, so feeds that used both sides start on Left. "Mixed" bottles are saved as Other with the note "Mixed breast milk and formula". Times are read in the phone's time zone. Parser: NewbeeKit `HuckleberryCSV`, `ImportPlan`.
+Format details: Huckleberry gives minutes per side but not the order, so feeds that used both sides start on Left. "Mixed" bottles are saved as Other with the note "Mixed breast milk and formula". A pumping row with one amount and no side ("3oz", how a total is logged) is split evenly between Left and Right. Times are read in the phone's time zone. Parser: NewbeeKit `HuckleberryCSV`, `ImportPlan`.
 
 ### 3.11 Recovery sheet
 See `TIMER_ENGINE.md` §5.
