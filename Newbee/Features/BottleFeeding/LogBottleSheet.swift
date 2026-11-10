@@ -220,7 +220,8 @@ struct LogBottleSheet: View {
             get: { draft.amount.unit },
             set: { unit in
                 guard unit != draft.amount.unit else { return }
-                setAmount(draft.amount.value > 0 ? draft.amount.converted(to: unit) : BottleAmount(0, unit))
+                draft.convert(to: unit)
+                setAmount(draft.amount)
                 model.preferences.volumeUnit = unit
             }
         )

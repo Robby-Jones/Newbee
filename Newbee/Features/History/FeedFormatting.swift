@@ -5,7 +5,7 @@ import SwiftUI
 
 /// Display text for feeds, shared by History and Home.
 enum FeedText {
-    /// "90 mL" or "3 oz", in the unit the parent entered.
+    /// "90 mL" or "3 oz", in `unit`.
     static func volume(ml: Double, unit: VolumeUnit = .milliliters) -> String {
         let value = unit.fromMilliliters(ml)
         let digits = unit == .milliliters ? 0 : 1
@@ -20,13 +20,14 @@ enum FeedText {
         }
     }
 
-    /// "Breast · 21 min" or "Bottle · 90 mL formula".
-    static func title(_ entry: FeedEntry) -> String {
+    /// "Breast · 21 min" or "Bottle · 90 mL formula". Bottles are shown in `unit` (the bottle unit
+    /// setting), whatever unit they were logged in.
+    static func title(_ entry: FeedEntry, unit: VolumeUnit) -> String {
         switch entry.details {
         case .breast:
             String(localized: "Breast · \(DurationText.short(entry.breastDuration))")
         case .bottle(let bottle):
-            String(localized: "Bottle · \(volume(ml: bottle.amountML, unit: bottle.enteredUnit)) \(contents(bottle.contents))")
+            String(localized: "Bottle · \(volume(ml: bottle.amountML, unit: unit)) \(contents(bottle.contents))")
         }
     }
 
@@ -85,6 +86,7 @@ extension FeedEntry {
 /// One feed in History: time, colored rail, title, L/R split, note, gap to the previous feed.
 struct FeedRow: View {
     let row: TimelineRow
+    @Environment(BottleLogUIModel.self) private var bottleModel: BottleLogUIModel?
 
     private var entry: FeedEntry { row.entry }
 
@@ -105,7 +107,7 @@ struct FeedRow: View {
                     Image(systemName: entry.symbolName)
                         .foregroundStyle(entry.ink)
                         .accessibilityHidden(true)
-                    Text(FeedText.title(entry))
+                    Text(FeedText.title(entry, unit: bottleModel?.unit ?? .milliliters))
                         .font(.body.weight(.semibold))
                     if entry.needsReview {
                         ReviewBadge()

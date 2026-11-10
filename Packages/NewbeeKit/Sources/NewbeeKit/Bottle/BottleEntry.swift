@@ -45,7 +45,12 @@ public struct BottleEntry: Codable, Sendable, Hashable, Identifiable {
 
     /// The amount in the unit the parent entered it in.
     public var enteredAmount: BottleAmount {
-        BottleAmount(milliliters: amountML).converted(to: enteredUnit)
+        amount(in: enteredUnit)
+    }
+
+    /// The amount shown in `unit`, whatever unit it was entered in.
+    public func amount(in unit: VolumeUnit) -> BottleAmount {
+        BottleAmount(milliliters: amountML).converted(to: unit)
     }
 }
 
@@ -59,6 +64,9 @@ public struct BottleDraft: Sendable, Hashable {
     public var durationSeconds: TimeInterval?
     public var notes: String
     public var timeZoneID: String
+    /// The stored amount of the entry being edited, so saving it unchanged in another unit
+    /// keeps the exact milliliters instead of a rounded conversion.
+    public var originalML: Double?
 
     public init(
         id: UUID? = nil,
@@ -78,20 +86,37 @@ public struct BottleDraft: Sendable, Hashable {
         self.timeZoneID = timeZoneID
     }
 
-    /// A draft for editing `entry`, in the unit it was entered in.
-    public init(editing entry: BottleEntry) {
+    /// A draft for editing `entry`, shown in `unit` (default: the unit it was entered in).
+    public init(editing entry: BottleEntry, unit: VolumeUnit? = nil) {
         self.init(
             id: entry.id,
             contents: entry.contents,
-            amount: entry.enteredAmount,
+            amount: entry.amount(in: unit ?? entry.enteredUnit),
             startedAt: entry.startedAt,
             durationSeconds: entry.durationSeconds,
             notes: entry.notes,
             timeZoneID: entry.timeZoneID
         )
+        originalML = entry.amountML
     }
 
     public var isEditing: Bool { id != nil }
+
+    /// The milliliters that would be saved.
+    public var amountML: Double {
+        amount.milliliters(keeping: originalML)
+    }
+
+    /// Switches the amount to `target`. An unchanged amount converts from the stored value, so
+    /// switching back and forth never drifts.
+    public mutating func convert(to target: VolumeUnit) {
+        guard target != amount.unit else { return }
+        guard amount.value > 0 else {
+            amount = BottleAmount(0, target)
+            return
+        }
+        amount = BottleAmount(milliliters: amountML).converted(to: target)
+    }
 }
 
 /// Why a bottle draft can't be saved. Shown inline on the sheet.
@@ -123,7 +148,7 @@ public struct BottleRules: Sendable, Hashable {
     /// Every problem with `draft`, most important first. Empty means it can be saved.
     public func problems(with draft: BottleDraft, now: Date) -> [BottleValidationError] {
         var problems: [BottleValidationError] = []
-        let ml = draft.amount.milliliters
+        let ml = draft.amountML
         if !(ml > 0) {
             problems.append(.amountNotPositive)
         } else if ml > maximumML + 0.001 {
@@ -154,7 +179,7 @@ public struct BottleRules: Sendable, Hashable {
             id: draft.id ?? UUID(),
             startedAt: draft.startedAt,
             contents: draft.contents,
-            amountML: draft.amount.milliliters,
+            amountML: draft.amountML,
             enteredUnit: draft.amount.unit,
             durationSeconds: draft.durationSeconds,
             notes: draft.notes.trimmingCharacters(in: .whitespacesAndNewlines),

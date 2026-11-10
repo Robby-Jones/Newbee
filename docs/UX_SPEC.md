@@ -237,7 +237,7 @@ today and week totals on Home and in Insights, gaps between feeds in History, ma
 History's **+**, and export in Settings.
 
 ### 3.10 Settings
-Baby profile · Units · Bottle presets · Reminders (enable, interval, basis start/end, quiet hours, "still feeding?" threshold) · Live Activities status + dismissal policy · Interval definition · Appearance (system/light/dark) · Data (export, how backup works, **Import from Huckleberry**, **Remove imported data** (shown only when something was imported; simple alert), **Delete all data** with typed confirmation) · About / privacy / disclaimer.
+Baby profile · Bottle and pumping (a unit for each, shown everywhere including past entries, and each one's presets in a dropdown) · Reminders (enable, interval, basis start/end, quiet hours, "still feeding?" threshold) · Live Activities status + dismissal policy · Interval definition · Appearance (system/light/dark) · Data (export, how backup works, **Import from Huckleberry**, **Remove imported data** (shown only when something was imported; simple alert), **Delete all data** with typed confirmation) · About / privacy / disclaimer.
 
 **Import from Huckleberry.** Huckleberry emails one CSV per child ("Export tracking data as CSV"). The sheet explains how to get the file, then Choose File opens Files. Nothing is saved until the preview's Import button:
 - Ready to import: breastfeeds, bottles and pumping sessions, with the date range.

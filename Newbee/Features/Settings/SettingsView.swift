@@ -246,85 +246,166 @@ enum BabyAge {
 
 // MARK: - Units and presets
 
+/// Bottle and pumping each have a unit and their own presets. The unit is a display setting:
+/// every amount in the app, past entries included, is shown in it (amounts are stored in mL).
+/// Presets fold away in a dropdown so the section stays short.
 private struct UnitsSection: View {
     @Bindable var preferences: AppPreferences
+    @State private var showsBottlePresets = false
+    @State private var showsPumpPresets = false
 
     var body: some View {
-        let unit = preferences.volumeUnit
-        let presets = BottlePresets.editable(storedML: preferences.bottlePresetsML, unit: unit)
         Section {
-            Picker("Bottle unit", selection: $preferences.volumeUnit) {
+            UnitRow(title: "Bottle", unit: $preferences.volumeUnit, identifier: "settings.unit")
+            DisclosureGroup(isExpanded: $showsBottlePresets) {
+                PresetRows(
+                    storedML: $preferences.bottlePresetsML,
+                    presets: BottlePresets.editable(storedML: preferences.bottlePresetsML, unit: preferences.volumeUnit),
+                    next: { BottlePresets.nextAmount(after: $0, unit: preferences.volumeUnit) },
+                    identifier: "settings.preset"
+                )
+            } label: {
+                PresetsLabel(
+                    title: "Bottle presets",
+                    presets: BottlePresets.amounts(storedML: preferences.bottlePresetsML, unit: preferences.volumeUnit)
+                )
+            }
+            .accessibilityIdentifier("settings.bottlePresets")
+
+            UnitRow(title: "Pumping", unit: $preferences.pumpVolumeUnit, identifier: "settings.pumpUnit")
+            DisclosureGroup(isExpanded: $showsPumpPresets) {
+                PresetRows(
+                    storedML: $preferences.pumpPresetsML,
+                    presets: PumpPresets.editable(storedML: preferences.pumpPresetsML, unit: preferences.pumpVolumeUnit),
+                    next: { PumpPresets.nextAmount(after: $0, unit: preferences.pumpVolumeUnit) },
+                    identifier: "settings.pumpPreset"
+                )
+            } label: {
+                PresetsLabel(
+                    title: "Pumping presets",
+                    presets: PumpPresets.amounts(storedML: preferences.pumpPresetsML, unit: preferences.pumpVolumeUnit)
+                )
+            }
+            .accessibilityIdentifier("settings.pumpPresets")
+        } header: {
+            Text("Bottle and pumping")
+        } footer: {
+            Text("Every amount in Newbee, past entries included, is shown in these units. Presets are quick amounts on the Log Bottle sheet and, for each side, on the Log Pumping sheet. Up to \(BottlePresets.maximumCount) each.")
+        }
+    }
+}
+
+/// "Bottle      [ mL | oz ]".
+private struct UnitRow: View {
+    let title: LocalizedStringKey
+    @Binding var unit: VolumeUnit
+    let identifier: String
+
+    var body: some View {
+        LabeledContent(title) {
+            Picker(title, selection: $unit) {
                 Text("mL").tag(VolumeUnit.milliliters)
                 Text("oz").tag(VolumeUnit.fluidOunces)
             }
             .pickerStyle(.segmented)
-            .accessibilityIdentifier("settings.unit")
+            .labelsHidden()
+            .frame(maxWidth: 140)
+            .accessibilityIdentifier(identifier)
+        }
+    }
+}
 
-            ForEach(Array(presets.enumerated()), id: \.offset) { index, amount in
-                HStack(spacing: 12) {
-                    if presets.count > BottlePresets.minimumCount {
-                        Button {
-                            remove(presets, at: index)
-                        } label: {
-                            Image(systemName: "minus.circle.fill")
-                                .font(.title3)
-                                .foregroundStyle(NBColor.destructive)
-                        }
-                        .buttonStyle(.borderless)
-                        .accessibilityLabel("Remove preset \(index + 1)")
-                        .accessibilityIdentifier("settings.preset.\(index + 1).remove")
-                    }
-                    Stepper(
-                        onIncrement: { update(presets, index: index, to: amount.stepped(by: 1)) },
-                        onDecrement: { update(presets, index: index, to: amount.stepped(by: -1)) }
-                    ) {
-                        HStack {
-                            Text("Preset \(index + 1)")
-                            Spacer()
-                            Text(amount.formatted)
-                                .monospacedDigit()
-                                .foregroundStyle(NBColor.secondaryText)
-                        }
-                    }
-                }
-                .accessibilityIdentifier("settings.preset.\(index + 1)")
-            }
-            if presets.count < BottlePresets.maximumCount {
-                Button {
-                    add(to: presets, unit: unit)
-                } label: {
-                    Label("Add preset", systemImage: "plus.circle.fill")
-                }
-                .accessibilityIdentifier("settings.preset.add")
-            }
-            if preferences.bottlePresetsML != nil {
-                Button("Reset presets") { preferences.bottlePresetsML = nil }
-            }
-        } header: {
-            Text("Units")
-        } footer: {
-            Text("Quick amounts on the Log Bottle sheet. Up to \(BottlePresets.maximumCount) presets.")
+/// "Bottle presets         2, 3, 4 oz": the dropdown's title with the current presets.
+private struct PresetsLabel: View {
+    let title: LocalizedStringKey
+    let presets: [BottleAmount]
+
+    var body: some View {
+        LabeledContent(title) {
+            Text(Self.summary(presets))
+                .monospacedDigit()
+                .lineLimit(1)
         }
     }
 
-    private func update(_ presets: [BottleAmount], index: Int, to amount: BottleAmount) {
+    /// "60, 90, 120 mL".
+    static func summary(_ presets: [BottleAmount]) -> String {
+        guard let unit = presets.first?.unit else { return "" }
+        return "\(presets.map(\.formattedValue).joined(separator: ", ")) \(unit.symbol)"
+    }
+}
+
+/// The editable presets inside a dropdown: a stepper per preset, remove (down to 1), add (up to
+/// 5) and reset. Edits keep the stored order (see `BottlePresets.editable`).
+private struct PresetRows: View {
+    @Binding var storedML: [Double]?
+    let presets: [BottleAmount]
+    let next: ([BottleAmount]) -> BottleAmount
+    /// "settings.preset" gives "settings.preset.1", "settings.preset.add"…
+    let identifier: String
+
+    var body: some View {
+        ForEach(Array(presets.enumerated()), id: \.offset) { index, amount in
+            HStack(spacing: 12) {
+                if presets.count > BottlePresets.minimumCount {
+                    Button {
+                        remove(at: index)
+                    } label: {
+                        Image(systemName: "minus.circle.fill")
+                            .font(.title3)
+                            .foregroundStyle(NBColor.destructive)
+                    }
+                    .buttonStyle(.borderless)
+                    .accessibilityLabel("Remove preset \(index + 1)")
+                    .accessibilityIdentifier("\(identifier).\(index + 1).remove")
+                }
+                Stepper(
+                    onIncrement: { update(index: index, to: amount.stepped(by: 1)) },
+                    onDecrement: { update(index: index, to: amount.stepped(by: -1)) }
+                ) {
+                    HStack {
+                        Text("Preset \(index + 1)")
+                        Spacer()
+                        Text(amount.formatted)
+                            .monospacedDigit()
+                            .foregroundStyle(NBColor.secondaryText)
+                    }
+                }
+            }
+            .accessibilityIdentifier("\(identifier).\(index + 1)")
+        }
+        if presets.count < BottlePresets.maximumCount {
+            Button {
+                add()
+            } label: {
+                Label("Add preset", systemImage: "plus.circle.fill")
+            }
+            .accessibilityIdentifier("\(identifier).add")
+        }
+        if storedML != nil {
+            Button("Reset presets") { storedML = nil }
+                .accessibilityIdentifier("\(identifier).reset")
+        }
+    }
+
+    private func update(index: Int, to amount: BottleAmount) {
         guard amount.value > 0 else { return }
         var values = presets
         values[index] = amount
-        preferences.bottlePresetsML = values.map(\.milliliters)
+        storedML = values.map(\.milliliters)
     }
 
-    private func add(to presets: [BottleAmount], unit: VolumeUnit) {
+    private func add() {
         guard presets.count < BottlePresets.maximumCount else { return }
-        let values = presets + [BottlePresets.nextAmount(after: presets, unit: unit)]
-        withAnimation { preferences.bottlePresetsML = values.map(\.milliliters) }
+        let values = presets + [next(presets)]
+        withAnimation { storedML = values.map(\.milliliters) }
     }
 
-    private func remove(_ presets: [BottleAmount], at index: Int) {
+    private func remove(at index: Int) {
         guard presets.count > BottlePresets.minimumCount, presets.indices.contains(index) else { return }
         var values = presets
         values.remove(at: index)
-        withAnimation { preferences.bottlePresetsML = values.map(\.milliliters) }
+        withAnimation { storedML = values.map(\.milliliters) }
     }
 }
 

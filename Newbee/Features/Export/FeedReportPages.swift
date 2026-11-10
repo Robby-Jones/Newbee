@@ -188,10 +188,10 @@ struct SummaryPage: View {
         let pump = report.pump
         return ReportCard(title: String(localized: "Pumping"), symbol: "drop.fill", tint: NBColor.pumpInk) {
             FactRow(label: String(localized: "Sessions"), value: "\(pump.count)")
-            FactRow(label: String(localized: "Total"), value: ReportText.volume(pump.totalML, unit: unit))
-            FactRow(label: String(localized: "Per day"), value: ReportText.volume(report.pumpMLPerDay, unit: unit))
-            FactRow(label: String(localized: "Left"), value: ReportText.volume(pump.leftML, unit: unit))
-            FactRow(label: String(localized: "Right"), value: ReportText.volume(pump.rightML, unit: unit))
+            FactRow(label: String(localized: "Total"), value: ReportText.volume(pump.totalML, unit: header.pumpVolumeUnit))
+            FactRow(label: String(localized: "Per day"), value: ReportText.volume(report.pumpMLPerDay, unit: header.pumpVolumeUnit))
+            FactRow(label: String(localized: "Left"), value: ReportText.volume(pump.leftML, unit: header.pumpVolumeUnit))
+            FactRow(label: String(localized: "Right"), value: ReportText.volume(pump.rightML, unit: header.pumpVolumeUnit))
         }
     }
 }
@@ -387,15 +387,18 @@ private struct DayHeading: View {
         var parts = [day.feedCount == 1 ? String(localized: "1 feed") : String(localized: "\(day.feedCount) feeds")]
         if day.breastCount > 0 { parts.append(String(localized: "Breast \(DurationText.short(day.breastDuration))")) }
         if day.bottleCount > 0 { parts.append(String(localized: "Bottle \(FeedText.volume(ml: day.bottleML, unit: unit))")) }
-        if day.pumpCount > 0 { parts.append(String(localized: "Pumped \(FeedText.volume(ml: day.pumpML, unit: unit))")) }
+        if day.pumpCount > 0 { parts.append(String(localized: "Pumped \(FeedText.volume(ml: day.pumpML, unit: pumpUnit))")) }
         return parts.joined(separator: " · ")
     }
 
     @Environment(\.reportVolumeUnit) private var unit
+    @Environment(\.reportPumpVolumeUnit) private var pumpUnit
 }
 
 private struct LogRow: View {
     let item: HistoryItem
+    @Environment(\.reportVolumeUnit) private var unit
+    @Environment(\.reportPumpVolumeUnit) private var pumpUnit
 
     var body: some View {
         HStack(alignment: .top, spacing: 8) {
@@ -445,15 +448,15 @@ private struct LogRow: View {
 
     private var title: String {
         switch item {
-        case .feed(let row): FeedText.title(row.entry)
-        case .pump(let entry): PumpText.title(entry)
+        case .feed(let row): FeedText.title(row.entry, unit: unit)
+        case .pump(let entry): PumpText.title(entry, unit: pumpUnit)
         }
     }
 
     private var detail: String? {
         switch item {
         case .feed(let row): FeedText.sides(row.entry)
-        case .pump(let entry): PumpText.detail(entry)
+        case .pump(let entry): PumpText.detail(entry, unit: pumpUnit)
         }
     }
 
@@ -481,10 +484,20 @@ private struct ReportVolumeUnitKey: EnvironmentKey {
     static let defaultValue: VolumeUnit = .milliliters
 }
 
+private struct ReportPumpVolumeUnitKey: EnvironmentKey {
+    static let defaultValue: VolumeUnit = .milliliters
+}
+
 extension EnvironmentValues {
-    /// The unit for day totals in the report log.
+    /// The bottle unit for the report log's bottles and day totals.
     var reportVolumeUnit: VolumeUnit {
         get { self[ReportVolumeUnitKey.self] }
         set { self[ReportVolumeUnitKey.self] = newValue }
+    }
+
+    /// The pumping unit for the report log's sessions and day totals.
+    var reportPumpVolumeUnit: VolumeUnit {
+        get { self[ReportPumpVolumeUnitKey.self] }
+        set { self[ReportPumpVolumeUnitKey.self] = newValue }
     }
 }

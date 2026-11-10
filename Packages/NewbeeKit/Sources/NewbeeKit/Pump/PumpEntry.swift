@@ -46,12 +46,18 @@ public struct PumpEntry: Codable, Sendable, Hashable, Identifiable {
         startedAt.addingTimeInterval(durationSeconds ?? 0)
     }
 
-    public func amount(on side: Side) -> BottleAmount {
-        BottleAmount(milliliters: side == .left ? leftML : rightML).converted(to: enteredUnit)
+    /// One side's amount in `unit` (default: the unit it was entered in).
+    public func amount(on side: Side, in unit: VolumeUnit? = nil) -> BottleAmount {
+        BottleAmount(milliliters: side == .left ? leftML : rightML).converted(to: unit ?? enteredUnit)
     }
 
     public var totalAmount: BottleAmount {
-        BottleAmount(milliliters: totalML).converted(to: enteredUnit)
+        totalAmount(in: enteredUnit)
+    }
+
+    /// Left plus right in `unit`.
+    public func totalAmount(in unit: VolumeUnit) -> BottleAmount {
+        BottleAmount(milliliters: totalML).converted(to: unit)
     }
 }
 
@@ -66,6 +72,10 @@ public struct PumpDraft: Sendable, Hashable {
     public var durationSeconds: TimeInterval?
     public var notes: String
     public var timeZoneID: String
+    /// The stored amounts of the entry being edited, so saving it unchanged in another unit
+    /// keeps the exact milliliters.
+    public var originalLeftML: Double?
+    public var originalRightML: Double?
 
     public init(
         id: UUID? = nil,
@@ -85,17 +95,26 @@ public struct PumpDraft: Sendable, Hashable {
         self.timeZoneID = timeZoneID
     }
 
-    /// A draft for editing `entry`, in the unit it was entered in.
-    public init(editing entry: PumpEntry) {
+    /// A draft for editing `entry`, shown in `unit` (default: the unit it was entered in).
+    public init(editing entry: PumpEntry, unit: VolumeUnit? = nil) {
         self.init(
             id: entry.id,
-            left: entry.amount(on: .left),
-            right: entry.amount(on: .right),
+            left: entry.amount(on: .left, in: unit),
+            right: entry.amount(on: .right, in: unit),
             startedAt: entry.startedAt,
             durationSeconds: entry.durationSeconds,
             notes: entry.notes,
             timeZoneID: entry.timeZoneID
         )
+        originalLeftML = entry.leftML
+        originalRightML = entry.rightML
+    }
+
+    /// The milliliters that would be saved for `side`.
+    public func milliliters(on side: Side) -> Double {
+        side == .left
+            ? left.milliliters(keeping: originalLeftML)
+            : right.milliliters(keeping: originalRightML)
     }
 
     public var isEditing: Bool { id != nil }
@@ -112,10 +131,13 @@ public struct PumpDraft: Sendable, Hashable {
     }
 
     /// Switches both sides to `target`, converting non-zero amounts.
+    /// Unchanged amounts convert from the stored values, so switching back and forth never drifts.
     public mutating func convert(to target: VolumeUnit) {
         guard target != unit else { return }
-        left = left.value > 0 ? left.converted(to: target) : BottleAmount(0, target)
-        right = right.value > 0 ? right.converted(to: target) : BottleAmount(0, target)
+        let leftML = milliliters(on: .left)
+        let rightML = milliliters(on: .right)
+        left = left.value > 0 ? BottleAmount(milliliters: leftML).converted(to: target) : BottleAmount(0, target)
+        right = right.value > 0 ? BottleAmount(milliliters: rightML).converted(to: target) : BottleAmount(0, target)
     }
 
     /// Left plus right, in the draft's unit.
@@ -153,12 +175,12 @@ public struct PumpRules: Sendable, Hashable {
     /// Every problem with `draft`, most important first. Empty means it can be saved.
     public func problems(with draft: PumpDraft, now: Date) -> [PumpValidationError] {
         var problems: [PumpValidationError] = []
-        let left = draft.left.milliliters
-        let right = draft.right.milliliters
+        let left = draft.milliliters(on: .left)
+        let right = draft.milliliters(on: .right)
         if !(left >= 0 && right >= 0 && left + right > 0) {
             problems.append(.amountNotPositive)
         }
-        for side in Side.allCases where draft.amount(on: side).milliliters > maximumPerSideML + 0.001 {
+        for side in Side.allCases where draft.milliliters(on: side) > maximumPerSideML + 0.001 {
             problems.append(.sideTooLarge(side, maximumML: maximumPerSideML))
         }
         let latest = now.addingTimeInterval(futureTolerance)
@@ -185,8 +207,8 @@ public struct PumpRules: Sendable, Hashable {
         return PumpEntry(
             id: draft.id ?? UUID(),
             startedAt: draft.startedAt,
-            leftML: draft.left.milliliters,
-            rightML: draft.right.milliliters,
+            leftML: draft.milliliters(on: .left),
+            rightML: draft.milliliters(on: .right),
             enteredUnit: draft.unit,
             durationSeconds: draft.durationSeconds,
             notes: draft.notes.trimmingCharacters(in: .whitespacesAndNewlines),

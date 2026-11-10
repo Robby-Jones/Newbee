@@ -169,6 +169,38 @@ struct PreferencesTests {
         #expect(reloaded.reminders == ReminderSettings())
         #expect(reloaded.appearance == .light)
     }
+
+    @Test func pumpingUnitFollowsBottlesUntilSetThenPersistsOnItsOwn() {
+        let defaults = freshDefaults()
+        defaults.set(VolumeUnit.fluidOunces.rawValue, forKey: AppPreferences.Key.volumeUnit)
+        let preferences = AppPreferences(defaults: defaults, locale: Locale(identifier: "en_GB"))
+        #expect(preferences.pumpVolumeUnit == .fluidOunces)
+
+        preferences.pumpVolumeUnit = .milliliters
+        preferences.pumpPresetsML = [40, 80]
+        let reloaded = AppPreferences(defaults: defaults, locale: Locale(identifier: "en_GB"))
+        #expect(reloaded.volumeUnit == .fluidOunces)
+        #expect(reloaded.pumpVolumeUnit == .milliliters)
+        #expect(reloaded.pumpPresetsML == [40, 80])
+
+        reloaded.resetToDefaults()
+        #expect(reloaded.pumpVolumeUnit == .milliliters)
+        #expect(reloaded.pumpPresetsML == nil)
+    }
+
+    @Test func pastEntriesShowInTheCurrentUnit() {
+        let bottle = FeedEntry(
+            id: UUID(), start: .now, end: .now,
+            details: .bottle(BottleSummary(contents: .formula, amountML: 90, enteredUnit: .milliliters))
+        )
+        #expect(FeedText.title(bottle, unit: .fluidOunces) == "Bottle · 3 oz formula")
+        #expect(FeedText.title(bottle, unit: .milliliters) == "Bottle · 90 mL formula")
+
+        let pump = PumpEntry(startedAt: .now, leftML: 59.147059125, rightML: 29.5735295625, enteredUnit: .fluidOunces)
+        #expect(PumpText.title(pump, unit: .milliliters) == "Pumping · 89 mL")
+        #expect(PumpText.detail(pump, unit: .milliliters) == "L 59 mL · R 30 mL")
+        #expect(PumpText.title(pump, unit: .fluidOunces) == "Pumping · 3 oz")
+    }
 }
 
 @MainActor

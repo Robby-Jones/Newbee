@@ -333,7 +333,14 @@ private struct UnitPicker: View {
             Text("Bottle amounts in")
                 .font(.subheadline.weight(.semibold))
                 .foregroundStyle(NBColor.secondaryText)
-            Picker("Bottle amounts in", selection: $preferences.volumeUnit) {
+            // Pumping starts in the same unit; Settings can set it apart later.
+            Picker("Bottle amounts in", selection: Binding(
+                get: { preferences.volumeUnit },
+                set: { unit in
+                    preferences.volumeUnit = unit
+                    preferences.pumpVolumeUnit = unit
+                }
+            )) {
                 Text("mL").tag(VolumeUnit.milliliters)
                 Text("oz").tag(VolumeUnit.fluidOunces)
             }

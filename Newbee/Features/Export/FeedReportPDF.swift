@@ -14,8 +14,10 @@ enum FeedReportPDF {
         var babyName: String = ""
         /// "5 wk 2 d old", or `nil` with no birth date.
         var age: String?
-        /// The unit for the summary totals; each log row keeps the unit it was entered in.
+        /// The bottle unit setting: bottle totals and every bottle in the log are shown in it.
         var volumeUnit: VolumeUnit = .milliliters
+        /// The pumping unit setting, for pumping totals and sessions.
+        var pumpVolumeUnit: VolumeUnit = .milliliters
         var generatedAt: Date = .now
     }
 
@@ -49,10 +51,10 @@ enum FeedReportPDF {
             throw RenderError.couldNotCreateFile
         }
 
-        draw(SummaryPage(report: report, header: header, page: 1, pageCount: pageCount, calendar: calendar), unit: header.volumeUnit, in: context)
+        draw(SummaryPage(report: report, header: header, page: 1, pageCount: pageCount, calendar: calendar), header: header, in: context)
         for (index, blocks) in logPages.enumerated() {
             let page = LogPage(report: report, header: header, blocks: blocks, page: index + 2, pageCount: pageCount, calendar: calendar)
-            draw(page, unit: header.volumeUnit, in: context)
+            draw(page, header: header, in: context)
         }
         context.closePDF()
         return pageCount
@@ -100,6 +102,7 @@ enum FeedReportPDF {
             .frame(width: contentWidth)
             .fixedSize(horizontal: false, vertical: true)
             .environment(\.reportVolumeUnit, header.volumeUnit)
+            .environment(\.reportPumpVolumeUnit, header.pumpVolumeUnit)
             .environment(\.colorScheme, .light))
         renderer.proposedSize = ProposedViewSize(width: contentWidth, height: nil)
         var height: CGFloat = 0
@@ -110,11 +113,12 @@ enum FeedReportPDF {
 
     // MARK: - Drawing
 
-    private static func draw(_ page: some View, unit: VolumeUnit, in context: CGContext) {
+    private static func draw(_ page: some View, header: Header, in context: CGContext) {
         let renderer = ImageRenderer(content: page
             .frame(width: pageSize.width, height: pageSize.height)
             .background(Color.white)
-            .environment(\.reportVolumeUnit, unit)
+            .environment(\.reportVolumeUnit, header.volumeUnit)
+            .environment(\.reportPumpVolumeUnit, header.pumpVolumeUnit)
             .environment(\.colorScheme, .light))
         renderer.proposedSize = ProposedViewSize(pageSize)
         renderer.render { _, render in

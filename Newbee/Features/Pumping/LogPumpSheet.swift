@@ -92,8 +92,10 @@ struct LogPumpSheet: View {
         Card {
             VStack(spacing: NBSpacing.m) {
                 sideRow(.left)
+                presetRow(.left)
                 Divider()
                 sideRow(.right)
+                presetRow(.right)
                 Divider()
                 HStack(alignment: .firstTextBaseline) {
                     Text("Total")
@@ -146,6 +148,19 @@ struct LogPumpSheet: View {
             }
             .frame(minWidth: 84)
             stepButton(1, side: side, systemImage: "plus", label: "More on the \(side.title.lowercased())")
+        }
+    }
+
+    /// The parent's pumping presets for one side (Settings › Units); a tap sets that side only.
+    private func presetRow(_ side: Side) -> some View {
+        HStack(spacing: NBSpacing.s) {
+            ForEach(model.presets, id: \.self) { preset in
+                PresetChip(title: preset.formatted, isSelected: draft.amount(on: side).matches(preset)) {
+                    setAmount(preset, on: side)
+                }
+                .accessibilityLabel("\(side.title) \(preset.formatted)")
+                .accessibilityIdentifier("pump.preset.\(side.rawValue).\(preset.formattedValue)")
+            }
         }
     }
 
@@ -269,7 +284,7 @@ struct LogPumpSheet: View {
                 draft.convert(to: unit)
                 leftText = Self.text(for: draft.left)
                 rightText = Self.text(for: draft.right)
-                model.preferences.volumeUnit = unit
+                model.preferences.pumpVolumeUnit = unit
             }
         )
     }

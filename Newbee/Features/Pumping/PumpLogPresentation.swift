@@ -96,14 +96,14 @@ private struct PumpToastView: View {
 
 /// Display text for pumping sessions.
 enum PumpText {
-    /// "Pumping · 120 mL".
-    static func title(_ entry: PumpEntry) -> String {
-        String(localized: "Pumping · \(entry.totalAmount.formatted)")
+    /// "Pumping · 120 mL", in `unit` (the pumping unit setting), whatever unit it was logged in.
+    static func title(_ entry: PumpEntry, unit: VolumeUnit) -> String {
+        String(localized: "Pumping · \(entry.totalAmount(in: unit).formatted)")
     }
 
     /// "L 70 mL · R 50 mL · 15 min".
-    static func detail(_ entry: PumpEntry) -> String {
-        var parts = ["L \(entry.amount(on: .left).formatted)", "R \(entry.amount(on: .right).formatted)"]
+    static func detail(_ entry: PumpEntry, unit: VolumeUnit) -> String {
+        var parts = ["L \(entry.amount(on: .left, in: unit).formatted)", "R \(entry.amount(on: .right, in: unit).formatted)"]
         if let duration = entry.durationSeconds {
             parts.append(DurationText.short(duration))
         }
@@ -114,6 +114,9 @@ enum PumpText {
 /// One pumping session in History and on a day's page: time, rose rail, total, per-side split, note.
 struct PumpRow: View {
     let entry: PumpEntry
+    @Environment(PumpLogUIModel.self) private var pumpModel: PumpLogUIModel?
+
+    private var unit: VolumeUnit { pumpModel?.unit ?? .milliliters }
 
     var body: some View {
         HStack(alignment: .top, spacing: NBSpacing.m) {
@@ -132,10 +135,10 @@ struct PumpRow: View {
                     Image(systemName: PumpText.symbolName)
                         .foregroundStyle(NBColor.pumpInk)
                         .accessibilityHidden(true)
-                    Text(PumpText.title(entry))
+                    Text(PumpText.title(entry, unit: unit))
                         .font(.body.weight(.semibold))
                 }
-                Text(PumpText.detail(entry))
+                Text(PumpText.detail(entry, unit: unit))
                     .font(.footnote.monospacedDigit())
                     .foregroundStyle(NBColor.secondaryText)
                 if !entry.notes.isEmpty {

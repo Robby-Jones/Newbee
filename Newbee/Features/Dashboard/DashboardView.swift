@@ -101,6 +101,7 @@ private struct LastFeedCard: View {
     let now: Date
     /// Settings' "Count from"; a change redraws the card straight away.
     @Environment(AppPreferences.self) private var preferences: AppPreferences?
+    @Environment(BottleLogUIModel.self) private var bottleModel: BottleLogUIModel?
 
     var body: some View {
         Card {
@@ -142,7 +143,7 @@ private struct LastFeedCard: View {
         if let sides = FeedText.sides(entry) {
             return String(localized: "Breast · \(sides) · \(time)")
         }
-        return "\(FeedText.title(entry)) · \(time)"
+        return "\(FeedText.title(entry, unit: bottleModel?.unit ?? .milliliters)) · \(time)"
     }
 }
 
