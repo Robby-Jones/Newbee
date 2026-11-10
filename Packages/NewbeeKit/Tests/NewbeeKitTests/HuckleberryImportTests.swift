@@ -133,6 +133,44 @@ struct HuckleberryImportTests {
         #expect(abs(pump.rightML - 3.5 * VolumeUnit.millilitersPerFluidOunce) < 0.001)
     }
 
+    /// The shapes of a real export Robby sent (2026-11-10): an extra "Logged By" column, and
+    /// pumping logged as one total with no side.
+    @Test func readsTheNewerExportShape() throws {
+        let csv = [
+            #""Type","Start","End","Duration","Start Condition","Start Location","End Condition","Notes","Logged By""#,
+            #""Feed","2026-11-09 20:07","2026-11-09 20:35","00:28","00:18R","Breast","00:10L",,"#,
+            #""Pump","2026-11-09 05:44",,,"3oz",,,,"#,
+            #""Feed","2026-11-09 05:40",,,"Breast Milk","Bottle","2.2oz","Drank it all ","#,
+        ].joined(separator: "\n")
+        let export = try HuckleberryCSV.parse(csv, timeZone: utc, now: now)
+        #expect(export.problems.isEmpty)
+        #expect(export.records.map(\.kind) == [.breast, .pump, .bottle])
+        guard case .pump(let pump) = export.records[1], case .bottle(let bottle) = export.records[2] else {
+            Issue.record("expected a pumping session and a bottle")
+            return
+        }
+        let ounce = VolumeUnit.millilitersPerFluidOunce
+        #expect(abs(pump.leftML - 1.5 * ounce) < 0.001)
+        #expect(abs(pump.rightML - 1.5 * ounce) < 0.001)
+        #expect(abs(pump.totalML - 3 * ounce) < 0.001)
+        #expect(pump.enteredUnit == .fluidOunces)
+        #expect(abs(bottle.amountML - 2.2 * ounce) < 0.001)
+        #expect(bottle.notes == "Drank it all")
+    }
+
+    @Test func aPumpingTotalCanGoOnOneSide() throws {
+        let csv = header + "\n" + #""Pump","2026-11-09 05:44",,,"90ml",,,"#
+        for side in Side.allCases {
+            let export = try HuckleberryCSV.parse(csv, timeZone: utc, now: now, options: .init(unsidedPumpAmount: .allOn(side)))
+            guard case .pump(let pump) = export.records.first else {
+                Issue.record("expected a pumping session")
+                return
+            }
+            #expect(pump.leftML == (side == .left ? 90 : 0))
+            #expect(pump.rightML == (side == .right ? 90 : 0))
+        }
+    }
+
     @Test func timesAreReadInTheGivenTimeZone() throws {
         let csv = header + "\n" + #""Feed","2026-07-16 13:07",,,"Formula","Bottle","60ml","#
         let export = try HuckleberryCSV.parse(csv, timeZone: oslo, now: now)

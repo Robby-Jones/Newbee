@@ -15,6 +15,8 @@ import Foundation
 ///   in `Start Condition`, left in `End Condition`, either may be blank). The export doesn't say
 ///   which side came first.
 /// - Pumping (`Type` Pump): `Start Condition` the left amount, `End Condition` the right amount.
+///   Parents who log a total instead get one amount in `Start Condition` and a blank
+///   `End Condition` ("3oz"); see `Options.unsidedPumpAmount`.
 /// - Everything else (Sleep, Diaper, Growth, Solids, Meds, Tummy time, Bath, Potty…) has no place
 ///   in Newbee yet and is counted, not imported.
 public enum HuckleberryCSV {
@@ -27,13 +29,23 @@ public enum HuckleberryCSV {
         case notHuckleberry(missingColumns: [String])
     }
 
-    /// How a breastfeed is laid out, since the export has minutes per side but no order.
+    /// Choices for what the export leaves out.
     public struct Options: Sendable, Hashable {
-        /// The side placed first when a feed used both.
-        public var firstSideWhenBoth: Side
+        /// Where a pumping amount logged without a side goes.
+        public enum UnsidedPump: Sendable, Hashable {
+            /// Half on each side, so the total stays exact.
+            case splitEvenly
+            case allOn(Side)
+        }
 
-        public init(firstSideWhenBoth: Side = .left) {
+        /// The side placed first when a feed used both (the export has minutes per side, no order).
+        public var firstSideWhenBoth: Side
+        /// A pumping row with only one amount (`Start Condition`) is a total, not a left side.
+        public var unsidedPumpAmount: UnsidedPump
+
+        public init(firstSideWhenBoth: Side = .left, unsidedPumpAmount: UnsidedPump = .splitEvenly) {
             self.firstSideWhenBoth = firstSideWhenBoth
+            self.unsidedPumpAmount = unsidedPumpAmount
         }
     }
 
@@ -191,8 +203,8 @@ public enum HuckleberryCSV {
             let leftText = row["Start Condition"]
             let rightText = row["End Condition"]
             let zero = BottleAmount(0, .milliliters)
-            let left: BottleAmount
-            let right: BottleAmount
+            var left: BottleAmount
+            var right: BottleAmount
             if leftText.isEmpty {
                 left = zero
             } else if let amount = HuckleberryCSV.amount(leftText) {
@@ -206,6 +218,19 @@ public enum HuckleberryCSV {
                 right = amount
             } else {
                 return .problem(.unreadableAmount(rightText))
+            }
+            if !leftText.isEmpty, rightText.isEmpty {
+                // One amount and no side: a total.
+                switch options.unsidedPumpAmount {
+                case .splitEvenly:
+                    left = BottleAmount(left.value / 2, left.unit)
+                    right = left
+                case .allOn(.left):
+                    right = BottleAmount(0, left.unit)
+                case .allOn(.right):
+                    right = left
+                    left = BottleAmount(0, left.unit)
+                }
             }
             // Both sides in the unit that was actually typed (a blank side has no unit).
             let unit = leftText.isEmpty ? right.unit : left.unit
