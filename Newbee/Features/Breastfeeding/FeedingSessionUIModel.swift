@@ -89,15 +89,30 @@ final class FeedingSessionUIModel {
         }
     }
 
-    /// Ends the feed now, shows the summary and offers undo.
+    /// Ends the feed now and shows the summary, which offers Undo (`undoEnd(note:)`).
     func endSession() {
         guard controller.activeSession != nil else { return }
         do {
             let before = try controller.end(at: nil)
             completedSummary = controller.lastCompletedSession ?? before
+            toast = nil
             feedback = FeedbackEvent(kind: .success)
-            let minutes = DurationText.short(completedSummary?.feedingDuration(at: completedSummary?.endedAt ?? .now) ?? 0)
-            showUndo(String(localized: "Feed saved · \(minutes)"), restoring: before)
+        } catch {
+            fail(error)
+        }
+    }
+
+    /// The summary's Undo: takes the feed that was just ended back to the timer with both sides
+    /// paused where it ended, keeping the note typed on the summary. The parent taps a side to
+    /// carry on. No finished feed is left behind.
+    func undoEnd(note: String) {
+        guard let summary = completedSummary else { return }
+        do {
+            try controller.reopenPaused(sessionID: summary.id, notes: note)
+            completedSummary = nil
+            toast = nil
+            errorMessage = nil
+            feedback = FeedbackEvent(kind: .light)
         } catch {
             fail(error)
         }
@@ -253,7 +268,8 @@ final class FeedingSessionUIModel {
     }
 }
 
-/// A short-lived "Undo" offer (6 s) after ending, discarding or deleting a feed.
+/// A short-lived "Undo" offer (6 s) after discarding or deleting a feed, or ending one from the
+/// recovery sheet. Ending from the timer offers Undo on the summary instead.
 struct UndoToast: Identifiable, Equatable {
     let id = UUID()
     var message: String

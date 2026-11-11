@@ -73,6 +73,30 @@ struct LiveActivityWiringTests {
         #expect(visible.first?.state.status == .paused)
     }
 
+    @Test func undoOnTheSummaryPutsTheFeedBackOnTheSameActivityPaused() async throws {
+        let clock = TestClock()
+        let client = FakeLiveActivityClient()
+        let coordinator = LiveActivityCoordinator(client: client, clock: clock)
+        let dependencies = AppDependencies(clock: clock, storage: .inMemory, liveActivity: coordinator)
+        let manager = dependencies.sessionManager
+
+        try manager.start(side: .left)
+        clock.advance(by: 10 * 60)
+        try manager.end()
+        await manager.waitForPendingEffects()
+        let ended = try #require(manager.lastCompletedSession)
+        #expect(client.activities[0].state.status == .ended)
+
+        clock.advance(by: 30)
+        try manager.reopenPaused(sessionID: ended.id)
+        await manager.waitForPendingEffects()
+        let visible = client.activities.filter { $0.phase != .dismissed }
+        #expect(visible.count == 1)
+        #expect(visible.first?.sessionID == ended.id)
+        #expect(visible.first?.state.status == .paused)
+        #expect(visible.first?.state.leftAccumulated == 10 * 60)
+    }
+
     @Test func theCountFollowsTheLatestFeedAsBottlesAndFeedsChange() async throws {
         let clock = TestClock()
         let client = FakeLiveActivityClient()

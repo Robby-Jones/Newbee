@@ -12,10 +12,16 @@ struct BreastfeedingTimerView: View {
     var body: some View {
         Group {
             if let summary = model.completedSummary, model.activeSession == nil {
-                SessionSummaryView(session: summary) { note in
-                    model.saveNote(note, sessionID: summary.id)
-                    model.closeTimer()
-                }
+                SessionSummaryView(
+                    session: summary,
+                    onDone: { note in
+                        model.saveNote(note, sessionID: summary.id)
+                        model.closeTimer()
+                    },
+                    onUndo: { note in
+                        model.undoEnd(note: note)
+                    }
+                )
             } else {
                 TimelineView(.periodic(from: .now, by: 1)) { context in
                     TimerContent(model: model, display: model.display(at: context.date))
@@ -313,7 +319,7 @@ private struct TimerContent: View {
             .buttonStyle(.borderedProminent)
             .tint(NBColor.destructive.opacity(0.16))
             .foregroundStyle(NBColor.destructive)
-            .accessibilityHint("Saves the feed. You can undo for a few seconds.")
+            .accessibilityHint("Saves the feed. You can undo it on the next screen.")
 
             Button {
                 noteDraft = model.activeSession?.notes ?? ""

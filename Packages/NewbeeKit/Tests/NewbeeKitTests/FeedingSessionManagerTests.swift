@@ -211,6 +211,99 @@ struct FeedingSessionManagerTests {
         #expect(activity.synced.last??.status == .active)
     }
 
+    @Test func undoEndFromTheSummaryReopensTheFeedPausedWhereItEnded() async throws {
+        let manager = makeManager()
+        try manager.start(side: .left)
+        clock.advance(by: 5 * 60)
+        try manager.switchSide(to: .right)
+        clock.advance(by: 3 * 60)
+        try manager.end()
+        let finished = try #require(manager.lastCompletedSession)
+
+        clock.advance(by: 40) // on the summary
+        let reopened = try manager.reopenPaused(sessionID: finished.id, notes: "Sleepy")
+
+        #expect(reopened.id == finished.id)
+        #expect(reopened.status == .paused)
+        #expect(reopened.endedAt == nil)
+        #expect(reopened.openSegment == nil)
+        #expect(reopened.notes == "Sleepy")
+        #expect(reopened.revision > finished.revision)
+        #expect(approx(reopened.duration(on: .left, at: clock.now), 5 * 60))
+        #expect(approx(reopened.duration(on: .right, at: clock.now), 3 * 60))
+        #expect(manager.activeSession == reopened)
+        #expect(manager.lastCompletedSession == nil)
+        #expect(try repository.session(id: finished.id) == reopened)
+        #expect(try repository.recentCompletedSessions(limit: 10).isEmpty)
+
+        // The Live Activity goes from the since-last-feed count back to the paused feed.
+        await manager.waitForPendingEffects()
+        #expect(activity.synced.last == .some(reopened))
+        #expect(!activity.sawUnsavedState)
+
+        // Resuming carries on from where it ended.
+        clock.advance(by: 60)
+        try manager.resume()
+        clock.advance(by: 60)
+        #expect(approx(manager.activeSession?.duration(on: .right, at: clock.now), 4 * 60))
+        #expect(manager.activeSession?.openSegment?.side == .right)
+    }
+
+    @Test func undoEndOfAPausedFeedKeepsItsTimes() throws {
+        let manager = makeManager()
+        try manager.start(side: .left)
+        clock.advance(by: 120)
+        try manager.pause()
+        clock.advance(by: 300)
+        try manager.end()
+        let finished = try #require(manager.lastCompletedSession)
+
+        let reopened = try manager.reopenPaused(sessionID: finished.id)
+        #expect(reopened.segments == finished.segments)
+        #expect(reopened.notes == finished.notes)
+        #expect(approx(reopened.feedingDuration(at: clock.now), 120))
+    }
+
+    @Test func undoEndTwiceLeavesTheReopenedFeedAlone() throws {
+        let manager = makeManager()
+        try manager.start(side: .left)
+        clock.advance(by: 60)
+        try manager.end()
+        let id = try #require(manager.lastCompletedSession?.id)
+        let first = try manager.reopenPaused(sessionID: id)
+        let second = try manager.reopenPaused(sessionID: id)
+        #expect(second == first)
+        #expect(manager.activeSession == first)
+    }
+
+    @Test func undoEndIsRefusedOnceAnotherFeedHasStarted() throws {
+        let manager = makeManager()
+        try manager.start(side: .left)
+        clock.advance(by: 60)
+        try manager.end()
+        let ended = try #require(manager.lastCompletedSession)
+        clock.advance(by: 60)
+        try manager.start(side: .right)
+        let other = try #require(manager.activeSession)
+        #expect(throws: FeedingSessionError.conflictingSession(other.id)) {
+            _ = try manager.reopenPaused(sessionID: ended.id)
+        }
+        #expect(try repository.session(id: ended.id) == ended)
+        #expect(manager.activeSession == other)
+    }
+
+    @Test func undoEndOfADeletedFeedThrows() throws {
+        let manager = makeManager()
+        try manager.start(side: .left)
+        clock.advance(by: 60)
+        try manager.end()
+        let id = try #require(manager.lastCompletedSession?.id)
+        try manager.deleteCompleted(sessionID: id)
+        #expect(throws: FeedingSessionError.sessionNotFound(id)) {
+            _ = try manager.reopenPaused(sessionID: id)
+        }
+    }
+
     @Test func discardAndUndoDiscard() async throws {
         let manager = makeManager()
         try manager.start(side: .left)

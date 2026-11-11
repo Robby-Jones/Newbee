@@ -110,6 +110,23 @@ final class PreviewSessionController: FeedingSessionControlling {
         return s
     }
 
+    @discardableResult
+    func reopenPaused(sessionID: UUID, notes: String?) throws -> SessionSnapshot {
+        log.append("reopenPaused")
+        if let open = activeSession {
+            guard open.id == sessionID else { throw PreviewSessionError.alreadyActive }
+            return open
+        }
+        guard let done = lastCompletedSession, done.id == sessionID else { throw PreviewSessionError.notFound }
+        var s = done.reopenedAsPaused()
+        if let notes { s.notes = notes }
+        s.revision += 1
+        lastCompletedSession = nil
+        activeSession = s
+        recoveryPrompt = nil
+        return s
+    }
+
     func refreshLiveActivity() async {
         log.append("refreshLiveActivity")
     }
