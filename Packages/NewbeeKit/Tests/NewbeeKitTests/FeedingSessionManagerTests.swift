@@ -219,6 +219,9 @@ struct FeedingSessionManagerTests {
         clock.advance(by: 3 * 60)
         try manager.end()
         let finished = try #require(manager.lastCompletedSession)
+        // Earlier commands' syncs ran after later saves; only the reopen's sync is checked below.
+        await manager.waitForPendingEffects()
+        activity.sawUnsavedState = false
 
         clock.advance(by: 40) // on the summary
         let reopened = try manager.reopenPaused(sessionID: finished.id, notes: "Sleepy")
