@@ -86,12 +86,23 @@ struct FeedingSessionUIModelTests {
         #expect(controller.activeSession == nil)
     }
 
-    @Test func tappingTheRunningSideDoesNothing() {
+    @Test func tappingTheRunningSidePausesAndTappingAgainResumes() {
         model.tapSide(.left)
+        clock.advance(60)
         model.tapSide(.left)
+        #expect(controller.activeSession?.status == .paused)
+        clock.advance(60)
         model.tapSide(.left)
-        #expect(controller.log == ["start(left)"])
+        #expect(controller.activeSession?.status == .active)
+        #expect(controller.activeSession?.openSegment?.side == .left)
+    }
+
+    @Test func startFromHomeOnTheRunningSideDoesNotPause() {
+        model.tapSide(.left)
+        model.startFromHome(side: .left)
+        #expect(controller.activeSession?.status == .active)
         #expect(controller.activeSession?.segments.count == 1)
+        #expect(model.isTimerPresented)
     }
 
     @Test func tappingASideWhilePausedResumesOnThatSide() {

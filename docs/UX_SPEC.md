@@ -154,6 +154,10 @@ flick), otherwise it springs back. A grabber at the top hints at the gesture and
 **Minimize** button (VoiceOver, and at large text sizes where the screen scrolls and the drag is
 off). A drag never also counts as a tap on a side button.
 
+*Revised 2026-11-11:* the **Pause** button is gone. Tapping the running side ("Tap to pause")
+pauses the feed; while paused, tapping either side resumes on that side. **End feed** and
+**Add note** stay below the circles, and the minimize drag covers everything above them.
+
 ```
  ⌄ Minimize                         ⋯ (Edit start time, Add note, Discard)
             Total
@@ -168,7 +172,7 @@ off). A drag never also counts as a tap on a side button.
 ```
 - **Not started:** both side buttons say "Start", the suggested side carries a "Suggested" tag and is pre-tinted. Last side and time are shown above.
 - **Active:** active side filled with its tint, pulsing dot (static under Reduce Motion). Inactive side is an outline with "Switch".
-- **Paused:** whole screen desaturates, the total shows "Paused", Pause turns into a filled **Resume**, and tapping a side resumes on that side.
+- **Paused:** whole screen desaturates, the total shows "Paused", and tapping a side resumes on that side. (Since 2026-11-11 there is no separate Pause / Resume button: tapping the running side pauses.)
 - **After End:** summary sheet ("21 min · L 12 · R 9") with Add note / Edit / Done, plus a 6 s undo toast.
 - **Live Activities disabled:** subtle footer link "Show on Lock Screen: turn on Live Activities".
 

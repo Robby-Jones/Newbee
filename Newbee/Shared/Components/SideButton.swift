@@ -8,7 +8,7 @@ struct SideButton: View {
     enum Mode: Equatable {
         /// No session yet. The suggested side is pre-tinted and tagged.
         case start(suggested: Bool)
-        /// This side is running.
+        /// This side is running; tapping pauses.
         case active
         /// The other side is running; tapping switches here.
         case switchTo
@@ -71,7 +71,7 @@ struct SideButton: View {
         case .active:
             HStack(spacing: NBSpacing.xs) {
                 LiveDot(color: NBColor.onSide)
-                Text("Active")
+                Text("Tap to pause")
             }
         case .switchTo:
             Text("Tap to switch").foregroundStyle(NBColor.secondaryText)
@@ -114,7 +114,7 @@ struct SideButton: View {
     private var accessibilityHint: String {
         switch mode {
         case .start: String(localized: "Starts a feed on the \(side.title.lowercased()) side")
-        case .active: ""
+        case .active: String(localized: "Pauses the feed")
         case .switchTo: String(localized: "Switches to the \(side.title.lowercased()) side")
         case .resumeHere: String(localized: "Resumes on the \(side.title.lowercased()) side")
         }
