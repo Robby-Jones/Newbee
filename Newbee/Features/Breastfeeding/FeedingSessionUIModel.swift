@@ -51,23 +51,33 @@ final class FeedingSessionUIModel {
     // MARK: - Commands
 
     /// One tap on LEFT or RIGHT does the obvious thing for the current state:
-    /// start, switch, resume on that side, or nothing if that side is already running.
+    /// start, switch, resume on that side, or pause if that side is already running.
     func tapSide(_ side: Side) {
-        guard let session = controller.activeSession else {
+        if let session = controller.activeSession, session.status == .active, session.openSegment?.side == side {
+            perform(.light) { try controller.pause() }
+            return
+        }
+        startOrSwitch(to: side)
+    }
+
+    /// Starts a feed from outside the timer (Home) and shows the timer. Never pauses: a tap on
+    /// Home for the side that's already running just opens the timer.
+    func startFromHome(side: Side) {
+        if let session = controller.activeSession, session.status == .active, session.openSegment?.side == side {
+            openTimer()
+            return
+        }
+        startOrSwitch(to: side)
+        openTimer()
+    }
+
+    private func startOrSwitch(to side: Side) {
+        guard controller.activeSession != nil else {
             perform(.light) { try controller.start(side: side) }
             completedSummary = nil
             return
         }
-        if session.status == .active, session.openSegment?.side == side {
-            return
-        }
         perform(.light) { try controller.switchSide(to: side) }
-    }
-
-    /// Starts a feed from outside the timer (Home) and shows the timer.
-    func startFromHome(side: Side) {
-        tapSide(side)
-        openTimer()
     }
 
     func togglePause() {

@@ -38,9 +38,10 @@ struct BreastfeedingTimerView: View {
 }
 
 /// The timer, laid out like a nursing timer (docs/UX_SPEC.md §3.3): the total on top, two big
-/// round side buttons with each side's time inside, then Pause, End feed and Add note.
+/// round side buttons with each side's time inside, then End feed and Add note. Tapping the
+/// running side pauses; tapping either side while paused resumes there.
 ///
-/// Dragging down anywhere above Pause minimizes the screen: the content follows the finger and
+/// Dragging down anywhere above End feed minimizes the screen: the content follows the finger and
 /// either minimizes on release or springs back. A grabber at the top shows the gesture is there
 /// and is also a tappable Minimize button (VoiceOver, Switch Control, and when the screen scrolls).
 ///
@@ -298,21 +299,10 @@ private struct TimerContent: View {
         .accessibilityIdentifier("timer.addPastFeed")
     }
 
-    // MARK: Pause / End
+    // MARK: End
 
     private var controls: some View {
         VStack(spacing: NBSpacing.m) {
-            Button {
-                model.togglePause()
-            } label: {
-                Label(display.isPaused ? "Resume" : "Pause", systemImage: display.isPaused ? "play.fill" : "pause.fill")
-                    .font(.headline)
-                    .frame(maxWidth: .infinity, minHeight: NBLayout.primaryControlHeight)
-            }
-            .buttonStyle(.borderedProminent)
-            .tint(display.isPaused ? NBColor.accent : Color.secondary.opacity(0.18))
-            .foregroundStyle(display.isPaused ? Color.white : Color.primary)
-
             Button {
                 model.endSession()
             } label: {
