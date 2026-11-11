@@ -360,3 +360,24 @@ private struct DurationWheel: View {
 #Preview("Add") {
     BreastFeedEditSheet(model: FeedingSessionUIModel(controller: PreviewSessionController.idleFixture()), original: nil)
 }
+
+extension View {
+    /// Presents `BreastFeedEditSheet` for the stored breastfeed in `snapshot`, so every list that
+    /// opens a feed to edit (History, Home's Recent, the Calendar's day card) shows the same sheet.
+    func breastFeedEditSheet(_ snapshot: Binding<SessionSnapshot?>) -> some View {
+        modifier(BreastFeedEditSheetHost(snapshot: snapshot))
+    }
+}
+
+private struct BreastFeedEditSheetHost: ViewModifier {
+    @Binding var snapshot: SessionSnapshot?
+    @Environment(FeedingSessionUIModel.self) private var model: FeedingSessionUIModel?
+
+    func body(content: Content) -> some View {
+        content.sheet(item: $snapshot) { original in
+            if let model {
+                BreastFeedEditSheet(model: model, original: original)
+            }
+        }
+    }
+}
