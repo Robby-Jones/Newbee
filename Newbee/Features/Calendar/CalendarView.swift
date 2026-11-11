@@ -184,8 +184,9 @@ private struct CalendarWeekView: View {
                         pumps: FeedCalendar.dayPumps(selectedDay, pumps: pumps),
                         unit: unit,
                         pumpUnit: pumpUnit,
-                        onEdit: edit,
-                        onEditPump: pumpModel == nil ? nil : editPump
+                        canEditPump: pumpModel != nil,
+                        onEdit: { edit($0) },
+                        onEditPump: { editPump($0) }
                     )
                 } else if entries.isEmpty && pumps.isEmpty {
                     Text("No feeds this week")
@@ -589,8 +590,9 @@ private struct CalendarMonthView: View {
                         pumps: FeedCalendar.dayPumps(selectedDay, pumps: pumps),
                         unit: unit,
                         pumpUnit: pumpUnit,
-                        onEdit: edit,
-                        onEditPump: pumpModel == nil ? nil : editPump
+                        canEditPump: pumpModel != nil,
+                        onEdit: { edit($0) },
+                        onEditPump: { editPump($0) }
                     )
                 } else if grid.isEmpty {
                     Text("No feeds this month")
@@ -786,9 +788,10 @@ private struct DaySummaryCard: View {
     let pumps: [PumpEntry]
     let unit: VolumeUnit
     let pumpUnit: VolumeUnit
+    /// False when pumping can't be edited here (no pump log).
+    let canEditPump: Bool
     let onEdit: (FeedEntry) -> Void
-    /// `nil` when pumping can't be edited here (no pump log).
-    let onEditPump: ((PumpEntry) -> Void)?
+    let onEditPump: (PumpEntry) -> Void
 
     @Environment(FeedingSessionUIModel.self) private var model: FeedingSessionUIModel?
     @Environment(BottleLogUIModel.self) private var bottleModel: BottleLogUIModel?
@@ -853,13 +856,13 @@ private struct DaySummaryCard: View {
         PumpTotalLine(summary: PumpSummary(entries: pumps), unit: pumpUnit)
         ForEach(pumps.prefix(3)) { pump in
             Button {
-                onEditPump?(pump)
+                onEditPump(pump)
             } label: {
                 PumpRow(entry: pump)
                     .contentShape(Rectangle())
             }
             .buttonStyle(.plain)
-            .accessibilityHint(onEditPump != nil ? Text("Opens the session to edit") : Text(""))
+            .accessibilityHint(canEditPump ? Text("Opens the session to edit") : Text(""))
         }
         if pumps.count > 3 {
             Text("and \(pumps.count - 3) more")
