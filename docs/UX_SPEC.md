@@ -173,7 +173,7 @@ pauses the feed; while paused, tapping either side resumes on that side. **End f
 - **Not started:** both side buttons say "Start", the suggested side carries a "Suggested" tag and is pre-tinted. Last side and time are shown above.
 - **Active:** active side filled with its tint, pulsing dot (static under Reduce Motion). Inactive side is an outline with "Switch".
 - **Paused:** whole screen desaturates, the total shows "Paused", and tapping a side resumes on that side. (Since 2026-11-11 there is no separate Pause / Resume button: tapping the running side pauses.)
-- **After End:** summary sheet ("21 min · L 12 · R 9") with Add note / Edit / Done, plus a 6 s undo toast.
+- **After End:** summary sheet ("21 min · L 12 · R 9") with Add note / Done, and Undo below Done. Undo goes back to the timer with both sides paused where the feed ended (the time spent on the summary isn't counted); nothing stays saved as a finished feed.
 - **Live Activities disabled:** subtle footer link "Show on Lock Screen: turn on Live Activities".
 
 ### 3.4 Log Bottle (sheet)

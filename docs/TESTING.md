@@ -38,7 +38,7 @@ Target: **≥ 95 % line coverage** on `SessionEngine` and `Analytics`.
 
 ## 4. UI tests (XCUITest, launch argument `-uiTesting` → in-memory store + fixed clock)
 
-Start feed → switch → pause → resume → end → verify summary; undo end (in-app toast); log bottle via preset; edit a historical entry's segments; delete with confirm + undo; calendar month navigation and day selection; dashboard updates after a log; history filter; recovery sheet appears with a seeded stale session; Dynamic Type XXXL smoke test of the timer screen.
+Start feed → switch → pause → resume → end → verify summary; undo end (Undo on the summary, back to the timer paused); log bottle via preset; edit a historical entry's segments; delete with confirm + undo; calendar month navigation and day selection; dashboard updates after a log; history filter; recovery sheet appears with a seeded stale session; Dynamic Type XXXL smoke test of the timer screen.
 
 ## 5. Physical device test plan (Robby's iPhone)
 

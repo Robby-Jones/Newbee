@@ -82,7 +82,8 @@ struct FeedingSessionUIModelTests {
         #expect(done.duration(on: .left, at: end) == 12 * 60)
         #expect(done.duration(on: .right, at: end) == 9 * 60)
         #expect(model.completedSummary?.id == done.id)
-        #expect(model.toast != nil)
+        // Undo is on the summary itself, not in a toast.
+        #expect(model.toast == nil)
         #expect(controller.activeSession == nil)
     }
 
@@ -124,15 +125,58 @@ struct FeedingSessionUIModelTests {
         #expect(controller.activeSession?.openSegment?.side == .right)
     }
 
-    @Test func undoAfterEndReopensTheSession() {
+    @Test func undoOnTheSummaryReopensTheFeedWithBothSidesPaused() throws {
+        model.openTimer()
         model.tapSide(.left)
         clock.advance(300)
+        model.tapSide(.right)
+        clock.advance(120)
         model.endSession()
+        let id = try #require(model.completedSummary?.id)
         #expect(controller.activeSession == nil)
-        model.undo()
-        #expect(controller.activeSession?.status == .active)
-        #expect(model.toast == nil)
+
+        clock.advance(45)
+        model.undoEnd(note: "")
+
+        let reopened = try #require(controller.activeSession)
+        #expect(reopened.id == id)
+        #expect(reopened.status == .paused)
+        #expect(reopened.endedAt == nil)
+        #expect(reopened.openSegment == nil)
+        // The time spent on the summary isn't counted on either side.
+        #expect(reopened.duration(on: .left, at: clock.date) == 300)
+        #expect(reopened.duration(on: .right, at: clock.date) == 120)
+        #expect(controller.lastCompletedSession == nil)
         #expect(model.completedSummary == nil)
+        #expect(model.isTimerPresented)
+        #expect(model.display(at: clock.date).phase == .paused(lastSide: .right))
+
+        // Tapping a side carries on from there.
+        model.tapSide(.right)
+        clock.advance(60)
+        #expect(controller.activeSession?.status == .active)
+        #expect(controller.activeSession?.duration(on: .right, at: clock.date) == 180)
+    }
+
+    @Test func undoOnTheSummaryKeepsTheNoteTypedThere() throws {
+        model.tapSide(.left)
+        clock.advance(60)
+        model.endSession()
+        model.undoEnd(note: "Fussy on the left")
+        #expect(controller.activeSession?.notes == "Fussy on the left")
+    }
+
+    @Test func undoOnTheSummaryTwiceDoesNothingMore() throws {
+        model.tapSide(.left)
+        clock.advance(60)
+        model.endSession()
+        let summary = try #require(model.completedSummary)
+        model.undoEnd(note: "")
+        let reopened = controller.activeSession
+        model.completedSummary = summary // a second tap that raced the screen change
+        model.undoEnd(note: "")
+        #expect(controller.activeSession == reopened)
+        #expect(model.errorMessage == nil)
     }
 
     @Test func discardHidesTheTimerAndCanBeUndone() {
@@ -147,7 +191,7 @@ struct FeedingSessionUIModelTests {
 
     @Test func expiredToastNoLongerUndoes() throws {
         model.tapSide(.left)
-        model.endSession()
+        model.discardSession()
         let id = try #require(model.toast?.id)
         model.dismissToast(id: id)
         model.undo()

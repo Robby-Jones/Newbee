@@ -3,17 +3,21 @@ import NewbeeShared
 import SwiftUI
 
 /// Shown in the timer cover right after a feed ends: "21 min · L 12 · R 9" (docs/UX_SPEC.md §3.3),
-/// with room to add a note while the feed is fresh in mind. Undo is offered by the toast underneath.
+/// with room to add a note while the feed is fresh in mind. Undo, below Done, takes the parent
+/// back to the timer with both sides paused, for an End tapped by mistake or too early.
 struct SessionSummaryView: View {
     let session: SessionSnapshot
     /// Called with the note as typed when the parent taps Done.
     let onDone: (String) -> Void
+    /// Called with the note as typed when the parent taps Undo.
+    let onUndo: (String) -> Void
 
     @State private var note: String
 
-    init(session: SessionSnapshot, onDone: @escaping (String) -> Void) {
+    init(session: SessionSnapshot, onDone: @escaping (String) -> Void, onUndo: @escaping (String) -> Void) {
         self.session = session
         self.onDone = onDone
+        self.onUndo = onUndo
         _note = State(initialValue: session.notes)
     }
 
@@ -74,23 +78,45 @@ struct SessionSummaryView: View {
             .scrollDismissesKeyboard(.interactively)
             .scrollBounceBehavior(.basedOnSize)
 
-            Button {
-                onDone(note.trimmingCharacters(in: .whitespacesAndNewlines))
-            } label: {
-                Text("Done")
-                    .font(.headline)
-                    .frame(maxWidth: .infinity, minHeight: NBLayout.primaryControlHeight)
+            VStack(spacing: NBSpacing.s) {
+                Button {
+                    onDone(trimmedNote)
+                } label: {
+                    Text("Done")
+                        .font(.headline)
+                        .frame(maxWidth: .infinity, minHeight: NBLayout.primaryControlHeight)
+                }
+                .buttonStyle(.borderedProminent)
+                .buttonBorderShape(.roundedRectangle(radius: NBRadius.control))
+                .tint(NBColor.accent)
+
+                Button {
+                    onUndo(trimmedNote)
+                } label: {
+                    Label("Undo", systemImage: "arrow.uturn.backward")
+                        .font(.body.weight(.semibold))
+                        .frame(maxWidth: .infinity, minHeight: NBLayout.minHitTarget)
+                        .contentShape(Rectangle())
+                }
+                .buttonStyle(.borderless)
+                .tint(NBColor.accent)
+                .accessibilityHint("Goes back to the feed with both sides paused")
+                .accessibilityIdentifier("summary.undo")
             }
-            .buttonStyle(.borderedProminent)
-            .buttonBorderShape(.roundedRectangle(radius: NBRadius.control))
-            .tint(NBColor.accent)
         }
         .padding(NBSpacing.l)
-        .padding(.bottom, 56) // room for the undo toast
+    }
+
+    private var trimmedNote: String {
+        note.trimmingCharacters(in: .whitespacesAndNewlines)
     }
 }
 
 #Preview {
-    SessionSummaryView(session: PreviewSessionController.completedFixture(endingBefore: .now)) { _ in }
-        .background(NBColor.canvas)
+    SessionSummaryView(
+        session: PreviewSessionController.completedFixture(endingBefore: .now),
+        onDone: { _ in },
+        onUndo: { _ in }
+    )
+    .background(NBColor.canvas)
 }

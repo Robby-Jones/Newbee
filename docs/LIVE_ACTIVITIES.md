@@ -111,7 +111,7 @@ side pills and controls are one shared view (`ActivitySidesAndControls`). Minima
   the header counts up from the feed's start or end, per Settings' **Count from**
   (`ContentState.countFrom`, `sinceLastFeedStart`), and the footnote keeps the feed's L/R times
   with "started 3:20 PM" or "ended 3:40 PM" to match. There is no Undo on the activity any more (removed with this change);
-  the in-app undo toast still covers an End tapped by mistake.
+  Undo on the in-app "Feed saved" summary covers an End tapped by mistake, and puts the feed back on the activity, paused.
 - The count is a stopwatch with seconds: "4:12", then "2:15:03" (`SinceLastFeedText`, the same
   `Text(timerInterval:)` as the side pills and the total, which draws correctly on the Lock Screen).
   - **Why not `hh:mm`:** iOS has no live format that shows hours and minutes as digits without

@@ -108,6 +108,20 @@ public struct SessionSnapshot: Codable, Sendable, Hashable, Identifiable {
         max(0, (endedAt ?? now).timeIntervalSince(startedAt))
     }
 
+    /// A finished feed turned back into a paused one, stopped at the moment it ended: every
+    /// segment is closed and nothing runs, so no time is added on either side until the parent
+    /// resumes. Used to undo End from the "Feed saved" summary. Notes and source are kept.
+    public func reopenedAsPaused() -> SessionSnapshot {
+        var reopened = self
+        let stop = endedAt ?? segments.compactMap(\.end).max() ?? startedAt
+        for index in reopened.segments.indices where reopened.segments[index].end == nil {
+            reopened.segments[index].end = max(stop, reopened.segments[index].start)
+        }
+        reopened.status = .paused
+        reopened.endedAt = nil
+        return reopened
+    }
+
     /// Accumulated time on `side` from closed segments only. Used by the Live Activity, which
     /// renders the open segment with a system-driven timer.
     public func closedDuration(on side: Side) -> TimeInterval {
