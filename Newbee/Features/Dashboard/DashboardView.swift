@@ -9,9 +9,12 @@ import SwiftUI
 /// one glance; everything older lives in History and Insights.
 struct DashboardView: View {
     @Environment(FeedingSessionUIModel.self) private var sessionModel: FeedingSessionUIModel?
+    @Environment(BottleLogUIModel.self) private var bottleModel: BottleLogUIModel?
     /// Enough recent feeds for "today" and the rolling 24 hours, even on a very busy day.
     @Query(FeedingSession.completedFeeds(limit: 80)) private var recent: [FeedingSession]
     @Query(sort: \Baby.createdAt) private var babies: [Baby]
+    /// The breastfeed open in the edit sheet, from a tap in Recent.
+    @State private var editing: SessionSnapshot?
 
     var body: some View {
         let entries = recent.compactMap(\.feedEntry)
@@ -31,7 +34,11 @@ struct DashboardView: View {
                     }
                     QuickActions(now: now)
                     TodaySection(summary: summary)
-                    RecentSection(entries: Array(entries.filter { $0.start <= now }.prefix(3)))
+                    RecentSection(
+                        entries: Array(entries.filter { $0.start <= now }.prefix(3)),
+                        canEdit: canEdit,
+                        onEdit: edit
+                    )
                 }
                 .padding(.horizontal, NBSpacing.l)
                 .padding(.vertical, NBSpacing.m)
@@ -40,6 +47,20 @@ struct DashboardView: View {
         .background(NBColor.canvas)
         .navigationTitle("Home")
         .toolbar(.hidden, for: .navigationBar)
+        .breastFeedEditSheet($editing)
+    }
+
+    private func canEdit(_ entry: FeedEntry) -> Bool {
+        entry.kind == .bottle ? bottleModel != nil : sessionModel != nil
+    }
+
+    /// The same edit sheets as History: bottles through the bottle log, breastfeeds here.
+    private func edit(_ entry: FeedEntry) {
+        if entry.kind == .bottle {
+            bottleModel?.presentEdit(sessionID: entry.id)
+        } else if let session = recent.first(where: { $0.id == entry.id }) {
+            editing = session.sessionSnapshot
+        }
     }
 
     static func greeting(at date: Date, calendar: Calendar = .current) -> String {
@@ -408,9 +429,11 @@ private struct TodaySection: View {
     }
 }
 
-/// The latest few entries, with their notes. Everything older is in History.
+/// The latest few entries, with their notes. Tap one to edit it. Everything older is in History.
 private struct RecentSection: View {
     let entries: [FeedEntry]
+    let canEdit: (FeedEntry) -> Bool
+    let onEdit: (FeedEntry) -> Void
 
     var body: some View {
         let rows = FeedTimeline.days(from: entries).flatMap(\.rows)
@@ -423,9 +446,17 @@ private struct RecentSection: View {
                     VStack(spacing: 0) {
                         ForEach(Array(rows.enumerated()), id: \.element.id) { index, row in
                             if index > 0 { Divider().padding(.leading, NBSpacing.l) }
-                            FeedRow(row: row)
-                                .padding(.horizontal, NBSpacing.l)
-                                .padding(.vertical, NBSpacing.s)
+                            Button {
+                                onEdit(row.entry)
+                            } label: {
+                                FeedRow(row: row)
+                                    .padding(.horizontal, NBSpacing.l)
+                                    .padding(.vertical, NBSpacing.s)
+                                    .contentShape(Rectangle())
+                            }
+                            .buttonStyle(.plain)
+                            .accessibilityHint(canEdit(row.entry) ? Text("Opens the feed to edit") : Text(""))
+                            .accessibilityIdentifier("home.recent.row")
                         }
                     }
                 }

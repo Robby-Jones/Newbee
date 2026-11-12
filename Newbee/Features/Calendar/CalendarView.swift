@@ -141,6 +141,8 @@ private struct CalendarWeekView: View {
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @Environment(BottleLogUIModel.self) private var bottleModel: BottleLogUIModel?
     @Environment(PumpLogUIModel.self) private var pumpModel: PumpLogUIModel?
+    /// The breastfeed open in the edit sheet, from a tap in the day card.
+    @State private var editing: SessionSnapshot?
 
     init(weekStart: Date, selectedDay: Binding<Date?>, scope: Binding<CalendarView.Scope>, changeWeek: @escaping (Int) -> Void) {
         self.weekStart = weekStart
@@ -181,7 +183,10 @@ private struct CalendarWeekView: View {
                         totals: summary.totals,
                         pumps: FeedCalendar.dayPumps(selectedDay, pumps: pumps),
                         unit: unit,
-                        pumpUnit: pumpUnit
+                        pumpUnit: pumpUnit,
+                        canEditPump: pumpModel != nil,
+                        onEdit: { edit($0) },
+                        onEditPump: { editPump($0) }
                     )
                 } else if entries.isEmpty && pumps.isEmpty {
                     Text("No feeds this week")
@@ -195,6 +200,20 @@ private struct CalendarWeekView: View {
             }
             .padding(NBSpacing.l)
         }
+        .breastFeedEditSheet($editing)
+    }
+
+    /// The same edit sheets as History: bottles through the bottle log, breastfeeds here.
+    private func edit(_ entry: FeedEntry) {
+        if entry.kind == .bottle {
+            bottleModel?.presentEdit(sessionID: entry.id)
+        } else if let session = sessions.first(where: { $0.id == entry.id }) {
+            editing = session.sessionSnapshot
+        }
+    }
+
+    private func editPump(_ pump: PumpEntry) {
+        pumpModel?.presentEdit(sessionID: pump.id)
     }
 
     private func header(days: [Date], isCurrentWeek: Bool) -> some View {
@@ -511,6 +530,8 @@ private struct CalendarMonthView: View {
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @Environment(BottleLogUIModel.self) private var bottleModel: BottleLogUIModel?
     @Environment(PumpLogUIModel.self) private var pumpModel: PumpLogUIModel?
+    /// The breastfeed open in the edit sheet, from a tap in the day card.
+    @State private var editing: SessionSnapshot?
 
     init(
         month: Date,
@@ -568,7 +589,10 @@ private struct CalendarMonthView: View {
                         totals: summary.totals,
                         pumps: FeedCalendar.dayPumps(selectedDay, pumps: pumps),
                         unit: unit,
-                        pumpUnit: pumpUnit
+                        pumpUnit: pumpUnit,
+                        canEditPump: pumpModel != nil,
+                        onEdit: { edit($0) },
+                        onEditPump: { editPump($0) }
                     )
                 } else if grid.isEmpty {
                     Text("No feeds this month")
@@ -582,6 +606,20 @@ private struct CalendarMonthView: View {
             }
             .padding(NBSpacing.l)
         }
+        .breastFeedEditSheet($editing)
+    }
+
+    /// The same edit sheets as History: bottles through the bottle log, breastfeeds here.
+    private func edit(_ entry: FeedEntry) {
+        if entry.kind == .bottle {
+            bottleModel?.presentEdit(sessionID: entry.id)
+        } else if let session = sessions.first(where: { $0.id == entry.id }) {
+            editing = session.sessionSnapshot
+        }
+    }
+
+    private func editPump(_ pump: PumpEntry) {
+        pumpModel?.presentEdit(sessionID: pump.id)
     }
 
     private func monthHeader(isCurrentMonth: Bool) -> some View {
@@ -742,6 +780,7 @@ private struct DayCell: View {
 }
 
 /// The selected day: totals, the L/R split, its feeds, its pumping, and a link to the full day.
+/// Tap a feed or pumping session to edit it, as in the History list.
 private struct DaySummaryCard: View {
     let day: Date
     let entries: [FeedEntry]
@@ -749,6 +788,13 @@ private struct DaySummaryCard: View {
     let pumps: [PumpEntry]
     let unit: VolumeUnit
     let pumpUnit: VolumeUnit
+    /// False when pumping can't be edited here (no pump log).
+    let canEditPump: Bool
+    let onEdit: (FeedEntry) -> Void
+    let onEditPump: (PumpEntry) -> Void
+
+    @Environment(FeedingSessionUIModel.self) private var model: FeedingSessionUIModel?
+    @Environment(BottleLogUIModel.self) private var bottleModel: BottleLogUIModel?
 
     var body: some View {
         Card {
@@ -779,7 +825,15 @@ private struct DaySummaryCard: View {
                     Divider()
                     let rows = FeedTimeline.days(from: entries).first?.rows ?? []
                     ForEach(rows.prefix(6)) { row in
-                        FeedRow(row: row)
+                        Button {
+                            onEdit(row.entry)
+                        } label: {
+                            FeedRow(row: row)
+                                .contentShape(Rectangle())
+                        }
+                        .buttonStyle(.plain)
+                        .accessibilityHint(canEdit(row.entry) ? Text("Opens the feed to edit") : Text(""))
+                        .accessibilityIdentifier("calendar.day.row")
                     }
                     if rows.count > 6 {
                         Text("and \(rows.count - 6) more")
@@ -801,13 +855,24 @@ private struct DaySummaryCard: View {
     private var pumping: some View {
         PumpTotalLine(summary: PumpSummary(entries: pumps), unit: pumpUnit)
         ForEach(pumps.prefix(3)) { pump in
-            PumpRow(entry: pump)
+            Button {
+                onEditPump(pump)
+            } label: {
+                PumpRow(entry: pump)
+                    .contentShape(Rectangle())
+            }
+            .buttonStyle(.plain)
+            .accessibilityHint(canEditPump ? Text("Opens the session to edit") : Text(""))
         }
         if pumps.count > 3 {
             Text("and \(pumps.count - 3) more")
                 .font(.footnote)
                 .foregroundStyle(NBColor.secondaryText)
         }
+    }
+
+    private func canEdit(_ entry: FeedEntry) -> Bool {
+        entry.kind == .bottle ? bottleModel != nil : model != nil
     }
 
     private var openDay: some View {
