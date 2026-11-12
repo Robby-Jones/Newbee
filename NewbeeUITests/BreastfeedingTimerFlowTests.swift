@@ -1,7 +1,7 @@
 import XCTest
 
 /// End-to-end tap path for the timer screen: open it from Home's Breastfeed button, start on
-/// the left, switch, minimize to the pill, reopen, end, and close the summary.
+/// the left, switch, minimize to the pill, reopen, end, undo the end, end again, and close the summary.
 final class BreastfeedingTimerFlowTests: XCTestCase {
     override func setUpWithError() throws {
         continueAfterFailure = false
@@ -39,9 +39,16 @@ final class BreastfeedingTimerFlowTests: XCTestCase {
         XCTAssertTrue(end.waitForExistence(timeout: 5))
         end.tap()
 
+        // Undo on the summary goes back to the feed, paused; then end it again.
+        let undo = app.buttons["summary.undo"].firstMatch
+        XCTAssertTrue(undo.waitForExistence(timeout: 5))
+        undo.tap()
+        XCTAssertTrue(end.waitForExistence(timeout: 5))
+        XCTAssertTrue(app.buttons["sideButton.right"].firstMatch.exists)
+        end.tap()
+
         let done = app.buttons["Done"]
         XCTAssertTrue(done.waitForExistence(timeout: 5))
-        XCTAssertTrue(app.buttons["Undo"].exists)
         done.tap()
 
         XCTAssertTrue(app.buttons["breastfeedButton"].firstMatch.waitForExistence(timeout: 5))

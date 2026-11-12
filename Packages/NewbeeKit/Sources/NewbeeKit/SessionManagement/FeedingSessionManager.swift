@@ -174,6 +174,28 @@ public final class FeedingSessionManager {
         try save(snapshot, entered: false)
     }
 
+    /// "Undo" on the "Feed saved" summary: puts the feed that was just ended back as the current
+    /// feed, paused at the moment it ended, so the time since End isn't counted on either side.
+    /// Nothing is left saved as a finished feed. `notes` (typed on the summary) replaces the
+    /// feed's note when given. The Live Activity goes back from the since-last-feed count to
+    /// this feed, paused.
+    ///
+    /// Refused with `conflictingSession` if another feed has started meanwhile, and with
+    /// `sessionNotFound` if the feed was deleted. A feed that is already open (a second tap) is
+    /// left as it is.
+    /// - Returns: the reopened session.
+    @discardableResult
+    public func reopenPaused(sessionID: UUID, notes: String? = nil) throws -> SessionSnapshot {
+        guard let stored = try read({ try repository.session(id: sessionID) }) else {
+            throw FeedingSessionError.sessionNotFound(sessionID)
+        }
+        guard stored.status == .completed else { return stored }
+        var reopened = stored.reopenedAsPaused()
+        if let notes { reopened.notes = notes }
+        try save(reopened, entered: false)
+        return activeSession ?? reopened
+    }
+
     /// Adds a finished breastfeed entered by hand (History's or Home's "Add past feed"). Like
     /// `restore(_:)`, and if it is now the latest feed, the Live Activity's since-last-feed count
     /// is shown even if none is showing (e.g. the parent swiped it away).

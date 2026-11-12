@@ -42,6 +42,11 @@ protocol FeedingSessionControlling: AnyObject, Observable {
     @discardableResult
     func discardActive() throws -> SessionSnapshot
 
+    /// The summary's Undo: reopens the feed that was just ended, paused where it ended, with
+    /// `notes` as its note when given. Throws if another feed has started meanwhile.
+    @discardableResult
+    func reopenPaused(sessionID: UUID, notes: String?) throws -> SessionSnapshot
+
     /// Undo: writes `snapshot` back (re-opens an ended session or re-inserts a discarded one).
     func restore(_ snapshot: SessionSnapshot) throws
 
