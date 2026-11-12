@@ -94,7 +94,8 @@ struct LiveActivityWiringTests {
         #expect(visible.count == 1)
         #expect(visible.first?.sessionID == ended.id)
         #expect(visible.first?.state.status == .paused)
-        #expect(visible.first?.state.leftAccumulated == 10 * 60)
+        // TestClock date arithmetic isn't exact, so compare with a tolerance.
+        #expect(abs((visible.first?.state.leftAccumulated ?? 0) - 10 * 60) < 0.001)
     }
 
     @Test func theCountFollowsTheLatestFeedAsBottlesAndFeedsChange() async throws {
