@@ -139,13 +139,24 @@ public struct PlannedReminder: Sendable, Hashable {
     public var side: Side?
     /// `true` when a `feedDue` reminder was moved to the end of quiet hours.
     public var deferredByQuietHours: Bool
+    /// `true` for a `feedDue` reminder that falls in this parent's night shift. It may ring as an
+    /// alarm (Settings → Night Shift).
+    public var duringNightShift: Bool
 
-    public init(kind: Kind, fireDate: Date, anchor: Date, side: Side? = nil, deferredByQuietHours: Bool = false) {
+    public init(
+        kind: Kind,
+        fireDate: Date,
+        anchor: Date,
+        side: Side? = nil,
+        deferredByQuietHours: Bool = false,
+        duringNightShift: Bool = false
+    ) {
         self.kind = kind
         self.fireDate = fireDate
         self.anchor = anchor
         self.side = side
         self.deferredByQuietHours = deferredByQuietHours
+        self.duringNightShift = duringNightShift
     }
 
     /// Notification identifier. One per kind, so rescheduling replaces rather than piles up.
@@ -160,6 +171,9 @@ public struct PlannedReminder: Sendable, Hashable {
 /// - **Feed due** fires `interval` after the last feed's start (or end), only when reminders are
 ///   on, no breastfeed is running, and the time is still ahead. In quiet hours it waits until
 ///   they end. Overdue reminders are not sent late.
+/// - **Night Shift** (docs/NIGHT_SHIFT.md) changes "feed due" while a shift runs: the parent on
+///   duty is reminded even in quiet hours, and the other parent's phone isn't reminded at all.
+///   A reminder that falls after the shift follows the usual rules on both phones.
 /// - **Still feeding?** fires `stillFeedingThreshold` after the running side started (or the
 ///   pause began). It ignores quiet hours: a timer left running overnight is what it's for. Only
 ///   the phone the feed was started on asks: on a shared log the other parent's phone stays quiet.
@@ -177,6 +191,7 @@ public struct ReminderPlanner: Sendable {
         lastFeed: LastFeed?,
         active: SessionSnapshot?,
         activeStartedHere: Bool = true,
+        duty: NightDuty = .none,
         now: Date
     ) -> [PlannedReminder] {
         var reminders: [PlannedReminder] = []
@@ -184,18 +199,29 @@ public struct ReminderPlanner: Sendable {
             if settings.stillFeedingEnabled, activeStartedHere, let still = stillFeeding(active, threshold: settings.stillFeedingThreshold, now: now) {
                 reminders.append(still)
             }
-        } else if settings.isEnabled, let lastFeed, let due = feedDue(settings: settings, lastFeed: lastFeed, now: now) {
+        } else if settings.isEnabled, let lastFeed, let due = feedDue(settings: settings, lastFeed: lastFeed, duty: duty, now: now) {
             reminders.append(due)
         }
         return reminders
     }
 
-    func feedDue(settings: ReminderSettings, lastFeed: LastFeed, now: Date) -> PlannedReminder? {
+    func feedDue(settings: ReminderSettings, lastFeed: LastFeed, duty: NightDuty = .none, now: Date) -> PlannedReminder? {
         let anchor: Date = switch settings.basis {
         case .start: lastFeed.start
         case .end: lastFeed.end ?? lastFeed.start
         }
         var fire = anchor.addingTimeInterval(settings.interval)
+        switch duty {
+        case .onDuty(let until) where fire < until:
+            // On duty: this is the phone that rings tonight, quiet hours or not.
+            guard fire > now else { return nil }
+            return PlannedReminder(kind: .feedDue, fireDate: fire, anchor: anchor, duringNightShift: true)
+        case .offDuty(let until) where fire < until:
+            // The other parent has the night.
+            return nil
+        default:
+            break
+        }
         var deferred = false
         if let quiet = settings.quietHours, quiet.contains(fire, calendar: calendar) {
             fire = quiet.end(after: fire, calendar: calendar)

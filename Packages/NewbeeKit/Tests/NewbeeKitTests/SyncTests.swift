@@ -10,6 +10,7 @@ final class InMemorySyncStore: SyncLocalStore {
     var feeds: [UUID: FeedPayload] = [:]
     var babies: [UUID: BabyPayload] = [:]
     var photos: [UUID: Data] = [:]
+    var shift: NightShift?
     var applyCount = 0
     var failure: (any Error)?
     /// Simulates a store that can't hold every detail: notes are cut to this length when applied.
@@ -23,14 +24,19 @@ final class InMemorySyncStore: SyncLocalStore {
         for baby in babies.values {
             items[baby.key] = SyncLocalItem(fingerprint: baby.fingerprint(attachment: photos[baby.id]), changedAt: baby.createdAt)
         }
+        if let shift {
+            items[shift.key] = SyncLocalItem(fingerprint: shift.fingerprint(), changedAt: shift.changedAt)
+        }
         return items
     }
 
     func content(for key: SyncKey) throws -> SyncContent? {
+        if key.kind == .nightShift { return shift?.content() }
         guard let id = UUID(uuidString: key.id) else { return nil }
         switch key.kind {
         case .feed: return feeds[id]?.content()
         case .baby: return babies[id]?.content(attachment: photos[id])
+        case .nightShift: return nil
         }
     }
 
@@ -50,6 +56,10 @@ final class InMemorySyncStore: SyncLocalStore {
                 babies[baby.id] = baby
                 photos[baby.id] = content.attachment
                 stored[key] = baby.fingerprint(attachment: content.attachment)
+            case .nightShift:
+                guard let incoming = NightShift.decode(content) else { continue }
+                shift = incoming
+                stored[key] = incoming.fingerprint()
             }
         }
         return stored
@@ -58,6 +68,7 @@ final class InMemorySyncStore: SyncLocalStore {
     func delete(_ keys: [SyncKey]) throws {
         if let failure { throw failure }
         for key in keys {
+            if key.kind == .nightShift { shift = nil }
             guard let id = UUID(uuidString: key.id) else { continue }
             feeds[id] = nil
             babies[id] = nil

@@ -4,6 +4,8 @@ import Foundation
 public enum SyncRecordKind: String, Codable, Sendable, CaseIterable, Hashable {
     case baby = "Baby"
     case feed = "Feed"
+    /// Who is on duty tonight on a shared log (`NightShift`).
+    case nightShift = "NightShift"
 }
 
 /// Identifies one synced item on every device: its kind and its ID (the record name).
@@ -232,6 +234,7 @@ public enum SyncCodec {
         switch kind {
         case .baby: BabyPayload.decode(content)?.fingerprint(attachment: content.attachment)
         case .feed: FeedPayload.decode(content)?.fingerprint()
+        case .nightShift: NightShift.decode(content)?.fingerprint()
         }
     }
 }
