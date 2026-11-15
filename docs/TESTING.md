@@ -89,11 +89,14 @@ Run each case on an **iPhone 14 Pro or later** (Dynamic Island). Where marked �
 | D29 | Tap Take over on the other phone, then End | Both phones follow each change; after End both are back to normal reminders |
 | D30 | Let a shift run to its morning time | The parent who slept gets "While you slept" and sees the card on Home until they close it; the parent on duty sees neither |
 
-## 6. CI (proposed)
+## 6. CI
 
 `.github/workflows/ci.yml`:
-1. **linux-core** (`ubuntu-latest`, `swift-actions/setup-swift`): `swift test` in `Packages/NewbeeKit`. Fast, cheap, runs on every push.
-2. **ios** (`macos-latest`, latest stable Xcode): `xcodegen generate` → `xcodebuild build-for-testing` + `test-without-building` on an iPhone 15 Pro simulator for `NewbeeTests` and `NewbeeUITests`; warnings-as-errors for our targets.
+1. **Package tests (Linux)**: `swift test` in `Packages/NewbeeKit` and `Packages/NewbeeShared`. About 1.5 min.
+2. **iOS build and unit tests (latest iOS)** and **(iOS 18 minimum)**: build and run `NewbeeTests`.
+3. **iOS UI tests (latest iOS)**: builds and runs `NewbeeUITests` on its own Mac, alongside the unit-test jobs, so the slow UI tests don't wait for the unit tests. One simulator only: 3 parallel clones overloaded the runner and tests timed out.
+
+All iOS jobs boot the simulator and wait for it to finish before building; a freshly booted simulator made early UI tests fail with "Timed out while acquiring background assertion", and booting during the build slowed the build down too much. Code coverage is off in CI to save build time.
 
 macOS runner minutes cost 10× Linux on private repos. Keep the iOS job to PRs plus `main`.
 
