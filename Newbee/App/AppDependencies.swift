@@ -48,6 +48,7 @@ final class AppDependencies {
         storage: PersistenceController.Storage? = nil,
         liveActivity: (any LiveActivitySyncing)? = nil,
         notifications: (any NotificationClient)? = nil,
+        alarms: (any NightAlarmClient)? = nil,
         defaults: UserDefaults? = nil
     ) {
         self.clock = clock
@@ -117,7 +118,7 @@ final class AppDependencies {
         // Only the real store takes over a photo file saved by builds before schema V3.
         babyPhoto = BabyPhotoStore(container: container, legacyDirectory: isAppStore ? BabyPhotoStore.legacyDirectory : nil)
         // Only the real app rings alarms.
-        let nightAlarms: any NightAlarmClient = isAppStore ? SystemNightAlarmClient() : NoNightAlarmClient()
+        let nightAlarms: any NightAlarmClient = alarms ?? (isAppStore ? SystemNightAlarmClient() : NoNightAlarmClient())
         let reminders = ReminderScheduler(
             preferences: preferences,
             feedingRepository: repository,
