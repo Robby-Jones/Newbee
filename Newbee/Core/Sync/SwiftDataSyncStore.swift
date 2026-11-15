@@ -8,7 +8,7 @@ import SwiftData
 final class SwiftDataSyncStore: SyncLocalStore {
     /// A CloudKit record holds up to 1 MB. The photo is a small JPEG (`BabyPhotoStore`), far
     /// below this; anything bigger stays on the phone rather than stopping the record from syncing.
-    static let maxPhotoBytes = 700_000
+    nonisolated static let maxPhotoBytes = 700_000
 
     /// Held so the container outlives the context (see `SwiftDataFeedingRepository`).
     private let container: ModelContainer

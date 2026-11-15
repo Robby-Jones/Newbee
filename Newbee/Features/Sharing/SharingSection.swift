@@ -1,3 +1,4 @@
+import NewbeeShared
 import SwiftUI
 
 /// Settings → Sharing: one row that opens Apple's sharing sheet, to invite the other parent, see
