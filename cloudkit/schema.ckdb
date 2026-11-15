@@ -1,13 +1,19 @@
 // The CloudKit schema for Newbee's iCloud sync (docs/ICLOUD_SYNC.md).
 //
-// SwiftData syncs through Core Data's CloudKit mirroring, which stores each model as a record
-// type named CD_<model> with a CD_<property> field per property, CD_entityName, a STRING field
-// holding the related record's name for each to-one relationship (nothing for to-many), and an
-// extra CD_<property>_ckAsset ASSET for strings and data that grow past the record size limit.
-//
-// Generated from NewbeeSchemaV3; CloudKitSchemaTests checks it still matches the models.
 // Upload it with the "CloudKit schema" workflow, then deploy it to production in CloudKit Console.
 // Fields can never be removed from production, so only ever add to this file.
+//
+// Baby, Feed and NightShift are what Newbee syncs (Newbee/Core/Sync/CloudRecordCoding.swift).
+// Each holds the item as JSON in `payload`, so new properties never need a schema change.
+// CloudKitSchemaTests checks this file against the code.
+//
+// "cloudkit.share" is CloudKit's own record type for sharing a log with the other parent.
+// CloudKit only creates it by itself in development, the first time a share is saved there, and
+// production refuses to save a share until the type has been deployed. Newbee is never run
+// against development, so the type is declared here, exactly as CloudKit exports it.
+//
+// The CD_ types are from the first version of iCloud sync, which went through SwiftData. Nothing
+// writes them any more, but production types can't be deleted, so they stay.
 
 DEFINE SCHEMA
 
@@ -20,6 +26,67 @@ DEFINE SCHEMA
         "___recordID"   REFERENCE,
         roles           LIST<INT64>,
         GRANT WRITE TO "_creator",
+        GRANT READ TO "_world"
+    );
+
+    RECORD TYPE Baby (
+        "___createTime" TIMESTAMP,
+        "___createdBy"  REFERENCE,
+        "___etag"       STRING,
+        "___modTime"    TIMESTAMP,
+        "___modifiedBy" REFERENCE,
+        "___recordID"   REFERENCE QUERYABLE,
+        changedAt       TIMESTAMP QUERYABLE SORTABLE,
+        payload         BYTES,
+        photo           BYTES,
+        v               INT64,
+        GRANT WRITE TO "_creator",
+        GRANT CREATE TO "_icloud",
+        GRANT READ TO "_world"
+    );
+
+    RECORD TYPE Feed (
+        "___createTime" TIMESTAMP,
+        "___createdBy"  REFERENCE,
+        "___etag"       STRING,
+        "___modTime"    TIMESTAMP,
+        "___modifiedBy" REFERENCE,
+        "___recordID"   REFERENCE QUERYABLE,
+        changedAt       TIMESTAMP QUERYABLE SORTABLE,
+        payload         BYTES,
+        v               INT64,
+        GRANT WRITE TO "_creator",
+        GRANT CREATE TO "_icloud",
+        GRANT READ TO "_world"
+    );
+
+    RECORD TYPE NightShift (
+        "___createTime" TIMESTAMP,
+        "___createdBy"  REFERENCE,
+        "___etag"       STRING,
+        "___modTime"    TIMESTAMP,
+        "___modifiedBy" REFERENCE,
+        "___recordID"   REFERENCE QUERYABLE,
+        changedAt       TIMESTAMP QUERYABLE SORTABLE,
+        payload         BYTES,
+        v               INT64,
+        GRANT WRITE TO "_creator",
+        GRANT CREATE TO "_icloud",
+        GRANT READ TO "_world"
+    );
+
+    RECORD TYPE "cloudkit.share" (
+        "___createTime"               TIMESTAMP,
+        "___createdBy"                REFERENCE,
+        "___etag"                     STRING,
+        "___modTime"                  TIMESTAMP,
+        "___modifiedBy"               REFERENCE,
+        "___recordID"                 REFERENCE,
+        "cloudkit.thumbnailImageData" BYTES,
+        "cloudkit.title"              STRING,
+        "cloudkit.type"               STRING,
+        GRANT WRITE TO "_creator",
+        GRANT CREATE TO "_icloud",
         GRANT READ TO "_world"
     );
 

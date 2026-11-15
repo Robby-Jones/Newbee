@@ -61,6 +61,7 @@ struct RootView: View {
         .modifier(FeedingPresentation(model: sessionModel))
         .bottleLogPresentation(bottleModel)
         .pumpLogPresentation(pumpModel)
+        .sharingNoticePresentation()
     }
 }
 

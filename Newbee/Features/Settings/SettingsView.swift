@@ -32,6 +32,7 @@ struct SettingsView: View {
                 AppearanceSection(preferences: preferences)
             }
             ICloudSyncSection()
+            SharingSection()
             DataSection(
                 presentation: $dataPresentation,
                 errorMessage: $dataError,
@@ -620,7 +621,7 @@ private struct ICloudSyncSection: View {
 
     static func value(for status: CloudSyncMonitor.Status) -> String {
         switch status {
-        case .unavailable, .failedToStart, .signedOut, .restricted: String(localized: "Off")
+        case .unavailable, .signedOut, .restricted: String(localized: "Off")
         case .checking: String(localized: "Checking")
         case .temporarilyUnavailable: String(localized: "Paused")
         case .syncing: String(localized: "Syncing")
@@ -630,7 +631,7 @@ private struct ICloudSyncSection: View {
     }
 
     static func footer(for status: CloudSyncMonitor.Status) -> String {
-        let about = String(localized: "Feeds, the baby profile and settings sync through your private iCloud to every iPhone and iPad signed in to your Apple ID. Only you can see them.")
+        let about = String(localized: "Feeds, the baby profile and settings sync through your private iCloud to every iPhone and iPad signed in to your Apple ID. Only you, and a partner you share with, can see the feeds.")
         switch status {
         case .unavailable, .checking, .syncing, .upToDate:
             return about
@@ -641,9 +642,7 @@ private struct ICloudSyncSection: View {
         case .temporarilyUnavailable:
             return String(localized: "iCloud can't be reached right now. Feeds are safe on this iPhone and sync when iCloud is back.")
         case .failed(let message):
-            return String(localized: "The last sync didn't finish: \(message) Your feeds are safe on this iPhone, and Newbee keeps trying.")
-        case .failedToStart(let message):
-            return String(localized: "iCloud sync couldn't start: \(message) Your feeds are safe on this iPhone. Newbee tries again the next time it opens.")
+            return String(localized: "Some changes haven't synced yet: \(message) Your feeds are safe on this iPhone, and Newbee keeps trying.")
         }
     }
 }

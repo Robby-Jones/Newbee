@@ -35,6 +35,11 @@ final class AppDependencies {
     let babyPhoto: BabyPhotoStore
     /// iCloud sync status, and the signal that another device's changes arrived.
     let cloudSync: CloudSyncMonitor
+    /// Syncs feeds and the baby profile with iCloud. `nil` when this run doesn't sync (tests,
+    /// previews, a build without an iCloud container).
+    let cloudEngine: CloudSyncEngine?
+    /// Sharing the log with the other parent. `nil` whenever `cloudEngine` is.
+    let cloudSharing: CloudSharing?
 
     init(
         clock: any AppClock = SystemClock(),
@@ -47,13 +52,8 @@ final class AppDependencies {
         let resolvedStorage = storage ?? (AppConfiguration.isUITesting ? .inMemory : .appGroup)
         let container: ModelContainer?
         let error: Error?
-        var cloudKitContainerID: String?
-        var cloudKitError: Error?
         do {
-            let opened = try PersistenceController.open(resolvedStorage)
-            container = opened.container
-            cloudKitContainerID = opened.cloudKitContainerID
-            cloudKitError = opened.cloudKitError
+            container = try PersistenceController.makeContainer(resolvedStorage)
             error = nil
         } catch let openError {
             container = nil
@@ -61,7 +61,22 @@ final class AppDependencies {
         }
         modelContainer = container
         storeError = error
-        cloudSync = CloudSyncMonitor(containerID: cloudKitContainerID, startError: cloudKitError)
+        let isAppStore: Bool
+        if case .appGroup = resolvedStorage { isAppStore = true } else { isAppStore = false }
+        // Only the real store syncs, and only in a build that has an iCloud container.
+        let cloudKitContainerID = isAppStore && container != nil ? AppConfiguration.cloudKitContainerID : nil
+        let cloudSync = CloudSyncMonitor(containerID: cloudKitContainerID)
+        self.cloudSync = cloudSync
+        if let cloudKitContainerID, let container, let file = try? CloudSyncStateFile.standard() {
+            let engine = CloudSyncEngine(
+                containerID: cloudKitContainerID, modelContainer: container, monitor: cloudSync, file: file, clock: clock
+            )
+            cloudEngine = engine
+            cloudSharing = CloudSharing(engine: engine, modelContainer: container)
+        } else {
+            cloudEngine = nil
+            cloudSharing = nil
+        }
         if let container, ScreenshotSampleData.isRequested {
             ScreenshotSampleData.seed(into: container, clock: clock)
         }
@@ -90,8 +105,6 @@ final class AppDependencies {
 
         let isInMemory: Bool
         if case .inMemory = resolvedStorage { isInMemory = true } else { isInMemory = false }
-        let isAppStore: Bool
-        if case .appGroup = resolvedStorage { isAppStore = true } else { isAppStore = false }
         // Only the real store takes over a photo file saved by builds before schema V3.
         babyPhoto = BabyPhotoStore(container: container, legacyDirectory: isAppStore ? BabyPhotoStore.legacyDirectory : nil)
         let reminders = ReminderScheduler(

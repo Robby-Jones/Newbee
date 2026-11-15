@@ -5,7 +5,7 @@ import Testing
 @testable import Newbee
 
 /// iCloud sync pieces that run without iCloud: merging baby profiles, mirroring settings to
-/// key-value storage, and the Settings status (docs/ICLOUD_SYNC.md).
+/// key-value storage, and the Settings status (docs/ICLOUD_SYNC.md). Feeds: `SyncStoreTests`.
 @MainActor
 @Suite("iCloud sync")
 struct ICloudSyncTests {
@@ -176,17 +176,25 @@ struct ICloudSyncTests {
         monitor.onImport = { imports += 1 }
 
         let id = UUID()
-        monitor.handle(.init(id: id, kind: .import, finished: false, succeeded: false, endDate: nil, errorMessage: nil))
+        monitor.handle(.init(id: id, kind: .import, finished: false, succeeded: false, endDate: nil))
         #expect(monitor.status == .syncing)
-        monitor.handle(.init(id: id, kind: .import, finished: true, succeeded: true, endDate: now, errorMessage: nil))
+        monitor.handle(.init(id: id, kind: .import, finished: true, succeeded: true, endDate: now))
         #expect(monitor.status == .upToDate(now))
+        // A fetch that brought nothing new doesn't refresh the app.
+        #expect(monitor.importCount == 0)
+        monitor.didImportChanges()
         #expect(monitor.importCount == 1)
         #expect(imports == 1)
 
-        let export = UUID()
-        monitor.handle(.init(id: export, kind: .export, finished: true, succeeded: false, endDate: now, errorMessage: "No internet connection."))
-        #expect(monitor.status == .failed("No internet connection."))
-        #expect(monitor.importCount == 1)
+        // A record the server refused keeps the status at "Not synced" until it goes through.
+        monitor.setSendError("Your iCloud storage is full.")
+        #expect(monitor.status == .failed("Your iCloud storage is full."))
+        let fetch = UUID()
+        monitor.handle(.init(id: fetch, kind: .import, finished: false, succeeded: false, endDate: nil))
+        monitor.handle(.init(id: fetch, kind: .import, finished: true, succeeded: true, endDate: now))
+        #expect(monitor.status == .failed("Your iCloud storage is full."))
+        monitor.setSendError(nil)
+        #expect(monitor.status == .upToDate(now))
     }
 
     @Test func testsAndPreviewsDoNotSync() {
@@ -196,6 +204,8 @@ struct ICloudSyncTests {
             clock: TestClock(), storage: .inMemory, notifications: FakeNotificationClient(), defaults: makeDefaults()
         )
         #expect(dependencies.cloudSync.status == .unavailable)
+        #expect(dependencies.cloudEngine == nil)
+        #expect(dependencies.cloudSharing == nil)
     }
 }
 
