@@ -32,10 +32,14 @@ jobs:
       fail-fast: false
       matrix:
         include:
+          # UI tests launch the app over and over and take most of the time, so they run once, on
+          # latest iOS, spread over parallel simulators. iOS 18 builds and runs the unit tests.
           - label: latest iOS
             ios_major: ""
+            test_flags: -parallel-testing-worker-count 3
           - label: iOS 18 minimum
             ios_major: "18"
+            test_flags: -skip-testing:NewbeeUITests
     steps:
       - uses: actions/checkout@v4
       - name: Select Xcode
@@ -55,6 +59,8 @@ jobs:
             -scheme Newbee \
             -destination "id=${{ steps.sim.outputs.udid }}" \
             -resultBundlePath TestResults.xcresult \
+            -enableCodeCoverage NO \
+            ${{ matrix.test_flags }} \
             CODE_SIGNING_ALLOWED=NO \
             NEWBEE_CLOUDKIT_CONTAINER= \
             | xcbeautify --renderer github-actions
