@@ -90,6 +90,44 @@ final class CloudSyncEngine {
         enqueuePending()
     }
 
+    /// True between `start()` and `stop()`.
+    var isRunning: Bool { privateEngine != nil }
+
+    /// "Sync with iCloud" was turned off. Every feed stays on the phone and in iCloud, and nothing
+    /// more is sent or fetched. Everything sync knew about iCloud is forgotten, so turning it on
+    /// again compares the phone with iCloud from scratch, like a new device: both sides are
+    /// merged, and nothing changed while sync was off is deleted on either side.
+    func stop() {
+        guard isRunning else { return }
+        for observer in observers {
+            NotificationCenter.default.removeObserver(observer)
+        }
+        observers = []
+        scanTask?.cancel()
+        retryTask?.cancel()
+        // Events from the old engines are ignored from here on (`handleEvent`).
+        privateEngine = nil
+        sharedEngine = nil
+        activity = [:]
+        blocked = [:]
+        didResetEngine = false
+        let wasJoined = isJoined
+        core.forgetServer()
+        var fresh = CloudSyncState()
+        fresh.ledger = core.ledger
+        state = fresh
+        persistNow()
+        if wasJoined {
+            onSharingChange?()
+        }
+    }
+
+    /// Fetches everything new from iCloud: this parent's own log and any shared one.
+    func fetchAll() async {
+        try? await privateEngine?.fetchChanges()
+        try? await sharedEngine?.fetchChanges()
+    }
+
     private func makeEngine(database: CKDatabase, serialization: CKSyncEngine.State.Serialization?) -> CKSyncEngine {
         CKSyncEngine(CKSyncEngine.Configuration(database: database, stateSerialization: serialization, delegate: self))
     }

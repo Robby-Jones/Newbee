@@ -6,8 +6,8 @@ import SwiftUI
 /// Small settings kept in App Group `UserDefaults` (docs/DATA_MODEL.md, "Not in SwiftData").
 /// Edited on the Settings screen; the Log Bottle sheet also remembers the last unit used.
 ///
-/// With iCloud on, the `Key.synced` settings are mirrored to iCloud key-value storage so every
-/// device signed in to the same Apple ID uses the same units, presets and reminders
+/// With "Sync with iCloud" on, the `Key.synced` settings are mirrored to iCloud key-value storage
+/// so every device signed in to the same Apple ID uses the same units, presets and reminders
 /// (docs/ICLOUD_SYNC.md). The local defaults stay the source the app reads.
 @MainActor
 @Observable
@@ -72,8 +72,13 @@ final class AppPreferences {
 
     @ObservationIgnored private let defaults: UserDefaults
     @ObservationIgnored private let locale: Locale
-    /// iCloud key-value storage, or `nil` when settings stay on this device.
-    @ObservationIgnored private let cloud: (any CloudKeyValueStore)?
+    /// iCloud key-value storage, or `nil` when this build or run never syncs.
+    @ObservationIgnored private let cloudStore: (any CloudKeyValueStore)?
+    /// Whether "Sync with iCloud" is on (`CloudSyncSwitch`).
+    @ObservationIgnored private var cloudIsOn: Bool
+    /// The key-value storage settings sync through right now, or `nil` while they stay on this
+    /// device.
+    private var cloud: (any CloudKeyValueStore)? { cloudIsOn ? cloudStore : nil }
     /// True while settings from iCloud are being applied, so they aren't sent straight back.
     @ObservationIgnored private var isApplyingCloudChange = false
     @ObservationIgnored private var cloudObserver: NSObjectProtocol?
@@ -145,11 +150,17 @@ final class AppPreferences {
         didSet { store(onboardingComplete, forKey: Key.onboardingComplete) }
     }
 
-    init(defaults: UserDefaults, locale: Locale = .current, cloud: (any CloudKeyValueStore)? = nil) {
+    init(
+        defaults: UserDefaults,
+        locale: Locale = .current,
+        cloud: (any CloudKeyValueStore)? = nil,
+        cloudIsOn: Bool = true
+    ) {
         self.defaults = defaults
         self.locale = locale
-        self.cloud = cloud
-        if let cloud {
+        cloudStore = cloud
+        self.cloudIsOn = cloudIsOn
+        if let cloud = cloudIsOn ? cloud : nil {
             Self.mergeAtLaunch(defaults: defaults, cloud: cloud)
         }
         volumeUnit = Self.loadUnit(defaults, locale: locale)
@@ -260,7 +271,25 @@ final class AppPreferences {
         }
     }
 
-    /// Starts listening for settings changed on other devices. Call once at launch.
+    /// "Sync with iCloud" was turned on or off. Turning it on works like launching on a new
+    /// device: settings already in iCloud replace this device's, and settings only this device
+    /// has are sent up. Turning it off keeps the current settings on this device.
+    func setCloudSync(_ isOn: Bool) {
+        guard isOn != cloudIsOn else { return }
+        cloudIsOn = isOn
+        if isOn, let cloud {
+            _ = cloud.synchronize()
+            Self.mergeAtLaunch(defaults: defaults, cloud: cloud)
+            reloadFromDefaults()
+            cloudChangeCount += 1
+            startCloudSync()
+        } else if let cloudObserver {
+            NotificationCenter.default.removeObserver(cloudObserver)
+            self.cloudObserver = nil
+        }
+    }
+
+    /// Starts listening for settings changed on other devices. Call at launch while sync is on.
     func startCloudSync() {
         guard let cloud, cloudObserver == nil else { return }
         cloudObserver = NotificationCenter.default.addObserver(

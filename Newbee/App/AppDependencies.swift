@@ -35,6 +35,9 @@ final class AppDependencies {
     let babyPhoto: BabyPhotoStore
     /// iCloud sync status, and the signal that another device's changes arrived.
     let cloudSync: CloudSyncMonitor
+    /// Settings → iCloud → "Sync with iCloud": off on a fresh install. `nil` when this run
+    /// doesn't sync.
+    let cloudSyncSwitch: CloudSyncSwitch?
     /// Syncs feeds and the baby profile with iCloud. `nil` when this run doesn't sync (tests,
     /// previews, a build without an iCloud container).
     let cloudEngine: CloudSyncEngine?
@@ -68,9 +71,14 @@ final class AppDependencies {
         if case .appGroup = resolvedStorage { isAppStore = true } else { isAppStore = false }
         // Only the real store syncs, and only in a build that has an iCloud container.
         let cloudKitContainerID = isAppStore && container != nil ? AppConfiguration.cloudKitContainerID : nil
-        let cloudSync = CloudSyncMonitor(containerID: cloudKitContainerID)
-        self.cloudSync = cloudSync
         let userDefaults = defaults ?? AppPreferences.makeDefaults()
+        let syncSwitch = cloudKitContainerID == nil ? nil : CloudSyncSwitch(
+            defaults: userDefaults,
+            isExistingInstall: Self.isExistingInstall(defaults: userDefaults)
+        )
+        cloudSyncSwitch = syncSwitch
+        let cloudSync = CloudSyncMonitor(containerID: cloudKitContainerID, isEnabled: syncSwitch?.isOn ?? false)
+        self.cloudSync = cloudSync
         let nightShiftStore = NightShiftStore(defaults: userDefaults)
         let engine: CloudSyncEngine?
         let sharing: CloudSharing?
@@ -109,7 +117,8 @@ final class AppDependencies {
         // Settings follow the parent's iCloud account whenever feeds do.
         let preferences = AppPreferences(
             defaults: userDefaults,
-            cloud: cloudKitContainerID == nil ? nil : NSUbiquitousKeyValueStore.default
+            cloud: cloudKitContainerID == nil ? nil : NSUbiquitousKeyValueStore.default,
+            cloudIsOn: syncSwitch?.isOn ?? false
         )
         self.preferences = preferences
 
@@ -174,6 +183,14 @@ final class AppDependencies {
         self.liveActivity = activity
         sessionManager = manager
         recovery = RecoveryCoordinator(manager: manager, policy: policy)
+    }
+
+    /// Whether the app ran on this device before "Sync with iCloud" existed, when sync was always
+    /// on: onboarding was done, or sync had saved its state.
+    static func isExistingInstall(defaults: UserDefaults) -> Bool {
+        if defaults.bool(forKey: AppPreferences.Key.onboardingComplete) { return true }
+        guard let file = try? CloudSyncStateFile.standard() else { return false }
+        return FileManager.default.fileExists(atPath: file.url.path)
     }
 
     /// Routes Lock Screen and Dynamic Island buttons to `sessionManager`. Called from

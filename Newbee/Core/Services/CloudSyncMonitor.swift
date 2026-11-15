@@ -10,6 +10,8 @@ final class CloudSyncMonitor {
     enum Status: Equatable {
         /// This build or run doesn't sync (tests, previews).
         case unavailable
+        /// The parent hasn't turned on "Sync with iCloud", or turned it off.
+        case off
         /// Asking iCloud whether the parent is signed in.
         case checking
         /// No iCloud account on this device, or iCloud is turned off for Newbee.
@@ -28,6 +30,11 @@ final class CloudSyncMonitor {
     /// The iCloud container, or `nil` when this run doesn't sync.
     let containerID: String?
     private(set) var status: Status
+    /// Whether "Sync with iCloud" is on (`CloudSyncSwitch`).
+    private(set) var isEnabled: Bool
+    /// False once iCloud says this device has no account, or iCloud is restricted. Known even with
+    /// sync off, so Settings can tell what turning it on would do.
+    private(set) var hasICloudAccount = true
     /// Goes up by one each time changes from iCloud were written to the store. The app observes
     /// it to refresh what isn't driven by `@Query`: the timer, Live Activity, reminders and photo.
     private(set) var importCount = 0
@@ -40,12 +47,22 @@ final class CloudSyncMonitor {
     @ObservationIgnored private var lastSuccess: Date?
     @ObservationIgnored private var observers: [NSObjectProtocol] = []
 
-    init(containerID: String?) {
+    init(containerID: String?, isEnabled: Bool = true) {
         self.containerID = containerID
-        status = containerID == nil ? .unavailable : .checking
+        self.isEnabled = isEnabled
+        status = containerID == nil ? .unavailable : (isEnabled ? .checking : .off)
     }
 
-    /// Starts watching the iCloud account. Call once.
+    /// "Sync with iCloud" was turned on or off. Whatever was running is forgotten: a stopped
+    /// engine never reports its end.
+    func setEnabled(_ isOn: Bool) {
+        isEnabled = isOn
+        inFlight = []
+        sendError = nil
+        updateStatus()
+    }
+
+    /// Starts watching the iCloud account, also while sync is off. Call once.
     func start() {
         guard let containerID, observers.isEmpty else { return }
         observers.append(NotificationCenter.default.addObserver(forName: .CKAccountChanged, object: nil, queue: .main) { _ in
@@ -62,6 +79,7 @@ final class CloudSyncMonitor {
 
     private func refreshAccountStatus(containerID: String) async {
         accountStatus = try? await CKContainer(identifier: containerID).accountStatus()
+        hasICloudAccount = accountStatus != .noAccount && accountStatus != .restricted
         updateStatus()
     }
 
@@ -92,6 +110,10 @@ final class CloudSyncMonitor {
 
     private func updateStatus() {
         guard containerID != nil else { return }
+        guard isEnabled else {
+            status = .off
+            return
+        }
         switch accountStatus {
         case .noAccount:
             status = .signedOut

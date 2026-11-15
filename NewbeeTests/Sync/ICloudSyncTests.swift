@@ -206,6 +206,95 @@ struct ICloudSyncTests {
         #expect(dependencies.cloudSync.status == .unavailable)
         #expect(dependencies.cloudEngine == nil)
         #expect(dependencies.cloudSharing == nil)
+        #expect(dependencies.cloudSyncSwitch == nil)
+    }
+
+    // MARK: - Opt-in
+
+    @Test func syncStartsOffOnAFreshInstallAndOnForAnExistingOne() {
+        #expect(CloudSyncSwitch(defaults: makeDefaults(), isExistingInstall: false).isOn == false)
+        #expect(CloudSyncSwitch(defaults: makeDefaults(), isExistingInstall: true).isOn)
+    }
+
+    /// The starting choice is saved at once: finishing onboarding later doesn't turn sync on.
+    @Test func theFirstChoiceSticks() {
+        let defaults = makeDefaults()
+        #expect(CloudSyncSwitch(defaults: defaults, isExistingInstall: false).isOn == false)
+        #expect(CloudSyncSwitch(defaults: defaults, isExistingInstall: true).isOn == false)
+    }
+
+    @Test func onboardingDoneMeansAnExistingInstall() {
+        let defaults = makeDefaults()
+        defaults.set(true, forKey: AppPreferences.Key.onboardingComplete)
+        #expect(AppDependencies.isExistingInstall(defaults: defaults))
+    }
+
+    @Test func turningSyncOnAndOffIsSaved() async throws {
+        let defaults = makeDefaults()
+        let syncSwitch = CloudSyncSwitch(defaults: defaults, isExistingInstall: false)
+        var calls: [String] = []
+        syncSwitch.activate = { calls.append("on") }
+        syncSwitch.deactivate = { calls.append("off") }
+
+        await syncSwitch.turnOn()
+        #expect(syncSwitch.isOn)
+        #expect(CloudSyncSwitch(defaults: defaults, isExistingInstall: false).isOn)
+        try await syncSwitch.turnOff()
+        #expect(syncSwitch.isOn == false)
+        #expect(CloudSyncSwitch(defaults: defaults, isExistingInstall: true).isOn == false)
+        #expect(calls == ["on", "off"])
+    }
+
+    /// Sharing couldn't be ended (offline): sync stays on rather than strand the partner.
+    @Test func syncStaysOnWhenItCantBeTurnedOff() async {
+        let syncSwitch = CloudSyncSwitch(defaults: makeDefaults(), isExistingInstall: true)
+        syncSwitch.deactivate = { throw CancellationError() }
+        await #expect(throws: CancellationError.self) { try await syncSwitch.turnOff() }
+        #expect(syncSwitch.isOn)
+    }
+
+    @Test func statusIsOffUntilSyncIsTurnedOn() {
+        let monitor = CloudSyncMonitor(containerID: "iCloud.test", isEnabled: false)
+        #expect(monitor.status == .off)
+        monitor.setSendError("Your iCloud storage is full.")
+        #expect(monitor.status == .off)
+        monitor.setEnabled(true)
+        // A send error from before sync was turned off is forgotten.
+        #expect(monitor.status == .checking)
+        monitor.setEnabled(false)
+        #expect(monitor.status == .off)
+    }
+
+    @Test func settingsStayOnTheDeviceWhileSyncIsOff() {
+        let cloud = FakeCloudKeyValueStore()
+        cloud.values[AppPreferences.Key.volumeUnit] = VolumeUnit.milliliters.rawValue
+        let preferences = AppPreferences(
+            defaults: makeDefaults(), locale: Locale(identifier: "en_US"), cloud: cloud, cloudIsOn: false
+        )
+        // iCloud's settings aren't taken, and nothing is sent.
+        #expect(preferences.volumeUnit == .fluidOunces)
+        preferences.bottlePresetsML = [60]
+        #expect(cloud.setCount == 0)
+    }
+
+    /// Turning sync on works like a new device: iCloud wins, settings only this one has go up.
+    @Test func turningSyncOnMergesSettingsLikeANewDevice() {
+        let cloud = FakeCloudKeyValueStore()
+        cloud.values[AppPreferences.Key.volumeUnit] = VolumeUnit.milliliters.rawValue
+        let preferences = AppPreferences(
+            defaults: makeDefaults(), locale: Locale(identifier: "en_US"), cloud: cloud, cloudIsOn: false
+        )
+        preferences.pumpPresetsML = [2.0, 3.0]
+
+        preferences.setCloudSync(true)
+        #expect(preferences.volumeUnit == .milliliters)
+        #expect(cloud.values[AppPreferences.Key.pumpPresets] as? [Double] == [2.0, 3.0])
+        #expect(preferences.cloudChangeCount == 1)
+
+        preferences.setCloudSync(false)
+        cloud.setCount = 0
+        preferences.bottlePresetsML = [90]
+        #expect(cloud.setCount == 0)
     }
 }
 

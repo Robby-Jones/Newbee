@@ -47,6 +47,7 @@ struct NewbeeApp: App {
                     .environment(dependencies.reminders)
                     .environment(dependencies.babyPhoto)
                     .environment(dependencies.cloudSync)
+                    .environment(dependencies.cloudSyncSwitch)
                     .environment(dependencies.cloudSharing)
                     .environment(dependencies.nightShift)
                     .environment(\.dataManagement, DataManagementActions(dependencies: dependencies))

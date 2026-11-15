@@ -246,9 +246,9 @@ today and week totals on Home and in Insights, gaps between feeds in History, ma
 History's **+**, and export in Settings.
 
 ### 3.10 Settings
-Baby profile · Sharing (one row, see below) · Night Shift (shift end time, Ring as alarm on iOS 26; shared logs only) · Bottle and pumping (a unit for each, shown everywhere including past entries, and each one's presets in a dropdown) · Reminders (enable, interval, basis start/end, quiet hours, "still feeding?" threshold) · Live Activities status + dismissal policy · Interval definition · Appearance (system/light/dark) · iCloud (sync status) · Data (export, how backup works, **Import from Huckleberry**, **Remove imported data** (shown only when something was imported; simple alert), **Delete all data** with typed confirmation) · About / privacy / disclaimer.
+Baby profile · iCloud (**Sync with iCloud** switch, off on a fresh install; sync status once on) · Sharing (one row, see below) · Night Shift (shift end time, Ring as alarm on iOS 26; shared logs only) · Bottle and pumping (a unit for each, shown everywhere including past entries, and each one's presets in a dropdown) · Reminders (enable, interval, basis start/end, quiet hours, "still feeding?" threshold) · Live Activities status + dismissal policy · Interval definition · Appearance (system/light/dark) · Data (export, how backup works, **Import from Huckleberry**, **Remove imported data** (shown only when something was imported; simple alert), **Delete all data** with typed confirmation) · About / privacy / disclaimer.
 
-**Sharing.** One row under the baby profile, hidden when iCloud isn't available. It always opens Apple's own sharing sheet, which does the inviting, shows who is on the log, and stops sharing or leaves. Newbee adds no screens of its own.
+**Sharing.** One row under the iCloud section, hidden when this iPhone has no iCloud account. With iCloud sync off it still shows: tapping it asks "Turn on iCloud sync?" and then opens the sharing sheet, and its footer says sharing turns on iCloud sync. It always opens Apple's own sharing sheet, which does the inviting, shows who is on the log, and stops sharing or leaves. Newbee adds no screens of its own.
 
 | State | Row | Footer |
 |---|---|---|

@@ -48,7 +48,9 @@ final class CloudSharing {
     @ObservationIgnored private let modelContainer: ModelContainer
     @ObservationIgnored private let controllerDelegate = SharingControllerDelegate()
     @ObservationIgnored private let log = Logger(subsystem: "com.robbyjones.newbee", category: "sharing")
-    @ObservationIgnored private var isLeavingToDelete = false
+    /// True while this parent leaves on purpose ("Delete all data", turning sync off), when the
+    /// screen they're on already said so.
+    @ObservationIgnored private var isLeavingOnPurpose = false
 
     init(engine: CloudSyncEngine, modelContainer: ModelContainer) {
         self.engine = engine
@@ -71,8 +73,8 @@ final class CloudSharing {
             status = .joined
         } else if wasJoined {
             status = .notShared
-            // Leaving to delete everything needs no "your feeds are still here".
-            if !isLeavingToDelete {
+            // Leaving on purpose needs no "your feeds are still here".
+            if !isLeavingOnPurpose {
                 notice = .stopped
             }
         }
@@ -83,14 +85,48 @@ final class CloudSharing {
     /// deleted for the other parent. Does nothing on the phone that owns the log.
     func leaveBeforeDeletingEverything() async throws {
         guard engine.isJoined else { return }
-        isLeavingToDelete = true
-        defer { isLeavingToDelete = false }
+        isLeavingOnPurpose = true
+        defer { isLeavingOnPurpose = false }
         try await engine.leaveSharedLog()
+        status = .notShared
+    }
+
+    /// "Sync with iCloud" is being turned off, so sharing ends: the parent who shared the log
+    /// stops sharing it, and the invited parent leaves. Either way the partner keeps every feed so
+    /// far, and so does this phone. Throws without changing anything if iCloud can't be reached
+    /// while the log is shared: the partner would keep syncing with a log nobody updates.
+    func endBeforeTurningOffSync() async throws {
+        guard engine.isRunning else { return }
+        isLeavingOnPurpose = true
+        defer { isLeavingOnPurpose = false }
+        if engine.isJoined {
+            try await engine.leaveSharedLog()
+        } else {
+            do {
+                // For the owner, deleting the share removes everyone else from it. Their phones
+                // see the shared log disappear, and keep their copy.
+                _ = try await engine.container.privateCloudDatabase.deleteRecord(withID: shareID)
+            } catch let error as CKError where error.code == .unknownItem || error.code == .zoneNotFound {
+                // Never shared.
+            } catch {
+                // Offline, say. Nothing to stop if nothing is known to be shared.
+                guard status == .notShared else { throw error }
+            }
+        }
+        status = .notShared
+    }
+
+    /// Sync was turned off: there is no shared log any more.
+    func syncDidStop() {
         status = .notShared
     }
 
     /// Asks iCloud who is on the log.
     func refresh() async {
+        guard engine.isRunning else {
+            status = .notShared
+            return
+        }
         do {
             let share = try await engine.activeDatabase.record(for: shareID) as? CKShare
             status = Self.status(for: share?.participants.map { Participant($0) } ?? [], joined: engine.isJoined)

@@ -24,6 +24,7 @@ struct SettingsView: View {
     var body: some View {
         Form {
             BabyProfileSection()
+            ICloudSyncSection()
             SharingSection()
             if let preferences {
                 NightShiftSettingsSection(preferences: preferences)
@@ -33,7 +34,6 @@ struct SettingsView: View {
                 LiveActivitiesSection()
                 AppearanceSection(preferences: preferences)
             }
-            ICloudSyncSection()
             DataSection(
                 presentation: $dataPresentation,
                 errorMessage: $dataError,
@@ -587,31 +587,73 @@ private struct LiveActivitiesSection: View {
 
 // MARK: - iCloud sync
 
-/// Whether feeds are syncing with the parent's iCloud, and why not when they aren't.
+/// "Sync with iCloud" (off on a fresh install), and once it's on, whether feeds are syncing and
+/// why not when they aren't (docs/ICLOUD_SYNC.md).
 private struct ICloudSyncSection: View {
     @Environment(CloudSyncMonitor.self) private var monitor: CloudSyncMonitor?
+    @Environment(CloudSyncSwitch.self) private var syncSwitch: CloudSyncSwitch?
+    @Environment(CloudSharing.self) private var sharing: CloudSharing?
+    @State private var isConfirmingOff = false
+    @State private var errorMessage: String?
 
     var body: some View {
-        if let monitor, monitor.status != .unavailable {
+        if let monitor, let syncSwitch, monitor.status != .unavailable {
             Section {
-                LabeledContent("iCloud sync") {
+                Toggle(isOn: Binding(get: { syncSwitch.isOn }, set: { isOn in
+                    errorMessage = nil
+                    if isOn {
+                        Task { await syncSwitch.turnOn() }
+                    } else {
+                        isConfirmingOff = true
+                    }
+                })) {
                     HStack(spacing: 6) {
-                        if monitor.status == .syncing || monitor.status == .checking {
+                        Text("Sync with iCloud")
+                        if syncSwitch.isWorking {
                             ProgressView()
                         }
-                        Text(Self.value(for: monitor.status))
                     }
                 }
-                .accessibilityIdentifier("settings.iCloudSync")
-                if case .upToDate(let date?) = monitor.status {
-                    LabeledContent("Last synced") {
-                        Text(date, format: .relative(presentation: .named))
+                .disabled(syncSwitch.isWorking)
+                .accessibilityIdentifier("settings.iCloudSyncSwitch")
+                if syncSwitch.isOn {
+                    LabeledContent("Status") {
+                        HStack(spacing: 6) {
+                            if monitor.status == .syncing || monitor.status == .checking {
+                                ProgressView()
+                            }
+                            Text(Self.value(for: monitor.status))
+                        }
+                    }
+                    .accessibilityIdentifier("settings.iCloudSync")
+                    if case .upToDate(let date?) = monitor.status {
+                        LabeledContent("Last synced") {
+                            Text(date, format: .relative(presentation: .named))
+                        }
                     }
                 }
             } header: {
                 Text("iCloud")
             } footer: {
-                Text(Self.footer(for: monitor.status))
+                if let errorMessage {
+                    Text(errorMessage).foregroundStyle(NBColor.destructive)
+                } else {
+                    Text(Self.footer(for: monitor.status, hasAccount: monitor.hasICloudAccount))
+                }
+            }
+            .alert("Turn off iCloud sync?", isPresented: $isConfirmingOff) {
+                Button("Turn Off", role: .destructive) {
+                    Task {
+                        do {
+                            try await syncSwitch.turnOff()
+                        } catch {
+                            errorMessage = CloudSharing.message(for: error)
+                        }
+                    }
+                }
+                Button("Cancel", role: .cancel) {}
+            } message: {
+                Text(Self.turnOffMessage(for: sharing?.status ?? .notShared))
             }
             .onReceive(NotificationCenter.default.publisher(for: UIApplication.didBecomeActiveNotification)) { _ in
                 // Picks up signing in to iCloud in iOS Settings.
@@ -622,7 +664,7 @@ private struct ICloudSyncSection: View {
 
     static func value(for status: CloudSyncMonitor.Status) -> String {
         switch status {
-        case .unavailable, .signedOut, .restricted: String(localized: "Off")
+        case .unavailable, .off, .signedOut, .restricted: String(localized: "Off")
         case .checking: String(localized: "Checking")
         case .temporarilyUnavailable: String(localized: "Paused")
         case .syncing: String(localized: "Syncing")
@@ -631,11 +673,15 @@ private struct ICloudSyncSection: View {
         }
     }
 
-    static func footer(for status: CloudSyncMonitor.Status) -> String {
-        let about = String(localized: "Feeds, the baby profile and settings sync through your private iCloud to every iPhone and iPad signed in to your Apple ID. Only you, and a partner you share with, can see the feeds.")
+    static func footer(for status: CloudSyncMonitor.Status, hasAccount: Bool) -> String {
         switch status {
+        case .off:
+            let about = String(localized: "Feeds are kept on this iPhone only. Turn on to sync them through your private iCloud to your other devices, and to share with your partner.")
+            return hasAccount
+                ? about
+                : String(localized: "\(about) First sign in to iCloud in the Settings app.")
         case .unavailable, .checking, .syncing, .upToDate:
-            return about
+            return String(localized: "Feeds, the baby profile and settings sync through your private iCloud to every iPhone and iPad signed in to your Apple ID. Only you, and a partner you share with, can see the feeds.")
         case .signedOut:
             return String(localized: "Sign in to iCloud in the Settings app, and check that iCloud is on for Newbee, to sync your feeds to your other devices. Until then they're kept on this iPhone.")
         case .restricted:
@@ -644,6 +690,19 @@ private struct ICloudSyncSection: View {
             return String(localized: "iCloud can't be reached right now. Feeds are safe on this iPhone and sync when iCloud is back.")
         case .failed(let message):
             return String(localized: "Some changes haven't synced yet: \(message) Your feeds are safe on this iPhone, and Newbee keeps trying.")
+        }
+    }
+
+    /// What turning sync off does, by who shares the log.
+    static func turnOffMessage(for status: CloudSharing.Status) -> String {
+        let about = String(localized: "Your feeds stay on this iPhone and in iCloud, but changes stop syncing to your other devices.")
+        return switch status {
+        case .notShared:
+            about
+        case .invited, .shared:
+            String(localized: "\(about) Sharing with your partner stops too. They keep a copy of every feed so far.")
+        case .joined:
+            String(localized: "\(about) You also leave your partner's log. They keep every feed, and so does this iPhone.")
         }
     }
 }
@@ -798,6 +857,7 @@ struct DeleteAllDataSheet: View {
     let delete: @MainActor () async throws -> Void
     @Environment(\.dismiss) private var dismiss
     @Environment(CloudSharing.self) private var sharing: CloudSharing?
+    @Environment(CloudSyncSwitch.self) private var syncSwitch: CloudSyncSwitch?
     @State private var typed = ""
     @State private var isDeleting = false
     @State private var errorMessage: String?
@@ -805,9 +865,13 @@ struct DeleteAllDataSheet: View {
 
     static let confirmationWord = "DELETE"
 
-    /// What deleting reaches depends on who shares the log (docs/ICLOUD_SYNC.md).
-    static func warning(for status: CloudSharing.Status) -> String {
-        switch status {
+    /// What deleting reaches depends on whether feeds sync, and who shares the log
+    /// (docs/ICLOUD_SYNC.md).
+    static func warning(for status: CloudSharing.Status, syncs: Bool = true) -> String {
+        guard syncs else {
+            return String(localized: "This permanently deletes every feed, the baby profile and your settings from this iPhone. It can't be undone.")
+        }
+        return switch status {
         case .notShared, .invited:
             String(localized: "This permanently deletes every feed, the baby profile and your settings, on this iPhone and on your other devices that sync with the same iCloud account. It can't be undone.")
         case .shared:
@@ -825,7 +889,10 @@ struct DeleteAllDataSheet: View {
         NavigationStack {
             Form {
                 Section {
-                    Text(Self.warning(for: SharingPreview.status ?? sharing?.status ?? .notShared))
+                    Text(Self.warning(
+                        for: SharingPreview.status ?? sharing?.status ?? .notShared,
+                        syncs: SharingPreview.status != nil || syncSwitch?.isOn == true
+                    ))
                     TextField("Type \(Self.confirmationWord) to confirm", text: $typed)
                         .textInputAutocapitalization(.characters)
                         .autocorrectionDisabled()
@@ -884,7 +951,7 @@ private struct AboutSection: View {
     var body: some View {
         Section {
             LabeledContent("Version", value: Self.version)
-            Label("Newbee collects no data. Your feeds sync only through iCloud, to your own devices and to a partner you invite. Nothing else leaves your iPhone unless you export it.", systemImage: "lock.shield")
+            Label("Newbee collects no data. Your feeds stay on your iPhone. With iCloud sync on, they sync only through your own iCloud, to your devices and to a partner you invite. Nothing else leaves your iPhone unless you export it.", systemImage: "lock.shield")
                 .font(.footnote)
             Label("Newbee is a log, not medical advice. Ask your pediatrician about feeding concerns.", systemImage: "stethoscope")
                 .font(.footnote)
