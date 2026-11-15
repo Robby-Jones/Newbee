@@ -17,7 +17,7 @@ struct SharingSection: View {
         }
     }
 
-    /// Sharing needs iCloud. Without it the iCloud section above already says what to do.
+    /// Sharing needs iCloud. Without it the iCloud section already says what to do.
     static func canShare(_ status: CloudSyncMonitor.Status) -> Bool {
         switch status {
         case .unavailable, .signedOut, .restricted: false
@@ -72,13 +72,13 @@ struct SharingSectionContent: View {
     static func footer(for status: CloudSharing.Status) -> String {
         switch status {
         case .notShared:
-            String(localized: "Invite your partner to see and log feeds on their own iPhone. They need Newbee and their own iCloud account.")
+            String(localized: "Your partner sees and logs feeds on their own iPhone. They need Newbee and iCloud.")
         case .invited:
-            String(localized: "Waiting for your partner to open the invitation. Tap to send it again or to cancel it.")
+            String(localized: "Waiting for your partner to open the invitation. Tap to send it again or cancel it.")
         case .shared:
-            String(localized: "You and your partner see the same feeds, and either of you can add or change them. Tap to manage or stop sharing.")
+            String(localized: "You both see the same feeds and can add or change them. Tap to manage or stop sharing.")
         case .joined:
-            String(localized: "You and your partner see the same feeds, and either of you can add or change them. Tap to see who's sharing or to leave.")
+            String(localized: "You both see the same feeds and can add or change them. Tap to leave.")
         }
     }
 }

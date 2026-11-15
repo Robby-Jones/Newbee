@@ -24,6 +24,7 @@ struct SettingsView: View {
     var body: some View {
         Form {
             BabyProfileSection()
+            SharingSection()
             if let preferences {
                 UnitsSection(preferences: preferences)
                 TimeSinceLastFeedSection(preferences: preferences)
@@ -32,7 +33,6 @@ struct SettingsView: View {
                 AppearanceSection(preferences: preferences)
             }
             ICloudSyncSection()
-            SharingSection()
             DataSection(
                 presentation: $dataPresentation,
                 errorMessage: $dataError,
