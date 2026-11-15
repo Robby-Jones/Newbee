@@ -161,7 +161,8 @@ public struct PlannedReminder: Sendable, Hashable {
 ///   on, no breastfeed is running, and the time is still ahead. In quiet hours it waits until
 ///   they end. Overdue reminders are not sent late.
 /// - **Still feeding?** fires `stillFeedingThreshold` after the running side started (or the
-///   pause began). It ignores quiet hours: a timer left running overnight is what it's for.
+///   pause began). It ignores quiet hours: a timer left running overnight is what it's for. Only
+///   the phone the feed was started on asks: on a shared log the other parent's phone stays quiet.
 public struct ReminderPlanner: Sendable {
     public var calendar: Calendar
 
@@ -169,10 +170,18 @@ public struct ReminderPlanner: Sendable {
         self.calendar = calendar
     }
 
-    public func plan(settings: ReminderSettings, lastFeed: LastFeed?, active: SessionSnapshot?, now: Date) -> [PlannedReminder] {
+    /// - Parameter activeStartedHere: `false` when the running feed arrived through sync from
+    ///   another phone.
+    public func plan(
+        settings: ReminderSettings,
+        lastFeed: LastFeed?,
+        active: SessionSnapshot?,
+        activeStartedHere: Bool = true,
+        now: Date
+    ) -> [PlannedReminder] {
         var reminders: [PlannedReminder] = []
         if let active, active.status != .completed {
-            if settings.stillFeedingEnabled, let still = stillFeeding(active, threshold: settings.stillFeedingThreshold, now: now) {
+            if settings.stillFeedingEnabled, activeStartedHere, let still = stillFeeding(active, threshold: settings.stillFeedingThreshold, now: now) {
                 reminders.append(still)
             }
         } else if settings.isEnabled, let lastFeed, let due = feedDue(settings: settings, lastFeed: lastFeed, now: now) {

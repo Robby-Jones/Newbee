@@ -4,14 +4,25 @@ name: Screenshots
 # Connect asks for first: "iPhone with Dynamic Island (medium display)") with sample feeds, and uploads them
 # as the "app-store-screenshots" artifact (Actions → Screenshots → latest run → Artifacts).
 # Run on demand: Actions → Screenshots → Run workflow. Test: NewbeeUITests/AppStoreScreenshots.swift.
+# Choosing "ReviewScreenshots" instead takes pictures of new screens for review
+# (NewbeeUITests/ReviewScreenshots.swift, artifact "review-screenshots").
 
 on:
   workflow_dispatch:
+    inputs:
+      test:
+        description: Which screenshots to take
+        type: choice
+        default: AppStoreScreenshots
+        options:
+          - AppStoreScreenshots
+          - ReviewScreenshots
   # Also when the screenshot setup itself changes, so a PR shows the result.
   pull_request:
     paths:
       - .github/workflows/screenshots.yml
       - NewbeeUITests/AppStoreScreenshots.swift
+      - NewbeeUITests/ScreenshotTestCase.swift
       - Newbee/App/ScreenshotSampleData.swift
 
 jobs:
@@ -70,7 +81,7 @@ jobs:
             -project Newbee.xcodeproj \
             -scheme Newbee \
             -destination "id=${{ steps.sim.outputs.udid }}" \
-            -only-testing:NewbeeUITests/AppStoreScreenshots \
+            -only-testing:NewbeeUITests/${{ inputs.test || 'AppStoreScreenshots' }} \
             -resultBundlePath Screenshots.xcresult \
             CODE_SIGNING_ALLOWED=NO \
             NEWBEE_CLOUDKIT_CONTAINER= \
@@ -80,7 +91,7 @@ jobs:
       - name: Upload screenshots
         uses: actions/upload-artifact@v4
         with:
-          name: app-store-screenshots
+          name: ${{ inputs.test == 'ReviewScreenshots' && 'review-screenshots' || 'app-store-screenshots' }}
           path: ${{ runner.temp }}/screenshots/*.png
           if-no-files-found: error
       - name: Upload test results

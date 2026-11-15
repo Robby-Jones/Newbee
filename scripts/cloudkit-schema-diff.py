@@ -10,8 +10,8 @@ the summary says whether anything is left to deploy.
 import re
 import sys
 
-RECORD = re.compile(r'^\s*RECORD TYPE\s+("?[\w]+"?)')
-FIELD = re.compile(r'^\s*("?[A-Za-z_][\w]*"?)\s+([A-Z0-9<>]+)')
+RECORD = re.compile(r'^\s*RECORD TYPE\s+("?[\w.]+"?)')
+FIELD = re.compile(r'^\s*("?[A-Za-z_][\w.]*"?)\s+([A-Z0-9<>]+)')
 
 
 def parse(path):

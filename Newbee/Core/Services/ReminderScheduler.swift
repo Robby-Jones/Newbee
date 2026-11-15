@@ -24,6 +24,7 @@ final class ReminderScheduler: ReminderScheduling {
     @ObservationIgnored private let client: any NotificationClient
     @ObservationIgnored private let clock: any AppClock
     @ObservationIgnored private let planner: ReminderPlanner
+    @ObservationIgnored private let origins: FeedOrigins
     @ObservationIgnored private var tail: Task<Void, Never>?
 
     init(
@@ -32,7 +33,8 @@ final class ReminderScheduler: ReminderScheduling {
         bottleRepository: any BottleRepository,
         client: any NotificationClient,
         clock: any AppClock,
-        planner: ReminderPlanner = ReminderPlanner()
+        planner: ReminderPlanner = ReminderPlanner(),
+        origins: FeedOrigins = FeedOrigins()
     ) {
         self.preferences = preferences
         self.feedingRepository = feedingRepository
@@ -40,6 +42,7 @@ final class ReminderScheduler: ReminderScheduling {
         self.client = client
         self.clock = clock
         self.planner = planner
+        self.origins = origins
     }
 
     // MARK: - ReminderScheduling
@@ -93,7 +96,14 @@ final class ReminderScheduler: ReminderScheduling {
         let lastBottle = (try? bottleRepository.recentBottles(limit: 1))?.first
         let lastFeed = LastFeed.latest(breast: lastBreast, bottle: lastBottle)
         let plan = permission == .allowed
-            ? planner.plan(settings: preferences.reminders, lastFeed: lastFeed, active: active, now: now)
+            ? planner.plan(
+                settings: preferences.reminders,
+                lastFeed: lastFeed,
+                active: active,
+                // A feed the other parent is timing on their phone isn't this phone's to ask about.
+                activeStartedHere: active.map { origins.wasStartedHere($0.id) } ?? true,
+                now: now
+            )
             : []
         let identifiers = PlannedReminder.Kind.allCases.map(PlannedReminder.identifier(for:))
         let settings = preferences.reminders

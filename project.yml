@@ -55,6 +55,8 @@ targets:
         # without waiting for the next launch.
         UIBackgroundModes:
           - remote-notification
+        # Lets iOS open Newbee from an invitation to a shared feeding log.
+        CKSharingSupported: true
         # newbee://home, from the Live Activity's "+".
         CFBundleURLTypes:
           - CFBundleURLName: $(NEWBEE_BUNDLE_ID)

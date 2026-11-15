@@ -24,7 +24,7 @@ Around that timer, Newbee provides:
 
 1. **One hand, two taps.** Starting, switching, and ending a feed each take at most two taps from anywhere, including the Lock Screen.
 2. **Timestamps, not tickers.** All durations come from stored absolute timestamps, never from a running counter.
-3. **Private by default.** All data stays on the device. No account, analytics SDKs, or tracking. iCloud sync is opt-in (post-MVP).
+3. **Private by default.** No account, analytics SDKs, or tracking. Feeds stay on the device and in the parent's own iCloud, and are shared only with a partner they invite.
 4. **Calm, premium, native.** Follows Apple's Human Interface Guidelines, uses a soft palette, supports Dynamic Type and dark mode, and avoids clutter.
 5. **Not medical advice.** Newbee describes what happened. It never says what should happen.
 

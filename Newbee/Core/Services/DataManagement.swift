@@ -56,8 +56,13 @@ extension AppDependencies {
 
     /// Deletes every feed and the baby profile (photo included), ends any Live Activity, cancels every
     /// notification and resets preferences except appearance. Can't be undone.
+    ///
+    /// On a shared log (docs/ICLOUD_SYNC.md): the parent who shared it deletes it for both. The
+    /// invited parent leaves the log first, so only their own phone is cleared.
     func deleteAllData() async throws {
         guard let container = modelContainer else { throw DataError.storeUnavailable }
+        // Before anything is deleted: if leaving fails, nothing has changed.
+        try await cloudSharing?.leaveBeforeDeletingEverything()
         // A running feed goes through the manager first, so its Live Activity ends with it.
         if sessionManager.activeSession != nil {
             _ = try? sessionManager.discardActive()

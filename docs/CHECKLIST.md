@@ -70,6 +70,8 @@ Legend: `[x]` done · `[ ]` pending · `[!]` blocked (reason noted). Updated by 
 
 ## Post-v1
 - [x] iCloud sync between devices on the same Apple ID (docs/ICLOUD_SYNC.md): schema V3, CloudKit schema file + workflow
-- [ ] Robby: iCloud container + App ID capabilities, management token, deploy schema to production (docs/ICLOUD_SYNC.md §One-time setup)
+- [x] Robby: iCloud container + App ID capabilities, management token, deploy schema to production (docs/ICLOUD_SYNC.md §One-time setup)
+- [x] Share the feeding log with the other parent (docs/ICLOUD_SYNC.md §Sharing): own sync layer on `CKSyncEngine`, zone-wide share, Settings → Sharing
+- [ ] Robby: deploy the sharing schema to production, then share from one phone and join on the other (docs/ICLOUD_SYNC.md §Setting up sharing)
 - [ ] Device check: two devices on one Apple ID sync feeds, photo and settings
 - [ ] Sharing with a partner on another Apple ID (CKShare, Core Data sharing)

@@ -2,10 +2,13 @@ import Foundation
 import NewbeeKit
 import SwiftData
 import SwiftUI
+import UIKit
 import UserNotifications
 
 @main
 struct NewbeeApp: App {
+    /// Only for what SwiftUI has no hook for: an accepted invitation to a shared log.
+    @UIApplicationDelegateAdaptor(AppDelegate.self) private var appDelegate
     private let dependencies = AppDependencies.shared
     @State private var sessionModel = NewbeeApp.makeSessionModel()
     @State private var bottleModel = BottleLogUIModel(
@@ -44,6 +47,7 @@ struct NewbeeApp: App {
                     .environment(dependencies.reminders)
                     .environment(dependencies.babyPhoto)
                     .environment(dependencies.cloudSync)
+                    .environment(dependencies.cloudSharing)
                     .environment(\.dataManagement, DataManagementActions(dependencies: dependencies))
                     // Restore any session interrupted by termination, reboot or a clock change
                     // (docs/TIMER_ENGINE.md §5). Reconciling is idempotent, so overlapping
@@ -57,6 +61,11 @@ struct NewbeeApp: App {
                             pumpModel.refresh()
                             // Picks up permission changes made in iOS Settings.
                             Task { await dependencies.reminders.reschedule() }
+                            // Looks for the other phone's changes, in case a push was missed.
+                            dependencies.cloudEngine?.appBecameActive()
+                        } else if phase == .background {
+                            // Sends what was just logged before iOS suspends the app.
+                            Task { await dependencies.cloudEngine?.sendNow() }
                         }
                     }
                     // Re-draws the Live Activity in the newly chosen Light / Dark / System look.

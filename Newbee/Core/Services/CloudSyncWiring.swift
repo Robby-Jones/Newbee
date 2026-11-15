@@ -3,7 +3,8 @@ import SwiftData
 
 /// iCloud sync at the app level (docs/ICLOUD_SYNC.md).
 extension AppDependencies {
-    /// Starts watching iCloud for feeds and settings from the parent's other devices. Called
+    /// Starts syncing feeds with iCloud (the parent's other devices, and the other parent once the
+    /// log is shared) and settings with the parent's other devices. Called
     /// from `NewbeeApp.init`, so it also runs when iOS launches the app in the background to
     /// deliver changes.
     func startCloudSync() {
@@ -15,6 +16,13 @@ extension AppDependencies {
         cloudSync.start()
         preferences.startCloudSync()
         mergeDuplicateBabies()
+        if let cloudEngine, let cloudSharing {
+            cloudEngine.onSharingChange = { [weak cloudSharing] in
+                cloudSharing?.engineChangedSharing()
+            }
+            cloudEngine.start()
+            Task { await cloudSharing.refresh() }
+        }
     }
 
     /// Changes from another device arrived. `@Query` views update on their own; the rest is

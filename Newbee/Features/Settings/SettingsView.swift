@@ -24,6 +24,7 @@ struct SettingsView: View {
     var body: some View {
         Form {
             BabyProfileSection()
+            SharingSection()
             if let preferences {
                 UnitsSection(preferences: preferences)
                 TimeSinceLastFeedSection(preferences: preferences)
@@ -620,7 +621,7 @@ private struct ICloudSyncSection: View {
 
     static func value(for status: CloudSyncMonitor.Status) -> String {
         switch status {
-        case .unavailable, .failedToStart, .signedOut, .restricted: String(localized: "Off")
+        case .unavailable, .signedOut, .restricted: String(localized: "Off")
         case .checking: String(localized: "Checking")
         case .temporarilyUnavailable: String(localized: "Paused")
         case .syncing: String(localized: "Syncing")
@@ -630,7 +631,7 @@ private struct ICloudSyncSection: View {
     }
 
     static func footer(for status: CloudSyncMonitor.Status) -> String {
-        let about = String(localized: "Feeds, the baby profile and settings sync through your private iCloud to every iPhone and iPad signed in to your Apple ID. Only you can see them.")
+        let about = String(localized: "Feeds, the baby profile and settings sync through your private iCloud to every iPhone and iPad signed in to your Apple ID. Only you, and a partner you share with, can see the feeds.")
         switch status {
         case .unavailable, .checking, .syncing, .upToDate:
             return about
@@ -641,9 +642,7 @@ private struct ICloudSyncSection: View {
         case .temporarilyUnavailable:
             return String(localized: "iCloud can't be reached right now. Feeds are safe on this iPhone and sync when iCloud is back.")
         case .failed(let message):
-            return String(localized: "The last sync didn't finish: \(message) Your feeds are safe on this iPhone, and Newbee keeps trying.")
-        case .failedToStart(let message):
-            return String(localized: "iCloud sync couldn't start: \(message) Your feeds are safe on this iPhone. Newbee tries again the next time it opens.")
+            return String(localized: "Some changes haven't synced yet: \(message) Your feeds are safe on this iPhone, and Newbee keeps trying.")
         }
     }
 }
@@ -797,12 +796,25 @@ private struct DataPresentationView: View {
 struct DeleteAllDataSheet: View {
     let delete: @MainActor () async throws -> Void
     @Environment(\.dismiss) private var dismiss
+    @Environment(CloudSharing.self) private var sharing: CloudSharing?
     @State private var typed = ""
     @State private var isDeleting = false
     @State private var errorMessage: String?
     @FocusState private var focused: Bool
 
     static let confirmationWord = "DELETE"
+
+    /// What deleting reaches depends on who shares the log (docs/ICLOUD_SYNC.md).
+    static func warning(for status: CloudSharing.Status) -> String {
+        switch status {
+        case .notShared, .invited:
+            String(localized: "This permanently deletes every feed, the baby profile and your settings, on this iPhone and on your other devices that sync with the same iCloud account. It can't be undone.")
+        case .shared:
+            String(localized: "This permanently deletes every feed, the baby profile and your settings, on this iPhone, on your other devices and on your partner's iPhone. It can't be undone.")
+        case .joined:
+            String(localized: "This deletes every feed, the baby profile and your settings from this iPhone, and stops sharing. Your partner keeps their feeds. It can't be undone.")
+        }
+    }
 
     private var confirmed: Bool {
         typed.trimmingCharacters(in: .whitespaces).uppercased() == Self.confirmationWord
@@ -812,7 +824,7 @@ struct DeleteAllDataSheet: View {
         NavigationStack {
             Form {
                 Section {
-                    Text("This permanently deletes every feed, the baby profile and your settings, on this iPhone and on your other devices that sync with the same iCloud account. It can't be undone.")
+                    Text(Self.warning(for: SharingPreview.status ?? sharing?.status ?? .notShared))
                     TextField("Type \(Self.confirmationWord) to confirm", text: $typed)
                         .textInputAutocapitalization(.characters)
                         .autocorrectionDisabled()
@@ -860,7 +872,7 @@ struct DeleteAllDataSheet: View {
             try await delete()
             dismiss()
         } catch {
-            errorMessage = error.localizedDescription
+            errorMessage = CloudSharing.message(for: error)
         }
     }
 }
@@ -871,7 +883,7 @@ private struct AboutSection: View {
     var body: some View {
         Section {
             LabeledContent("Version", value: Self.version)
-            Label("Newbee collects no data. Your feeds sync only through your own private iCloud, and nothing else leaves your iPhone unless you export it.", systemImage: "lock.shield")
+            Label("Newbee collects no data. Your feeds sync only through iCloud, to your own devices and to a partner you invite. Nothing else leaves your iPhone unless you export it.", systemImage: "lock.shield")
                 .font(.footnote)
             Label("Newbee is a log, not medical advice. Ask your pediatrician about feeding concerns.", systemImage: "stethoscope")
                 .font(.footnote)

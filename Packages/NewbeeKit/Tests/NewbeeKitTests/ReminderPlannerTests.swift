@@ -96,6 +96,13 @@ struct ReminderPlannerTests {
         #expect(plan.first?.fireDate == at(10.2).addingTimeInterval(45 * 60))
     }
 
+    @Test func stillFeedingAsksOnlyOnThePhoneThatStartedTheFeed() {
+        let active = SessionSnapshot(status: .active, segments: [Segment(side: .left, start: at(10))], startedAt: at(10))
+        let last = LastFeed(start: at(7), end: at(7.5), kind: .breast)
+        // The other parent's phone: no "Still feeding?", and no "feed due" while a feed runs.
+        #expect(planner.plan(settings: on, lastFeed: last, active: active, activeStartedHere: false, now: at(10.3)).isEmpty)
+    }
+
     @Test func stillFeedingIgnoresQuietHoursAndCountsPauses() {
         var settings = on
         settings.quietHours = .overnight

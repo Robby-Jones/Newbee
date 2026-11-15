@@ -241,7 +241,20 @@ today and week totals on Home and in Insights, gaps between feeds in History, ma
 History's **+**, and export in Settings.
 
 ### 3.10 Settings
-Baby profile · Bottle and pumping (a unit for each, shown everywhere including past entries, and each one's presets in a dropdown) · Reminders (enable, interval, basis start/end, quiet hours, "still feeding?" threshold) · Live Activities status + dismissal policy · Interval definition · Appearance (system/light/dark) · Data (export, how backup works, **Import from Huckleberry**, **Remove imported data** (shown only when something was imported; simple alert), **Delete all data** with typed confirmation) · About / privacy / disclaimer.
+Baby profile · Sharing (one row, see below) · Bottle and pumping (a unit for each, shown everywhere including past entries, and each one's presets in a dropdown) · Reminders (enable, interval, basis start/end, quiet hours, "still feeding?" threshold) · Live Activities status + dismissal policy · Interval definition · Appearance (system/light/dark) · iCloud (sync status) · Data (export, how backup works, **Import from Huckleberry**, **Remove imported data** (shown only when something was imported; simple alert), **Delete all data** with typed confirmation) · About / privacy / disclaimer.
+
+**Sharing.** One row under the baby profile, hidden when iCloud isn't available. It always opens Apple's own sharing sheet, which does the inviting, shows who is on the log, and stops sharing or leaves. Newbee adds no screens of its own.
+
+| State | Row | Footer |
+|---|---|---|
+| Not shared | Share with your partner | Your partner sees and logs feeds on their own iPhone. They need Newbee and iCloud. |
+| Invited | Partner · Invited | Waiting for your partner to open the invitation. Tap to send it again or cancel it. |
+| Sharing (owner) | Partner · Sharing | You both see the same feeds and can add or change them. Tap to manage or stop sharing. |
+| Sharing (invited parent) | Partner · Sharing | Same first sentence. Tap to leave. |
+
+Three alerts, shown on whatever screen the parent is on: "You're sharing feeds" after accepting an invitation, "Sharing has ended" when the other parent stops or this one leaves (every feed so far stays on the phone), and "Sharing didn't work" with the reason.
+
+**Delete all data while sharing.** The parent who shared the log deletes it for both, and the sheet says "on your partner's iPhone" too. For the invited parent the same button stops sharing and clears only their iPhone; the sheet says the partner keeps their feeds.
 
 **Import from Huckleberry.** Huckleberry emails one CSV per child ("Export tracking data as CSV"). The sheet explains how to get the file, then Choose File opens Files. Nothing is saved until the preview's Import button:
 - Ready to import: breastfeeds, bottles and pumping sessions, with the date range.
