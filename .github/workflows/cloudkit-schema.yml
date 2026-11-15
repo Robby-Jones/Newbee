@@ -45,8 +45,9 @@ jobs:
             --environment development --output-file "$RUNNER_TEMP/development-before.ckdb"
           cat "$RUNNER_TEMP/development-before.ckdb"
 
+      # Changes nothing: checks that CloudKit would accept the file. Also runs with Upload off, so
+      # a schema change can be checked from its branch before it is merged.
       - name: Validate
-        if: inputs.upload
         run: |
           xcrun cktool validate-schema --team-id "$APPLE_TEAM_ID" --container-id "$CONTAINER_ID" \
             --environment development --file cloudkit/schema.ckdb
