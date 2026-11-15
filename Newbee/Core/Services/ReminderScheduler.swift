@@ -129,8 +129,8 @@ final class ReminderScheduler: ReminderScheduling {
         }
 
         // The parent who sleeps hears how the night went when the shift ends.
-        if permission == .allowed, case .offDuty(let until) = night.duty, let summary = night.summary {
-            notifications.append(Self.summaryNotification(summary, at: until))
+        if permission == .allowed, let summary = night.summary, let at = night.summaryAt {
+            notifications.append(Self.summaryNotification(summary, at: at))
         }
 
         let identifiers = PlannedReminder.Kind.allCases.map(PlannedReminder.identifier(for:)) + [Self.nightSummaryIdentifier]

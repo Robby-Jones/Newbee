@@ -14,7 +14,11 @@ final class NightShiftStore {
         static let shift = "nightShift.shift"
         static let me = "nightShift.me"
         static let dismissedSummary = "nightShift.dismissedSummary"
+        static let earlyEndNotified = "nightShift.earlyEndNotified"
     }
+
+    /// How long after a shift was ended early its summary is still worth a notification.
+    private static let earlyEndWindow: TimeInterval = 30 * 60
 
     private(set) var shift: NightShift?
     /// This parent's ID, the same on all their devices (their iCloud user record name). `nil`
@@ -57,6 +61,18 @@ final class NightShiftStore {
         me = id
         defaults.set(id, forKey: Key.me)
         onChange?()
+    }
+
+    /// Whether `shift` was the partner's, was ended early in the last half hour, and hasn't been
+    /// announced on this phone yet.
+    func shouldNotifyEarlyEnd(of shift: NightShift, me: String, at now: Date) -> Bool {
+        guard shift.onDuty != me, let endedAt = shift.endedAt, endedAt < shift.endsAt,
+              now >= endedAt, now < endedAt.addingTimeInterval(Self.earlyEndWindow) else { return false }
+        return defaults.object(forKey: Key.earlyEndNotified) as? Date != shift.startedAt
+    }
+
+    func markEarlyEndNotified(_ shift: NightShift) {
+        defaults.set(shift.startedAt, forKey: Key.earlyEndNotified)
     }
 
     func dismissSummary(of shift: NightShift) {

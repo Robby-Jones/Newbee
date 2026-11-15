@@ -35,6 +35,11 @@ actor FakeNotificationClient: NotificationClient {
         removeAllCount += 1
         pending = [:]
     }
+
+    /// The notification fired: it is no longer pending.
+    func markDelivered(_ identifier: String) {
+        pending[identifier] = nil
+    }
 }
 
 private func freshDefaults() -> UserDefaults {

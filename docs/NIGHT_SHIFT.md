@@ -58,7 +58,9 @@ Shown once a partner is on the log, under Sharing: **Shift ends at** (time) and 
   On duty with Ring as alarm, the reminder goes to `SystemNightAlarmClient` (AlarmKit) instead of
   UserNotifications; if the alarm can't be set it stays a notification. Off duty, the scheduler
   adds the "While you slept" notification at the shift's end, written from the feeds the phone
-  knows of at that moment. The Home card is always complete.
+  knows of at that moment. The Home card is always complete. If the partner ends the shift
+  early, the scheduled notification goes with it, so the phone announces the summary right away,
+  once, when the change arrives (within half an hour).
 - **Delete all data** clears the shift too.
 
 ## Limits

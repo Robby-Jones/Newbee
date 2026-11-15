@@ -8,6 +8,9 @@ struct NightShiftReminderContext: Sendable {
     var duty: NightDuty = .none
     /// The night so far, for the parent who is asleep: the summary notification is written from it.
     var summary: NightSummary?
+    /// When "While you slept" is delivered: the shift's end, or right away for a shift that was
+    /// just ended early.
+    var summaryAt: Date?
     /// "Ring as alarm" is on in Settings.
     var ringsAsAlarm = false
 }
@@ -92,8 +95,16 @@ final class NightShiftModel {
         let now = clock.now
         let duty = duty(at: now)
         var context = NightShiftReminderContext(duty: duty, ringsAsAlarm: preferences.nightShiftAlarm && alarms.isSupported)
-        if case .offDuty = duty, let shift = store.shift {
+        guard hasPartner, let shift = store.shift, let me = store.me else { return context }
+        if case .offDuty(let until) = duty {
             context.summary = NightSummary(shift: shift, feeds: recentFeeds())
+            context.summaryAt = until
+        } else if duty == .none, store.shouldNotifyEarlyEnd(of: shift, me: me, at: now) {
+            // The partner tapped End: the notification scheduled for the morning is gone with the
+            // shift, so this phone says it now, once.
+            context.summary = NightSummary(shift: shift, feeds: recentFeeds())
+            context.summaryAt = now.addingTimeInterval(1)
+            store.markEarlyEndNotified(shift)
         }
         return context
     }

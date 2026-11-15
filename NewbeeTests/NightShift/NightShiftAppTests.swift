@@ -146,6 +146,22 @@ struct NightShiftReminderSchedulingTests {
         #expect(summary.body.hasPrefix("1 feed, at "))
     }
 
+    @Test func aShiftEndedEarlyByThePartnerIsAnnouncedOnce() async throws {
+        let dependencies = try makeDependencies()
+        let theirs = shift(onDuty: "_partner")
+        dependencies.nightShift.store.applyFromSync(theirs)
+        clock.advance(by: 3_600)
+        dependencies.nightShift.store.applyFromSync(theirs.ended(at: clock.now))
+        await dependencies.reminders.reschedule()
+        let summary = try #require(await notifications.pending[ReminderScheduler.nightSummaryIdentifier])
+        #expect(summary.fireDate == clock.now.addingTimeInterval(1))
+
+        // The next pass doesn't announce it again.
+        await notifications.markDelivered(ReminderScheduler.nightSummaryIdentifier)
+        await dependencies.reminders.reschedule()
+        #expect(await notifications.pending[ReminderScheduler.nightSummaryIdentifier] == nil)
+    }
+
     @Test func endingTheShiftPutsBothPhonesBackToNormal() async throws {
         let dependencies = try makeDependencies()
         let due = clock.now.addingTimeInterval(3 * 3_600)
