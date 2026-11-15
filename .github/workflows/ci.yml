@@ -60,9 +60,12 @@ jobs:
         run: echo "udid=$(scripts/pick-simulator.sh ${{ matrix.ios_major }})" >> "$GITHUB_OUTPUT"
       # A fresh simulator keeps setting itself up for a few minutes after it first boots, and UI
       # tests that launch the app during that time fail with "Timed out while acquiring background
-      # assertion". Start the boot now so it happens while the app builds, and wait for it after.
-      - name: Start booting the simulator
-        run: xcrun simctl boot "${{ steps.sim.outputs.udid }}" || true
+      # assertion". Boot it and wait before building: booting while building (tried in PR #64)
+      # starved the 3-CPU runner and the build took 9 min instead of 3.5 to 6.
+      - name: Boot simulator
+        run: |
+          xcrun simctl boot "${{ steps.sim.outputs.udid }}" || true
+          xcrun simctl bootstatus "${{ steps.sim.outputs.udid }}" -b
       - name: Build
         run: |
           set -o pipefail
@@ -75,8 +78,6 @@ jobs:
             CODE_SIGNING_ALLOWED=NO \
             NEWBEE_CLOUDKIT_CONTAINER= \
             | xcbeautify --renderer github-actions
-      - name: Wait for the simulator
-        run: xcrun simctl bootstatus "${{ steps.sim.outputs.udid }}" -b
       - name: Test
         run: |
           set -o pipefail
