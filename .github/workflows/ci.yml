@@ -52,6 +52,13 @@ jobs:
       - name: Pick simulator
         id: sim
         run: echo "udid=$(scripts/pick-simulator.sh ${{ matrix.ios_major }})" >> "$GITHUB_OUTPUT"
+      # A fresh simulator keeps setting itself up for a few minutes after it first boots. UI tests
+      # that launch the app during that time fail with "Timed out while acquiring background
+      # assertion", so boot it and wait until it's ready before testing.
+      - name: Boot simulator
+        run: |
+          xcrun simctl boot "${{ steps.sim.outputs.udid }}" || true
+          xcrun simctl bootstatus "${{ steps.sim.outputs.udid }}" -b
       - name: Build and test
         run: |
           set -o pipefail
