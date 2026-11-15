@@ -61,7 +61,7 @@ final class NightShiftModel {
     /// Night Shift is about two parents: it only exists once the partner is on the log.
     var hasPartner: Bool {
         if let hasPartnerOverride { return hasPartnerOverride }
-        switch SharingPreview.status ?? sharing?.status ?? .notShared {
+        return switch SharingPreview.status ?? sharing?.status ?? .notShared {
         case .shared, .joined: true
         case .notShared, .invited: false
         }
