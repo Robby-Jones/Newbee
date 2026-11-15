@@ -33,10 +33,11 @@ jobs:
       matrix:
         include:
           # UI tests launch the app over and over and take most of the time, so they run once, on
-          # latest iOS, spread over parallel simulators. iOS 18 builds and runs the unit tests.
+          # latest iOS. iOS 18 builds and runs the unit tests. UI tests stay on one simulator: the
+          # runner (3 CPUs, 7 GB) slowed to a crawl with 3 clones and tests timed out (PR #63).
           - label: latest iOS
             ios_major: ""
-            test_flags: -parallel-testing-worker-count 3
+            test_flags: ""
           - label: iOS 18 minimum
             ios_major: "18"
             test_flags: -skip-testing:NewbeeUITests

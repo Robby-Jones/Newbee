@@ -93,7 +93,7 @@ Run each case on an **iPhone 14 Pro or later** (Dynamic Island). Where marked â€
 
 `.github/workflows/ci.yml`:
 1. **Package tests (Linux)**: `swift test` in `Packages/NewbeeKit` and `Packages/NewbeeShared`. About 1.5 min.
-2. **iOS build and tests (latest iOS)**: builds, runs `NewbeeTests`, then `NewbeeUITests` spread over 3 parallel simulator clones (one test class per clone). Code coverage is off in CI to save build time.
+2. **iOS build and tests (latest iOS)**: builds, runs `NewbeeTests`, then `NewbeeUITests` on the same simulator. Parallel simulator clones were tried and made the runner too slow (tests timed out). Code coverage is off in CI to save build time.
 3. **iOS build and tests (iOS 18 minimum)**: builds and runs `NewbeeTests` only. UI tests are skipped here because each one relaunches the app and they took about 6 of the 12 minutes.
 
 macOS runner minutes cost 10Ã— Linux on private repos. Keep the iOS job to PRs plus `main`.

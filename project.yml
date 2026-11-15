@@ -164,7 +164,5 @@ schemes:
       targets:
         - name: NewbeeTests
         - name: NewbeeUITests
-          # Each UI test class runs on its own simulator clone (CI sets the worker count).
-          parallelizable: true
     archive:
       config: Release
