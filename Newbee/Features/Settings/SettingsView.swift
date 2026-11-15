@@ -812,7 +812,7 @@ struct DeleteAllDataSheet: View {
         case .shared:
             String(localized: "This permanently deletes every feed, the baby profile and your settings, on this iPhone, on your other devices and on your partner's iPhone. It can't be undone.")
         case .joined:
-            String(localized: "This deletes every feed, the baby profile and your settings from this iPhone, and you stop sharing with your partner. Your partner keeps their feeds. It can't be undone.")
+            String(localized: "This deletes every feed, the baby profile and your settings from this iPhone, and stops sharing. Your partner keeps their feeds. It can't be undone.")
         }
     }
 
