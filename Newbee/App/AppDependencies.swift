@@ -40,12 +40,15 @@ final class AppDependencies {
     let cloudEngine: CloudSyncEngine?
     /// Sharing the log with the other parent. `nil` whenever `cloudEngine` is.
     let cloudSharing: CloudSharing?
+    /// Who is on duty tonight (docs/NIGHT_SHIFT.md).
+    let nightShift: NightShiftModel
 
     init(
         clock: any AppClock = SystemClock(),
         storage: PersistenceController.Storage? = nil,
         liveActivity: (any LiveActivitySyncing)? = nil,
         notifications: (any NotificationClient)? = nil,
+        alarms: (any NightAlarmClient)? = nil,
         defaults: UserDefaults? = nil
     ) {
         self.clock = clock
@@ -67,16 +70,23 @@ final class AppDependencies {
         let cloudKitContainerID = isAppStore && container != nil ? AppConfiguration.cloudKitContainerID : nil
         let cloudSync = CloudSyncMonitor(containerID: cloudKitContainerID)
         self.cloudSync = cloudSync
+        let userDefaults = defaults ?? AppPreferences.makeDefaults()
+        let nightShiftStore = NightShiftStore(defaults: userDefaults)
+        let engine: CloudSyncEngine?
+        let sharing: CloudSharing?
         if let cloudKitContainerID, let container, let file = try? CloudSyncStateFile.standard() {
-            let engine = CloudSyncEngine(
-                containerID: cloudKitContainerID, modelContainer: container, monitor: cloudSync, file: file, clock: clock
+            let cloudEngine = CloudSyncEngine(
+                containerID: cloudKitContainerID, modelContainer: container, nightShift: nightShiftStore,
+                monitor: cloudSync, file: file, clock: clock
             )
-            cloudEngine = engine
-            cloudSharing = CloudSharing(engine: engine, modelContainer: container)
+            engine = cloudEngine
+            sharing = CloudSharing(engine: cloudEngine, modelContainer: container)
         } else {
-            cloudEngine = nil
-            cloudSharing = nil
+            engine = nil
+            sharing = nil
         }
+        cloudEngine = engine
+        cloudSharing = sharing
         if let container, ScreenshotSampleData.isRequested {
             ScreenshotSampleData.seed(into: container, clock: clock)
         }
@@ -98,7 +108,7 @@ final class AppDependencies {
         pumpLog = PumpLog(repository: pumpRepository, clock: clock)
         // Settings follow the parent's iCloud account whenever feeds do.
         let preferences = AppPreferences(
-            defaults: defaults ?? AppPreferences.makeDefaults(),
+            defaults: userDefaults,
             cloud: cloudKitContainerID == nil ? nil : NSUbiquitousKeyValueStore.default
         )
         self.preferences = preferences
@@ -107,15 +117,31 @@ final class AppDependencies {
         if case .inMemory = resolvedStorage { isInMemory = true } else { isInMemory = false }
         // Only the real store takes over a photo file saved by builds before schema V3.
         babyPhoto = BabyPhotoStore(container: container, legacyDirectory: isAppStore ? BabyPhotoStore.legacyDirectory : nil)
+        // Only the real app rings alarms.
+        let nightAlarms: any NightAlarmClient = alarms ?? (isAppStore ? SystemNightAlarmClient() : NoNightAlarmClient())
         let reminders = ReminderScheduler(
             preferences: preferences,
             feedingRepository: repository,
             bottleRepository: bottleRepository,
             // Only the real store notifies: UI tests, previews and test stores never prompt.
             client: notifications ?? (isAppStore ? SystemNotificationClient() : NoNotificationClient()),
-            clock: clock
+            clock: clock,
+            alarms: nightAlarms
         )
         self.reminders = reminders
+        let nightShift = NightShiftModel(
+            store: nightShiftStore, preferences: preferences, sharing: sharing, engine: engine,
+            reminders: reminders, alarms: nightAlarms, modelContainer: container, clock: clock
+        )
+        self.nightShift = nightShift
+        // The shift decides which phone rings, so every change to it replans the reminders.
+        reminders.nightShift = { [nightShift] in nightShift.reminderContext() }
+        nightShiftStore.onChange = { [reminders] in
+            Task { await reminders.reschedule() }
+        }
+        nightShiftStore.onLocalChange = { [engine] in
+            engine?.localDataDidChange()
+        }
 
         // One policy for recovery, the Live Activity's "Still feeding?" hint and the notification,
         // at the threshold chosen in Settings (read at launch).

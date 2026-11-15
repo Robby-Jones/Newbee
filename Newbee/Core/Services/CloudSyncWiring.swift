@@ -20,8 +20,13 @@ extension AppDependencies {
             cloudEngine.onSharingChange = { [weak cloudSharing] in
                 cloudSharing?.engineChangedSharing()
             }
+            cloudEngine.onAccountChange = { [nightShift] in
+                nightShift.forgetIdentity()
+            }
             cloudEngine.start()
             Task { await cloudSharing.refresh() }
+            // Night Shift needs to know which of the two parents this is.
+            Task { await nightShift.refreshIdentity() }
         }
     }
 

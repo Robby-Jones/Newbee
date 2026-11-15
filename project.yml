@@ -49,6 +49,8 @@ targets:
         CFBundleVersion: $(CURRENT_PROJECT_VERSION)
         LSApplicationCategoryType: public.app-category.healthcare-fitness
         NSSupportsLiveActivities: true
+        # "Ring as alarm" for the parent on duty at night (AlarmKit, iOS 26 and later).
+        NSAlarmKitUsageDescription: Newbee can ring your feeding reminder as an alarm while you're on duty for the night.
         NewbeeAppGroup: $(NEWBEE_APP_GROUP)
         NewbeeCloudKitContainer: $(NEWBEE_CLOUDKIT_CONTAINER)
         # iCloud sends a silent push when another device changes feeds, so they show up here

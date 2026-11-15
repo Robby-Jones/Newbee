@@ -139,6 +139,11 @@ Last 24 h: 9 feeds · avg interval 2 h 40 m  (rolling)
 - **Empty state:** "No feeds yet. Start your first one below." Start buttons remain.
 - **Error state:** store failed to load → full-screen message with Retry and "Export data" (never silently reset).
 
+**Night Shift card** (shared logs only, docs/NIGHT_SHIFT.md): below the three buttons, one card
+when there is something to say. Evening: "I'm on duty tonight" (the whole card is the button).
+During a shift: "You're on duty" with End, or "Your partner is on duty" with Take over. Morning,
+for the parent who slept: "While you slept", the night's feeds, closed with ✕.
+
 ### 3.3 Breastfeeding Timer (full-screen cover)
 
 *Revised 2026-11-07:* two big **round** L / R buttons (up to 168 pt) with each side's time inside,
@@ -241,7 +246,7 @@ today and week totals on Home and in Insights, gaps between feeds in History, ma
 History's **+**, and export in Settings.
 
 ### 3.10 Settings
-Baby profile · Sharing (one row, see below) · Bottle and pumping (a unit for each, shown everywhere including past entries, and each one's presets in a dropdown) · Reminders (enable, interval, basis start/end, quiet hours, "still feeding?" threshold) · Live Activities status + dismissal policy · Interval definition · Appearance (system/light/dark) · iCloud (sync status) · Data (export, how backup works, **Import from Huckleberry**, **Remove imported data** (shown only when something was imported; simple alert), **Delete all data** with typed confirmation) · About / privacy / disclaimer.
+Baby profile · Sharing (one row, see below) · Night Shift (shift end time, Ring as alarm on iOS 26; shared logs only) · Bottle and pumping (a unit for each, shown everywhere including past entries, and each one's presets in a dropdown) · Reminders (enable, interval, basis start/end, quiet hours, "still feeding?" threshold) · Live Activities status + dismissal policy · Interval definition · Appearance (system/light/dark) · iCloud (sync status) · Data (export, how backup works, **Import from Huckleberry**, **Remove imported data** (shown only when something was imported; simple alert), **Delete all data** with typed confirmation) · About / privacy / disclaimer.
 
 **Sharing.** One row under the baby profile, hidden when iCloud isn't available. It always opens Apple's own sharing sheet, which does the inviting, shows who is on the log, and stops sharing or leaves. Newbee adds no screens of its own.
 

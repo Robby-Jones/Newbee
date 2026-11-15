@@ -73,5 +73,6 @@ Legend: `[x]` done · `[ ]` pending · `[!]` blocked (reason noted). Updated by 
 - [x] Robby: iCloud container + App ID capabilities, management token, deploy schema to production (docs/ICLOUD_SYNC.md §One-time setup)
 - [x] Share the feeding log with the other parent (docs/ICLOUD_SYNC.md §Sharing): own sync layer on `CKSyncEngine`, zone-wide share, Settings → Sharing
 - [ ] Robby: deploy the sharing schema to production, then share from one phone and join on the other (docs/ICLOUD_SYNC.md §Setting up sharing)
+- [x] Night Shift (docs/NIGHT_SHIFT.md): on-duty reminders and alarm, Home card, "While you slept"
+- [ ] Device check: Night Shift on two phones (TESTING.md D27 to D30)
 - [ ] Device check: two devices on one Apple ID sync feeds, photo and settings
-- [ ] Sharing with a partner on another Apple ID (CKShare, Core Data sharing)

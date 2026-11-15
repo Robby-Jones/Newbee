@@ -81,6 +81,8 @@ its own:
   showing does update and end from the background.
 - **"Still feeding?" asks only on the phone the timer was started on.** A running feed that
   arrives through sync is noted in `FeedOrigins`, and `ReminderPlanner` skips it.
+- **Night Shift** (`docs/NIGHT_SHIFT.md`) syncs who is on duty as one `NightShift` record in the
+  same zone.
 - **If sharing stops**, because the first parent stops it or the second leaves (both from the
   same Sharing row), the second parent keeps a copy of every feed so far. Their phone goes back
   to syncing with their own iCloud, and the two logs are separate from then on.

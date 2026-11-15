@@ -69,7 +69,7 @@ Priority tiers: **P0** means the app is pointless without it. **P1** is required
 
 Roughly in order of value:
 
-1. **iCloud sync (CloudKit) and caregiver sharing.** Two parents tracking the same baby is the most common real-world need. The schema is CloudKit-compatible from day one (see `DATA_MODEL.md`). Sharing between different Apple IDs needs `CKShare`, which SwiftData does not support natively. That is a significant piece of work.
+1. ~~**iCloud sync (CloudKit) and caregiver sharing.**~~ Done after v1: own sync layer on `CKSyncEngine` with a zone-wide `CKShare` (`ICLOUD_SYNC.md`), and **Night Shift** on top: one parent on duty for the night, reminders only on their phone, a "While you slept" summary for the other (`NIGHT_SHIFT.md`).
 2. **Pumping sessions**, with left and right volume and duration. The model already supports this.
 3. **Combination and supplementary feeds**, meaning breast followed by a top-up bottle in one feeding. The model already supports this.
 4. **Home Screen and Lock Screen widgets** (time since last feed, last side) plus a **Control Center control** to start a feed (`ControlWidget`, available on our iOS 18 floor).

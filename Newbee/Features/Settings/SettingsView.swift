@@ -26,6 +26,7 @@ struct SettingsView: View {
             BabyProfileSection()
             SharingSection()
             if let preferences {
+                NightShiftSettingsSection(preferences: preferences)
                 UnitsSection(preferences: preferences)
                 TimeSinceLastFeedSection(preferences: preferences)
                 RemindersSection(preferences: preferences, reminders: reminders)
