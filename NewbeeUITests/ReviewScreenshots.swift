@@ -45,6 +45,10 @@ final class ReviewScreenshots: ScreenshotTestCase {
             if state == "onDuty" {
                 app.tabBars.buttons["Settings"].tap()
                 XCTAssertTrue(app.buttons["settings.sharing"].firstMatch.waitForExistence(timeout: 10))
+                // Bring the whole Night Shift section, footer included, above the tab bar.
+                let shiftEnd = app.descendants(matching: .any)["settings.nightShiftEnd"].firstMatch
+                reveal(shiftEnd, in: app)
+                app.swipeUp()
                 settle()
                 capture("night-shift-settings")
             }

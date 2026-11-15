@@ -86,10 +86,11 @@ final class NightShiftModel {
     }
 
     /// Whether the feed reminder is on, so the card can say what will ring.
-    var remindersAreOn: Bool { preferences.reminders.isEnabled }
+    /// Screenshots show the usual case, with the reminder on.
+    var remindersAreOn: Bool { preferences.reminders.isEnabled || NightShiftPreview.isActive }
 
     /// Whether this iPhone can ring the reminder as an alarm (iOS 26 and later).
-    var supportsAlarm: Bool { alarms.isSupported }
+    var supportsAlarm: Bool { alarms.isSupported || NightShiftPreview.showsAlarmToggle }
 
     func reminderContext() -> NightShiftReminderContext {
         let now = clock.now
@@ -185,6 +186,17 @@ final class NightShiftModel {
 /// UI tests and screenshots show a Night Shift card without a partner or iCloud:
 /// `-nightShiftPreview offerStart|onDuty|partnerOnDuty|summary`.
 enum NightShiftPreview {
+    static var isActive: Bool {
+        AppConfiguration.isUITesting && UserDefaults.standard.string(forKey: "nightShiftPreview") != nil
+    }
+
+    /// Screenshots on iOS 26 show the "Ring as alarm" toggle, which only the real app can use.
+    static var showsAlarmToggle: Bool {
+        guard isActive else { return false }
+        if #available(iOS 26.0, *) { return true }
+        return false
+    }
+
     static func card(at now: Date) -> NightShiftCard? {
         guard AppConfiguration.isUITesting,
               let value = UserDefaults.standard.string(forKey: "nightShiftPreview") else { return nil }
