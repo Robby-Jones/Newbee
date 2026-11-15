@@ -35,6 +35,7 @@ Target: **≥ 95 % line coverage** on `SessionEngine` and `Analytics`.
 - Reminder scheduler: computes the correct trigger date with quiet hours (spanning midnight), basis start/end, disabled, and permission denied. Uses a fake `UNUserNotificationCenter` wrapper.
 - Schema migration: V1 fixture store opens with the current plan (once V2 exists).
 - Export: CSV file written and readable; PDF renders non-empty with expected page count.
+- Sync (docs/ICLOUD_SYNC.md): the merge rules live in NewbeeKit (`SyncTests`: two or three fake phones and a fake iCloud zone, covering edits, deletes, conflicts in both orders, joining a shared log, leaving it, and relaunch). The app target checks the SwiftData side (`SyncStoreTests`: every field survives a round trip, incoming records update feeds in place, CloudKit record coding, the saved sync state) and that `cloudkit/schema.ckdb` declares everything the app writes (`CloudKitSchemaTests`). CloudKit itself is only exercised on real phones (D20 to D26).
 
 ## 4. UI tests (XCUITest, launch argument `-uiTesting` → in-memory store + fixed clock)
 
@@ -75,6 +76,13 @@ Run each case on an **iPhone 14 Pro or later** (Dynamic Island). Where marked �
 | D17 | Low Power Mode | Timer still accurate (rendered by system) |
 | D18 | Reminder fires after configured interval; suppressed in quiet hours | As configured |
 | D19 | With the phone locked (not just asleep), tap Switch, Pause, Resume and End on the Lock Screen activity, without Face ID looking at you (cover the camera) | Each tap takes effect with no unlock prompt; on unlock the app agrees. Before the first unlock after a restart the buttons can't work, because the store is still encrypted |
+| D20 | Two iPhones on the same Apple ID: log a feed on one | It appears on the other within a minute with the app open (Settings → iCloud shows "Up to date") |
+| D21 | Settings → Sharing → Share with your partner, send the invitation in Messages | Row shows "Partner · Invited"; the message shows the baby's name ("Ella's feeding log") |
+| D22 | Partner taps the invitation on their iPhone (Newbee installed, own Apple ID) | Newbee opens, "You're sharing feeds" appears; both phones show both parents' earlier feeds, with no duplicates |
+| D23 | Each parent logs a feed, edits one of the other's and deletes one | Both phones agree after each step |
+| D24 | Both phones in airplane mode: edit the same feed on both, then go back online | The later edit wins on both phones; nothing is duplicated |
+| D25 | Owner taps Partner → Stop Sharing (or the partner leaves) | Partner sees "Sharing has ended" and keeps every feed so far; new feeds no longer cross |
+| D26 | Start a feed on one phone while sharing | The other phone shows the feed in History when it ends; its Live Activity does not start (Live Activities are per phone) |
 
 ## 6. CI (proposed)
 

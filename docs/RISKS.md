@@ -13,7 +13,7 @@ Likelihood / impact: H, M, L.
 | R5 | **No Dynamic Island** on pre-14-Pro / non-Pro older models | H | L | Lock Screen presentation + banner; design tested on both |
 | R6 | **SwiftData maturity** (predicate limits on enums/optionals, occasional crashes) | M | M | iOS 18 minimum CI job; raw-string enums, simple predicates, value-type mapping, repository protocol (swap possible) |
 | R7 | **CloudKit later constrains schema** (optional everything, no unique) | L | M | Enforced from V1 (ADR-005) |
-| R8 | **Caregiver sharing across Apple IDs** isn't supported by SwiftData+CloudKit out of the box | H | M | Post-MVP; may require `NSPersistentCloudKitContainer` sharing or a CKShare layer. Scope separately |
+| R8 | **Caregiver sharing across Apple IDs** isn't supported by SwiftData+CloudKit out of the box | H | M | Done with our own sync layer and a zone-wide `CKShare` (ADR-011, `ICLOUD_SYNC.md`). It can only be checked on two real phones through TestFlight, so every release that touches sync needs that check |
 | R9 | **Wall-clock changes across reboot are undetectable** | L | L | Sanity checks + editable sessions + `needsReview` flag |
 | R10 | **Intent races** (Lock Screen tap + in-app tap) | M | H | Main-actor serialization, target-state commands, revision, save-before-effects (ADR-004) |
 | R11 | **Widget extension memory limits (~30 MB) / no networking** | L | L | Views are static layouts over a tiny ContentState |
