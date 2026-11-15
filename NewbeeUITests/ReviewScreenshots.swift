@@ -27,6 +27,31 @@ final class ReviewScreenshots: ScreenshotTestCase {
         }
     }
 
+    /// The Night Shift card on Home in each state, and its section in Settings.
+    @MainActor
+    func testNightShift() throws {
+        let controls = [
+            "offerStart": "nightShift.start", "onDuty": "nightShift.end",
+            "partnerOnDuty": "nightShift.takeOver", "summary": "nightShift.dismiss",
+        ]
+        for state in ["offerStart", "onDuty", "partnerOnDuty", "summary"] {
+            let app = launch(["-sharingPreview", "shared", "-nightShiftPreview", state])
+            let control = app.buttons[controls[state]!].firstMatch
+            XCTAssertTrue(control.waitForExistence(timeout: 15))
+            reveal(control, in: app)
+            settle()
+            capture("night-shift-\(state)")
+
+            if state == "onDuty" {
+                app.tabBars.buttons["Settings"].tap()
+                XCTAssertTrue(app.buttons["settings.sharing"].firstMatch.waitForExistence(timeout: 10))
+                settle()
+                capture("night-shift-settings")
+            }
+            app.terminate()
+        }
+    }
+
     /// Scrolls the list until `element` can be tapped.
     @MainActor
     private func reveal(_ element: XCUIElement, in app: XCUIApplication) {

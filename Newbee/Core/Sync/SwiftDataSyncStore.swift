@@ -15,11 +15,14 @@ final class SwiftDataSyncStore: SyncLocalStore {
     private let context: ModelContext
 
     private let origins: FeedOrigins
+    /// Tonight's shift lives outside SwiftData but syncs with everything else.
+    private let nightShift: NightShiftStore?
 
-    init(container: ModelContainer, origins: FeedOrigins = FeedOrigins()) {
+    init(container: ModelContainer, origins: FeedOrigins = FeedOrigins(), nightShift: NightShiftStore? = nil) {
         self.container = container
         self.context = container.mainContext
         self.origins = origins
+        self.nightShift = nightShift
     }
 
     func items() throws -> [SyncKey: SyncLocalItem] {
@@ -35,12 +38,20 @@ final class SwiftDataSyncStore: SyncLocalStore {
             let payload = baby.syncPayload
             items[payload.key] = SyncLocalItem(fingerprint: payload.fingerprint(attachment: baby.syncPhoto), changedAt: baby.createdAt)
         }
+        if let shift = nightShift?.shift {
+            items[shift.key] = SyncLocalItem(fingerprint: shift.fingerprint(), changedAt: shift.changedAt)
+        }
         return items
     }
 
     func content(for key: SyncKey) throws -> SyncContent? {
+        if key.kind == .nightShift {
+            return key.id == NightShift.recordID ? nightShift?.shift?.content() : nil
+        }
         guard let id = UUID(uuidString: key.id) else { return nil }
         switch key.kind {
+        case .nightShift:
+            return nil
         case .feed:
             return try session(id: id)?.syncPayload.content()
         case .baby:
@@ -99,6 +110,11 @@ final class SwiftDataSyncStore: SyncLocalStore {
             try context.save()
 
             var stored: [SyncKey: Int64] = [:]
+            for (key, content) in contents where key.kind == .nightShift {
+                guard let nightShift, let shift = NightShift.decode(content), shift.key == key else { continue }
+                nightShift.applyFromSync(shift)
+                stored[key] = shift.fingerprint()
+            }
             for baby in babies {
                 let payload = baby.syncPayload
                 stored[payload.key] = payload.fingerprint(attachment: baby.syncPhoto)
@@ -117,8 +133,14 @@ final class SwiftDataSyncStore: SyncLocalStore {
     func delete(_ keys: [SyncKey]) throws {
         do {
             for key in keys {
+                if key.kind == .nightShift {
+                    nightShift?.applyFromSync(nil)
+                    continue
+                }
                 guard let id = UUID(uuidString: key.id) else { continue }
                 switch key.kind {
+                case .nightShift:
+                    break
                 case .feed:
                     try session(id: id)?.deleteWithChildren(from: context)
                 case .baby:

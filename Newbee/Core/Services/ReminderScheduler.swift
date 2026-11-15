@@ -25,7 +25,14 @@ final class ReminderScheduler: ReminderScheduling {
     @ObservationIgnored private let clock: any AppClock
     @ObservationIgnored private let planner: ReminderPlanner
     @ObservationIgnored private let origins: FeedOrigins
+    @ObservationIgnored private let alarms: any NightAlarmClient
     @ObservationIgnored private var tail: Task<Void, Never>?
+
+    /// Tonight's shift, if there is one (docs/NIGHT_SHIFT.md). Set once at launch.
+    @ObservationIgnored var nightShift: (@MainActor () -> NightShiftReminderContext)?
+
+    /// The "While you slept" notification, on the phone of the parent who isn't on duty.
+    static let nightSummaryIdentifier = "newbee.nightShift.summary"
 
     init(
         preferences: AppPreferences,
@@ -34,7 +41,8 @@ final class ReminderScheduler: ReminderScheduling {
         client: any NotificationClient,
         clock: any AppClock,
         planner: ReminderPlanner = ReminderPlanner(),
-        origins: FeedOrigins = FeedOrigins()
+        origins: FeedOrigins = FeedOrigins(),
+        alarms: any NightAlarmClient = NoNightAlarmClient()
     ) {
         self.preferences = preferences
         self.feedingRepository = feedingRepository
@@ -43,6 +51,7 @@ final class ReminderScheduler: ReminderScheduling {
         self.clock = clock
         self.planner = planner
         self.origins = origins
+        self.alarms = alarms
     }
 
     // MARK: - ReminderScheduling
@@ -72,6 +81,7 @@ final class ReminderScheduler: ReminderScheduling {
         await enqueue { [weak self] in
             guard let self else { return }
             await client.removeAll()
+            _ = await alarms.replace(with: nil)
             pending = []
         }
     }
@@ -95,6 +105,7 @@ final class ReminderScheduler: ReminderScheduling {
         let lastBreast = (try? feedingRepository.recentCompletedSessions(limit: 1))?.first
         let lastBottle = (try? bottleRepository.recentBottles(limit: 1))?.first
         let lastFeed = LastFeed.latest(breast: lastBreast, bottle: lastBottle)
+        let night = nightShift?() ?? NightShiftReminderContext()
         let plan = permission == .allowed
             ? planner.plan(
                 settings: preferences.reminders,
@@ -102,12 +113,27 @@ final class ReminderScheduler: ReminderScheduling {
                 active: active,
                 // A feed the other parent is timing on their phone isn't this phone's to ask about.
                 activeStartedHere: active.map { origins.wasStartedHere($0.id) } ?? true,
+                duty: night.duty,
                 now: now
             )
             : []
-        let identifiers = PlannedReminder.Kind.allCases.map(PlannedReminder.identifier(for:))
         let settings = preferences.reminders
-        let notifications = plan.map { Self.notification(for: $0, basis: settings.basis, interval: settings.interval) }
+        var notifications = plan.map { Self.notification(for: $0, basis: settings.basis, interval: settings.interval) }
+
+        // On duty with "Ring as alarm": the reminder rings as an alarm instead. If the alarm
+        // can't be set (not allowed, older iOS), it stays a notification.
+        let alarm = night.ringsAsAlarm ? plan.first(where: \.duringNightShift) : nil
+        let alarmNotification = alarm.map { Self.notification(for: $0, basis: settings.basis, interval: settings.interval) }
+        if await alarms.replace(with: alarmNotification), let alarmNotification {
+            notifications.removeAll { $0.identifier == alarmNotification.identifier }
+        }
+
+        // The parent who sleeps hears how the night went when the shift ends.
+        if permission == .allowed, case .offDuty(let until) = night.duty, let summary = night.summary {
+            notifications.append(Self.summaryNotification(summary, at: until))
+        }
+
+        let identifiers = PlannedReminder.Kind.allCases.map(PlannedReminder.identifier(for:)) + [Self.nightSummaryIdentifier]
         await client.replace(identifiers: identifiers, with: notifications)
         pending = plan
     }
@@ -139,5 +165,25 @@ final class ReminderScheduler: ReminderScheduling {
             }
         }
         return ScheduledNotification(identifier: reminder.identifier, title: title, body: body, fireDate: reminder.fireDate)
+    }
+
+    /// "While you slept", from what this phone knew when it last synced. A feed the phone hasn't
+    /// heard of yet isn't in it; the card on Home is always complete.
+    static func summaryNotification(_ summary: NightSummary, at fireDate: Date) -> ScheduledNotification {
+        let body: String
+        if let last = summary.lastFeedStart, summary.feeds > 0 {
+            let time = last.formatted(date: .omitted, time: .shortened)
+            body = summary.feeds == 1
+                ? String(localized: "1 feed, at \(time). Open Newbee to see the night.")
+                : String(localized: "\(summary.feeds) feeds, the last at \(time). Open Newbee to see the night.")
+        } else {
+            body = String(localized: "Your partner's shift has ended. Open Newbee to see the night.")
+        }
+        return ScheduledNotification(
+            identifier: nightSummaryIdentifier,
+            title: String(localized: "While you slept"),
+            body: body,
+            fireDate: fireDate
+        )
     }
 }

@@ -30,6 +30,8 @@ final class CloudSyncEngine {
 
     /// Runs after this phone joins or leaves a shared log, or the share itself changed.
     var onSharingChange: (@MainActor () -> Void)?
+    /// Runs when the phone is signed in to another iCloud account, or out of one.
+    var onAccountChange: (@MainActor () -> Void)?
 
     private let core: SyncCore
     private let monitor: CloudSyncMonitor
@@ -51,14 +53,21 @@ final class CloudSyncEngine {
     /// An engine is rebuilt at most once per launch after a failed write to the store.
     private var didResetEngine = false
 
-    init(containerID: String, modelContainer: ModelContainer, monitor: CloudSyncMonitor, file: CloudSyncStateFile, clock: any AppClock) {
+    init(
+        containerID: String,
+        modelContainer: ModelContainer,
+        nightShift: NightShiftStore? = nil,
+        monitor: CloudSyncMonitor,
+        file: CloudSyncStateFile,
+        clock: any AppClock
+    ) {
         container = CKContainer(identifier: containerID)
         self.monitor = monitor
         self.file = file
         self.clock = clock
         let state = file.load()
         self.state = state
-        core = SyncCore(store: SwiftDataSyncStore(container: modelContainer), ledger: state.ledger, clock: clock)
+        core = SyncCore(store: SwiftDataSyncStore(container: modelContainer, nightShift: nightShift), ledger: state.ledger, clock: clock)
     }
 
     // MARK: - Lifecycle
@@ -137,6 +146,12 @@ final class CloudSyncEngine {
 
     private var activeEngine: CKSyncEngine? {
         isJoined ? sharedEngine : privateEngine
+    }
+
+    /// Who this parent is to iCloud: the same on all their devices, different from their
+    /// partner's, and meaningless to anyone else. Night Shift uses it to say who is on duty.
+    func userID() async throws -> String {
+        try await container.userRecordID().recordName
     }
 
     /// Creates this parent's zone if it isn't there yet. Sharing needs it to exist.
@@ -494,6 +509,7 @@ final class CloudSyncEngine {
         startOver()
         clearPending(sharedEngine)
         onSharingChange?()
+        onAccountChange?()
         enqueuePending()
         Task { await monitor.refreshAccountStatus() }
     }

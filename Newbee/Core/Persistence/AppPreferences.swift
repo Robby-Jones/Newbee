@@ -27,19 +27,23 @@ final class AppPreferences {
         static let stillFeedingMinutes = "stillFeeding.minutes"
         static let appearance = "appearance"
         static let onboardingComplete = "onboardingComplete"
+        static let nightShiftMorningMinute = "nightShift.morningMinute"
+        static let nightShiftAlarm = "nightShift.alarm"
 
         /// Mirrored to iCloud key-value storage. Not `onboardingComplete`: each device walks
         /// through setup on its own first launch, unless it already has synced data.
         static let synced: Set<String> = [
             volumeUnit, bottlePresets, pumpVolumeUnit, pumpPresets, lastBottleContents, reminderEnabled, reminderIntervalMinutes,
             reminderBasis, quietStart, quietEnd, stillFeedingEnabled, stillFeedingMinutes, appearance,
+            // Not `nightShiftAlarm`: alarms need iOS 26 and a permission, both per device.
+            nightShiftMorningMinute,
         ]
 
         /// Everything "Delete all data" resets. Appearance and `onboardingComplete` are kept
         /// (docs/DATA_MODEL.md), so deleting data doesn't throw the parent back into onboarding.
         static let resettable = [
             volumeUnit, bottlePresets, pumpVolumeUnit, pumpPresets, lastBottleContents, reminderEnabled, reminderIntervalMinutes, reminderBasis,
-            quietStart, quietEnd, stillFeedingEnabled, stillFeedingMinutes,
+            quietStart, quietEnd, stillFeedingEnabled, stillFeedingMinutes, nightShiftMorningMinute, nightShiftAlarm,
         ]
     }
 
@@ -121,6 +125,16 @@ final class AppPreferences {
         didSet { save(reminders) }
     }
 
+    /// When a night shift ends by itself, in minutes after midnight (docs/NIGHT_SHIFT.md).
+    var nightShiftMorningMinute: Int {
+        didSet { store(nightShiftMorningMinute, forKey: Key.nightShiftMorningMinute) }
+    }
+
+    /// The feed reminder rings as an alarm while this parent is on duty (iOS 26 and later).
+    var nightShiftAlarm: Bool {
+        didSet { store(nightShiftAlarm, forKey: Key.nightShiftAlarm) }
+    }
+
     var appearance: Appearance {
         didSet { store(appearance.rawValue, forKey: Key.appearance) }
     }
@@ -144,6 +158,8 @@ final class AppPreferences {
         pumpPresetsML = defaults.array(forKey: Key.pumpPresets) as? [Double]
         lastBottleContents = defaults.string(forKey: Key.lastBottleContents).flatMap(BottleContents.init(rawValue:))
         reminders = Self.loadReminders(defaults)
+        nightShiftMorningMinute = Self.loadMorningMinute(defaults)
+        nightShiftAlarm = defaults.bool(forKey: Key.nightShiftAlarm)
         appearance = defaults.string(forKey: Key.appearance).flatMap(Appearance.init(rawValue:)) ?? .system
         onboardingComplete = defaults.bool(forKey: Key.onboardingComplete)
     }
@@ -158,6 +174,12 @@ final class AppPreferences {
         pumpPresetsML = nil
         lastBottleContents = nil
         reminders = Self.loadReminders(defaults)
+        nightShiftMorningMinute = Self.loadMorningMinute(defaults)
+        nightShiftAlarm = false
+    }
+
+    private static func loadMorningMinute(_ defaults: UserDefaults) -> Int {
+        defaults.object(forKey: Key.nightShiftMorningMinute) as? Int ?? NightShiftSchedule.defaultMorningMinute
     }
 
     private static func loadUnit(_ defaults: UserDefaults, locale: Locale) -> VolumeUnit {
@@ -282,6 +304,7 @@ final class AppPreferences {
         pumpPresetsML = defaults.array(forKey: Key.pumpPresets) as? [Double]
         lastBottleContents = defaults.string(forKey: Key.lastBottleContents).flatMap(BottleContents.init(rawValue:))
         reminders = Self.loadReminders(defaults)
+        nightShiftMorningMinute = Self.loadMorningMinute(defaults)
         appearance = defaults.string(forKey: Key.appearance).flatMap(Appearance.init(rawValue:)) ?? .system
     }
 

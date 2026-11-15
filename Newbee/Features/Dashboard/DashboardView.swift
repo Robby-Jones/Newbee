@@ -10,6 +10,7 @@ import SwiftUI
 struct DashboardView: View {
     @Environment(FeedingSessionUIModel.self) private var sessionModel: FeedingSessionUIModel?
     @Environment(BottleLogUIModel.self) private var bottleModel: BottleLogUIModel?
+    @Environment(NightShiftModel.self) private var nightShift: NightShiftModel?
     /// Enough recent feeds for "today" and the rolling 24 hours, even on a very busy day.
     @Query(FeedingSession.completedFeeds(limit: 80)) private var recent: [FeedingSession]
     @Query(sort: \Baby.createdAt) private var babies: [Baby]
@@ -33,6 +34,10 @@ struct DashboardView: View {
                         LastFeedCard(summary: summary, now: now)
                     }
                     QuickActions(now: now)
+                    // Below the buttons, so they never move under a thumb at 3 a.m.
+                    if let nightShift {
+                        NightShiftCardView(model: nightShift, now: now, entries: entries, volumeUnit: bottleModel?.unit ?? .milliliters)
+                    }
                     TodaySection(summary: summary)
                     RecentSection(
                         entries: Array(entries.filter { $0.start <= now }.prefix(3)),

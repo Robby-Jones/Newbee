@@ -92,6 +92,7 @@ extension AppDependencies {
             throw error
         }
         preferences.resetToDefaults()
+        nightShift.store.set(nil)
         babyPhoto.remove()
         // Re-read the now empty store: ends every Live Activity and clears reminders.
         await sessionManager.reload()
