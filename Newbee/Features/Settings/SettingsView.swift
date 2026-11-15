@@ -796,12 +796,25 @@ private struct DataPresentationView: View {
 struct DeleteAllDataSheet: View {
     let delete: @MainActor () async throws -> Void
     @Environment(\.dismiss) private var dismiss
+    @Environment(CloudSharing.self) private var sharing: CloudSharing?
     @State private var typed = ""
     @State private var isDeleting = false
     @State private var errorMessage: String?
     @FocusState private var focused: Bool
 
     static let confirmationWord = "DELETE"
+
+    /// What deleting reaches depends on who shares the log (docs/ICLOUD_SYNC.md).
+    static func warning(for status: CloudSharing.Status) -> String {
+        switch status {
+        case .notShared, .invited:
+            String(localized: "This permanently deletes every feed, the baby profile and your settings, on this iPhone and on your other devices that sync with the same iCloud account. It can't be undone.")
+        case .shared:
+            String(localized: "This permanently deletes every feed, the baby profile and your settings, on this iPhone, on your other devices and on your partner's iPhone. It can't be undone.")
+        case .joined:
+            String(localized: "This deletes every feed, the baby profile and your settings from this iPhone, and you stop sharing with your partner. Your partner keeps their feeds. It can't be undone.")
+        }
+    }
 
     private var confirmed: Bool {
         typed.trimmingCharacters(in: .whitespaces).uppercased() == Self.confirmationWord
@@ -811,7 +824,7 @@ struct DeleteAllDataSheet: View {
         NavigationStack {
             Form {
                 Section {
-                    Text("This permanently deletes every feed, the baby profile and your settings, on this iPhone and on your other devices that sync with the same iCloud account. It can't be undone.")
+                    Text(Self.warning(for: SharingPreview.status ?? sharing?.status ?? .notShared))
                     TextField("Type \(Self.confirmationWord) to confirm", text: $typed)
                         .textInputAutocapitalization(.characters)
                         .autocorrectionDisabled()
@@ -859,7 +872,7 @@ struct DeleteAllDataSheet: View {
             try await delete()
             dismiss()
         } catch {
-            errorMessage = error.localizedDescription
+            errorMessage = CloudSharing.message(for: error)
         }
     }
 }
@@ -870,7 +883,7 @@ private struct AboutSection: View {
     var body: some View {
         Section {
             LabeledContent("Version", value: Self.version)
-            Label("Newbee collects no data. Your feeds sync only through your own private iCloud, and nothing else leaves your iPhone unless you export it.", systemImage: "lock.shield")
+            Label("Newbee collects no data. Your feeds sync only through iCloud, to your own devices and to a partner you invite. Nothing else leaves your iPhone unless you export it.", systemImage: "lock.shield")
                 .font(.footnote)
             Label("Newbee is a log, not medical advice. Ask your pediatrician about feeding concerns.", systemImage: "stethoscope")
                 .font(.footnote)

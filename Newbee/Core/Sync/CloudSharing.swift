@@ -48,6 +48,7 @@ final class CloudSharing {
     @ObservationIgnored private let modelContainer: ModelContainer
     @ObservationIgnored private let controllerDelegate = SharingControllerDelegate()
     @ObservationIgnored private let log = Logger(subsystem: "com.robbyjones.newbee", category: "sharing")
+    @ObservationIgnored private var isLeavingToDelete = false
 
     init(engine: CloudSyncEngine, modelContainer: ModelContainer) {
         self.engine = engine
@@ -70,9 +71,22 @@ final class CloudSharing {
             status = .joined
         } else if wasJoined {
             status = .notShared
-            notice = .stopped
+            // Leaving to delete everything needs no "your feeds are still here".
+            if !isLeavingToDelete {
+                notice = .stopped
+            }
         }
         Task { await refresh() }
+    }
+
+    /// The invited parent chose "Delete all data": they leave the shared log first, so nothing is
+    /// deleted for the other parent. Does nothing on the phone that owns the log.
+    func leaveBeforeDeletingEverything() async throws {
+        guard engine.isJoined else { return }
+        isLeavingToDelete = true
+        defer { isLeavingToDelete = false }
+        try await engine.leaveSharedLog()
+        status = .notShared
     }
 
     /// Asks iCloud who is on the log.

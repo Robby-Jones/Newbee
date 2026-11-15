@@ -180,6 +180,22 @@ final class CloudSyncEngine {
         onSharingChange?()
     }
 
+    /// The invited parent leaves the shared log on purpose ("Delete all data"). The other parent
+    /// keeps every feed. Throws without changing anything if iCloud can't be reached: leaving only
+    /// on this phone would let the shared log come back the next time it syncs.
+    func leaveSharedLog() async throws {
+        guard let zoneID = state.joinedZone?.id else { return }
+        let shareID = CKRecord.ID(recordName: CKRecordNameZoneWideShare, zoneID: zoneID)
+        do {
+            // For a participant, deleting the share only removes them from it.
+            _ = try await container.sharedCloudDatabase.deleteRecord(withID: shareID)
+        } catch let error as CKError where error.code == .unknownItem || error.code == .zoneNotFound {
+            // Already off the share.
+        }
+        leaveJoinedZone()
+        persistNow()
+    }
+
     /// Syncing starts over against another zone or account. Nothing on the phone changes.
     private func startOver() {
         core.forgetServer()

@@ -47,7 +47,7 @@ it, in three parts:
 - **Signed out of iCloud.** Everything keeps working on the device. Signing in later uploads the
   existing data. The same happens after switching Apple IDs, or if the zone is deleted from
   iCloud settings: the phone still has every feed and uploads them again.
-- **Delete all data** deletes everywhere: the deletes sync like any other change.
+- **Delete all data** depends on who shares the log. For the parent who shared it (and for a log nobody else is on), it deletes everywhere: the deletes sync like any other change, so the partner's phone loses the feeds too. For the invited parent, it first leaves the shared log (`CloudSharing.leaveBeforeDeletingEverything`, which deletes their copy of the share) and then clears only that phone. The partner keeps every feed. If iCloud can't be reached the sheet says so and nothing is deleted. One edge: an invited parent with a second device on the same Apple ID keeps a copy on that device when they leave, and it syncs back.
 - **Tests, previews and unsigned builds never touch iCloud.** CloudKit stops an app that uses it
   without the entitlement, so `AppConfiguration.cloudKitContainerID` is `nil` under unit and UI
   tests, and the CI test builds set `NEWBEE_CLOUDKIT_CONTAINER` empty.

@@ -254,6 +254,8 @@ Baby profile · Bottle and pumping (a unit for each, shown everywhere including 
 
 Three alerts, shown on whatever screen the parent is on: "You're sharing feeds" after accepting an invitation, "Sharing has ended" when the other parent stops or this one leaves (every feed so far stays on the phone), and "Sharing didn't work" with the reason.
 
+**Delete all data while sharing.** The parent who shared the log deletes it for both, and the sheet says "on your partner's iPhone" too. For the invited parent the same button stops sharing and clears only their iPhone; the sheet says the partner keeps their feeds.
+
 **Import from Huckleberry.** Huckleberry emails one CSV per child ("Export tracking data as CSV"). The sheet explains how to get the file, then Choose File opens Files. Nothing is saved until the preview's Import button:
 - Ready to import: breastfeeds, bottles and pumping sessions, with the date range.
 - Skipped: rows already in Newbee (same kind starting in the same minute, so importing again is safe) and the count of each Huckleberry type Newbee doesn't track (Sleep, Diaper, Growth…).

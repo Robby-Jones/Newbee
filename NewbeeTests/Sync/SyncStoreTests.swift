@@ -346,6 +346,14 @@ struct SyncStoreTests {
         #expect(CloudSharing.status(for: [owner, Participant(isOwner: false, hasAccepted: true)], joined: true) == .joined)
     }
 
+    @Test func deleteAllDataSaysWhoItReaches() {
+        let own = DeleteAllDataSheet.warning(for: .notShared)
+        #expect(DeleteAllDataSheet.warning(for: .invited) == own)
+        #expect(own.contains("partner") == false)
+        #expect(DeleteAllDataSheet.warning(for: .shared).contains("on your partner's iPhone"))
+        #expect(DeleteAllDataSheet.warning(for: .joined).contains("Your partner keeps their feeds"))
+    }
+
     @Test func sharingIsOfferedOnlyWithICloud() {
         #expect(SharingSection.canShare(.upToDate(nil)))
         #expect(SharingSection.canShare(.syncing))
