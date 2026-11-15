@@ -93,8 +93,10 @@ Run each case on an **iPhone 14 Pro or later** (Dynamic Island). Where marked â€
 
 `.github/workflows/ci.yml`:
 1. **Package tests (Linux)**: `swift test` in `Packages/NewbeeKit` and `Packages/NewbeeShared`. About 1.5 min.
-2. **iOS build and tests (latest iOS)**: builds, runs `NewbeeTests`, then `NewbeeUITests` on the same simulator. Parallel simulator clones were tried and made the runner too slow (tests timed out). Code coverage is off in CI to save build time.
-3. **iOS build and tests (iOS 18 minimum)**: builds and runs `NewbeeTests` only. UI tests are skipped here because each one relaunches the app and they took about 6 of the 12 minutes.
+2. **iOS build and unit tests (latest iOS)** and **(iOS 18 minimum)**: build and run `NewbeeTests`.
+3. **iOS UI tests (latest iOS)**: builds and runs `NewbeeUITests` on its own Mac, alongside the unit-test jobs, so the slow UI tests don't wait for the unit tests. One simulator only: 3 parallel clones overloaded the runner and tests timed out.
+
+All iOS jobs start booting the simulator before the build and wait for it before testing; a freshly booted simulator made early UI tests fail with "Timed out while acquiring background assertion". Code coverage is off in CI to save build time.
 
 macOS runner minutes cost 10Ã— Linux on private repos. Keep the iOS job to PRs plus `main`.
 

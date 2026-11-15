@@ -25,22 +25,28 @@ jobs:
         run: swift test --parallel
 
   ios:
-    name: iOS build and tests (${{ matrix.label }})
+    name: iOS ${{ matrix.label }}
     runs-on: macos-15
     timeout-minutes: 60
     strategy:
       fail-fast: false
       matrix:
         include:
-          # UI tests launch the app over and over and take most of the time, so they run once, on
-          # latest iOS. iOS 18 builds and runs the unit tests. UI tests stay on one simulator: the
-          # runner (3 CPUs, 7 GB) slowed to a crawl with 3 clones and tests timed out (PR #63).
-          - label: latest iOS
+          # UI tests relaunch the app for every test and take the longest, so they get a Mac of
+          # their own and run alongside the unit tests instead of after them. They run on latest
+          # iOS only, on one simulator: 3 parallel clones overloaded the runner (PR #63).
+          - label: UI tests (latest iOS)
             ios_major: ""
-            test_flags: ""
-          - label: iOS 18 minimum
+            test_flags: -only-testing:NewbeeUITests
+            results: ui-latest
+          - label: build and unit tests (latest iOS)
+            ios_major: ""
+            test_flags: -skip-testing:NewbeeUITests
+            results: unit-latest
+          - label: build and unit tests (iOS 18 minimum)
             ios_major: "18"
             test_flags: -skip-testing:NewbeeUITests
+            results: unit-18
     steps:
       - uses: actions/checkout@v4
       - name: Select Xcode
@@ -52,17 +58,29 @@ jobs:
       - name: Pick simulator
         id: sim
         run: echo "udid=$(scripts/pick-simulator.sh ${{ matrix.ios_major }})" >> "$GITHUB_OUTPUT"
-      # A fresh simulator keeps setting itself up for a few minutes after it first boots. UI tests
-      # that launch the app during that time fail with "Timed out while acquiring background
-      # assertion", so boot it and wait until it's ready before testing.
-      - name: Boot simulator
-        run: |
-          xcrun simctl boot "${{ steps.sim.outputs.udid }}" || true
-          xcrun simctl bootstatus "${{ steps.sim.outputs.udid }}" -b
-      - name: Build and test
+      # A fresh simulator keeps setting itself up for a few minutes after it first boots, and UI
+      # tests that launch the app during that time fail with "Timed out while acquiring background
+      # assertion". Start the boot now so it happens while the app builds, and wait for it after.
+      - name: Start booting the simulator
+        run: xcrun simctl boot "${{ steps.sim.outputs.udid }}" || true
+      - name: Build
         run: |
           set -o pipefail
-          xcodebuild test \
+          xcodebuild build-for-testing \
+            -project Newbee.xcodeproj \
+            -scheme Newbee \
+            -destination "id=${{ steps.sim.outputs.udid }}" \
+            -enableCodeCoverage NO \
+            ${{ matrix.test_flags }} \
+            CODE_SIGNING_ALLOWED=NO \
+            NEWBEE_CLOUDKIT_CONTAINER= \
+            | xcbeautify --renderer github-actions
+      - name: Wait for the simulator
+        run: xcrun simctl bootstatus "${{ steps.sim.outputs.udid }}" -b
+      - name: Test
+        run: |
+          set -o pipefail
+          xcodebuild test-without-building \
             -project Newbee.xcodeproj \
             -scheme Newbee \
             -destination "id=${{ steps.sim.outputs.udid }}" \
@@ -76,5 +94,5 @@ jobs:
         if: failure()
         uses: actions/upload-artifact@v4
         with:
-          name: TestResults-${{ matrix.ios_major || 'latest' }}
+          name: TestResults-${{ matrix.results }}
           path: TestResults.xcresult
