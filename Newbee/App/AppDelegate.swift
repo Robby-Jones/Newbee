@@ -32,7 +32,10 @@ final class SceneDelegate: NSObject, UIWindowSceneDelegate {
 
     private func accept(_ metadata: CKShare.Metadata) {
         Task {
-            await AppDependencies.shared.cloudSharing?.accept(metadata)
+            let dependencies = AppDependencies.shared
+            // Opening an invitation is opting in: sharing goes through iCloud.
+            await dependencies.cloudSyncSwitch?.turnOn()
+            await dependencies.cloudSharing?.accept(metadata)
         }
     }
 }

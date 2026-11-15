@@ -2,8 +2,39 @@
 
 Newbee syncs feeds, the baby profile (photo included) and settings between the iPhones and iPads
 signed in to the same Apple ID, and lets one parent share the feeding log with the other, who uses
-their own Apple ID. Everything stays in the parents' own iCloud. There is no Newbee server, and
+their own Apple ID. **Sync is opt-in**: a fresh install keeps everything on the phone until the
+parent turns on **Settings → iCloud → Sync with iCloud** (see below). Everything stays in the parents' own iCloud. There is no Newbee server, and
 nothing is collected (ADR-011 in `ARCHITECTURE.md`).
+
+## Turning sync on and off
+
+`CloudSyncSwitch` holds the choice, per device, in the App Group defaults (`iCloudSyncEnabled`). It
+isn't synced, and Delete all data keeps it. `CloudSyncWiring` does the work.
+
+- **Fresh install: off.** Nothing talks to CloudKit or iCloud key-value storage. The Settings
+  section shows the switch and says feeds are kept on this iPhone only (and to sign in to iCloud
+  first, if the iPhone has no account). An app can't sign in to iCloud itself: it always uses the
+  Apple ID on the device.
+- **Installs from before the switch existed: on.** They synced on their own, so the first launch
+  of this build saves "on" if onboarding was done or sync had saved its state. The starting
+  choice is saved at once, so finishing onboarding later never turns sync on.
+- **Turning it on** works like a new device joining: settings already in iCloud replace this
+  phone's (settings only the phone has are sent up), every feed on the phone is uploaded, and
+  everything in iCloud is fetched and merged in. Where both have the same feed, the one changed
+  last wins, and two baby profiles become one (`BabyMerge`).
+- **Turning it off** asks first. Feeds and settings stay on the phone, and what is in iCloud stays
+  there. If the log is shared, sharing ends too: the parent who shared it stops sharing, the
+  invited parent leaves, and either way the partner keeps every feed so far. Ending sharing needs
+  iCloud, so offline the switch stays on and says why. Everything sync knew about iCloud is
+  forgotten (`CloudSyncEngine.stop`), so turning it on again is a fresh merge: nothing changed
+  while sync was off is deleted on either side, and a feed deleted elsewhere in the meantime can
+  come back.
+- **Sharing while off.** The Sharing row still shows (unless the iPhone has no iCloud account).
+  Tapping it asks to turn on iCloud sync, then opens the sharing sheet.
+- **An invitation link opened while off** turns sync on: opening it is the opt-in.
+- **Night Shift** needs a partner on the log, so it is hidden while sync is off.
+- **Delete all data while off** clears this iPhone only and says so. A later turn-on brings back
+  what is still in iCloud.
 
 ## How it works
 
@@ -44,7 +75,7 @@ it, in three parts:
   one), fills in its missing name, birth date or photo from the others, and deletes them. Feeds
   don't record which profile they belong to in iCloud: every phone attaches them to the one
   profile.
-- **Signed out of iCloud.** Everything keeps working on the device. Signing in later uploads the
+- **Signed out of iCloud** (with sync on). Everything keeps working on the device. Signing in later uploads the
   existing data. The same happens after switching Apple IDs, or if the zone is deleted from
   iCloud settings: the phone still has every feed and uploads them again.
 - **Delete all data** depends on who shares the log. For the parent who shared it (and for a log nobody else is on), it deletes everywhere: the deletes sync like any other change, so the partner's phone loses the feeds too. For the invited parent, it first leaves the shared log (`CloudSharing.leaveBeforeDeletingEverything`, which deletes their copy of the share) and then clears only that phone. The partner keeps every feed. If iCloud can't be reached the sheet says so and nothing is deleted. One edge: an invited parent with a second device on the same Apple ID keeps a copy on that device when they leave, and it syncs back.
@@ -55,8 +86,8 @@ it, in three parts:
   Settings → iCloud says why, the feed stays on the phone, and Newbee tries again: after 30
   seconds, then less often, and every time the app is opened.
 
-Settings → iCloud shows the state: Up to date (with the last sync time), Syncing, Off (signed out
-or restricted), Paused, or Not synced with the reason.
+Settings → iCloud shows the switch and, while it's on, the state: Up to date (with the last sync
+time), Syncing, Off (signed out or restricted), Paused, or Not synced with the reason.
 
 ## Sharing with the other parent
 

@@ -6,21 +6,45 @@ import SwiftUI
 struct SharingSection: View {
     @Environment(CloudSharing.self) private var sharing: CloudSharing?
     @Environment(CloudSyncMonitor.self) private var monitor: CloudSyncMonitor?
+    @Environment(CloudSyncSwitch.self) private var syncSwitch: CloudSyncSwitch?
+    @State private var isOfferingSync = false
 
     var body: some View {
         if let status = SharingPreview.status {
-            SharingSectionContent(status: status, isWorking: false) {}
-        } else if let sharing, let monitor, Self.canShare(monitor.status) {
-            SharingSectionContent(status: sharing.status, isWorking: sharing.isWorking) {
-                Task { await sharing.openSharingSheet() }
+            SharingSectionContent(status: status, isWorking: false, needsSync: false) {}
+        } else if let sharing, let monitor, let syncSwitch,
+                  Self.canShare(monitor.status, hasAccount: monitor.hasICloudAccount) {
+            SharingSectionContent(
+                status: sharing.status,
+                isWorking: sharing.isWorking || syncSwitch.isWorking,
+                needsSync: !syncSwitch.isOn
+            ) {
+                if syncSwitch.isOn {
+                    Task { await sharing.openSharingSheet() }
+                } else {
+                    isOfferingSync = true
+                }
+            }
+            .alert("Turn on iCloud sync?", isPresented: $isOfferingSync) {
+                Button("Turn On") {
+                    Task {
+                        await syncSwitch.turnOn()
+                        await sharing.openSharingSheet()
+                    }
+                }
+                Button("Cancel", role: .cancel) {}
+            } message: {
+                Text("Sharing goes through your private iCloud. Your feeds will also sync to your other devices.")
             }
         }
     }
 
-    /// Sharing needs iCloud. Without it the iCloud section already says what to do.
-    static func canShare(_ status: CloudSyncMonitor.Status) -> Bool {
+    /// Sharing needs iCloud. Without it the iCloud section already says what to do. With sync
+    /// off, the row offers to turn it on, unless this device has no iCloud to turn on.
+    static func canShare(_ status: CloudSyncMonitor.Status, hasAccount: Bool = true) -> Bool {
         switch status {
         case .unavailable, .signedOut, .restricted: false
+        case .off: hasAccount
         case .checking, .temporarilyUnavailable, .syncing, .failed, .upToDate: true
         }
     }
@@ -29,6 +53,8 @@ struct SharingSection: View {
 struct SharingSectionContent: View {
     let status: CloudSharing.Status
     let isWorking: Bool
+    /// "Sync with iCloud" is off: tapping offers to turn it on first.
+    let needsSync: Bool
     let open: () -> Void
 
     var body: some View {
@@ -50,7 +76,7 @@ struct SharingSectionContent: View {
         } header: {
             Text("Sharing")
         } footer: {
-            Text(Self.footer(for: status))
+            Text(needsSync ? Self.needsSyncFooter : Self.footer(for: status))
         }
     }
 
@@ -68,6 +94,8 @@ struct SharingSectionContent: View {
         case .shared, .joined: String(localized: "Sharing")
         }
     }
+
+    static let needsSyncFooter = String(localized: "Your partner sees and logs feeds on their own iPhone. Sharing turns on iCloud sync.")
 
     static func footer(for status: CloudSharing.Status) -> String {
         switch status {

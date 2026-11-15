@@ -379,6 +379,9 @@ struct SyncStoreTests {
         #expect(own.contains("partner") == false)
         #expect(DeleteAllDataSheet.warning(for: .shared).contains("on your partner's iPhone"))
         #expect(DeleteAllDataSheet.warning(for: .joined).contains("Your partner keeps their feeds"))
+        // With iCloud sync off, only this iPhone is cleared.
+        #expect(DeleteAllDataSheet.warning(for: .notShared, syncs: false).contains("from this iPhone"))
+        #expect(DeleteAllDataSheet.warning(for: .notShared, syncs: false).contains("other devices") == false)
     }
 
     @Test func sharingIsOfferedOnlyWithICloud() {
@@ -386,6 +389,9 @@ struct SyncStoreTests {
         #expect(SharingSection.canShare(.syncing))
         #expect(SharingSection.canShare(.signedOut) == false)
         #expect(SharingSection.canShare(.unavailable) == false)
+        // With sync off, the row offers to turn it on, if there is an iCloud account.
+        #expect(SharingSection.canShare(.off, hasAccount: true))
+        #expect(SharingSection.canShare(.off, hasAccount: false) == false)
     }
 }
 

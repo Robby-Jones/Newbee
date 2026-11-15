@@ -90,6 +90,44 @@ final class CloudSyncEngine {
         enqueuePending()
     }
 
+    /// True between `start()` and `stop()`.
+    var isRunning: Bool { privateEngine != nil }
+
+    /// "Sync with iCloud" was turned off. Every feed stays on the phone and in iCloud, and nothing
+    /// more is sent or fetched. Everything sync knew about iCloud is forgotten, so turning it on
+    /// again compares the phone with iCloud from scratch, like a new device: both sides are
+    /// merged, and nothing changed while sync was off is deleted on either side.
+    func stop() {
+        guard isRunning else { return }
+        for observer in observers {
+            NotificationCenter.default.removeObserver(observer)
+        }
+        observers = []
+        scanTask?.cancel()
+        retryTask?.cancel()
+        // Events from the old engines are ignored from here on (`handleEvent`).
+        privateEngine = nil
+        sharedEngine = nil
+        activity = [:]
+        blocked = [:]
+        didResetEngine = false
+        let wasJoined = isJoined
+        core.forgetServer()
+        var fresh = CloudSyncState()
+        fresh.ledger = core.ledger
+        state = fresh
+        persistNow()
+        if wasJoined {
+            onSharingChange?()
+        }
+    }
+
+    /// Fetches everything new from iCloud: this parent's own log and any shared one.
+    func fetchAll() async {
+        try? await privateEngine?.fetchChanges()
+        try? await sharedEngine?.fetchChanges()
+    }
+
     private func makeEngine(database: CKDatabase, serialization: CKSyncEngine.State.Serialization?) -> CKSyncEngine {
         CKSyncEngine(CKSyncEngine.Configuration(database: database, stateSerialization: serialization, delegate: self))
     }
@@ -453,6 +491,10 @@ final class CloudSyncEngine {
     private func refetchEverything(_ engine: CKSyncEngine) {
         guard !didResetEngine else { return }
         didResetEngine = true
+        // The replaced engine's events are ignored, so its running fetch never reports its end.
+        for kind: CloudSyncEvent.Kind in [.import, .export] {
+            abandon(activityKey(kind, engine), kind: kind)
+        }
         if engine === privateEngine {
             state.privateEngine = nil
             privateEngine = makeEngine(database: container.privateCloudDatabase, serialization: nil)
@@ -516,10 +558,32 @@ final class CloudSyncEngine {
 
     // MARK: - Status
 
+    /// How long a fetch or send counts as running if its end never arrives.
+    private static let activityTimeout: Duration = .seconds(120)
+
     private func began(_ kind: CloudSyncEvent.Kind, engine: CKSyncEngine) {
+        let key = activityKey(kind, engine)
+        // Overlapping fetches (or sends) of one engine count as one, for example opening the app
+        // while CloudKit is already fetching. A second start used to replace the first, whose end
+        // then never came, and Settings said "Syncing" until the app was closed.
+        guard activity[key] == nil else { return }
         let id = UUID()
-        activity[activityKey(kind, engine)] = id
+        activity[key] = id
         monitor.handle(CloudSyncEvent(id: id, kind: kind, finished: false, succeeded: false, endDate: nil))
+        // An end can still go missing (the engine was replaced mid-fetch, iOS suspended the app).
+        // After a while the status stops waiting for it.
+        Task { [weak self] in
+            try? await Task.sleep(for: Self.activityTimeout)
+            guard let self, self.activity[key] == id else { return }
+            self.abandon(key, kind: kind)
+        }
+    }
+
+    /// Stops counting a fetch or send whose end won't arrive. It didn't succeed as far as anyone
+    /// knows, so "Last synced" stays as it was.
+    private func abandon(_ key: String, kind: CloudSyncEvent.Kind) {
+        guard let id = activity.removeValue(forKey: key) else { return }
+        monitor.handle(CloudSyncEvent(id: id, kind: kind, finished: true, succeeded: false, endDate: nil))
     }
 
     private func ended(_ kind: CloudSyncEvent.Kind, engine: CKSyncEngine) {
