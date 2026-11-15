@@ -118,6 +118,33 @@ struct SyncStoreTests {
         #expect(session.orderedSegments.first?.endedAt == now)
     }
 
+    /// "Still feeding?" belongs to the phone that started the timer: a running feed that arrives
+    /// through sync is remembered as started elsewhere; one that arrives finished is not.
+    @Test func runningFeedsFromAnotherPhoneAreRemembered() throws {
+        let here = try makeInMemoryContainer()
+        let there = try makeInMemoryContainer()
+        let finished = breastfeed(in: here.mainContext)
+        let running = FeedingSession(kind: .breast, status: .active, startedAt: now, source: .timer)
+        here.mainContext.insert(running)
+        let segment = FeedingSegment(side: .left, startedAt: now)
+        here.mainContext.insert(segment)
+        running.segments = [segment]
+        try here.mainContext.save()
+
+        let suite = "FeedOriginsTests-\(UUID().uuidString)"
+        let defaults = try #require(UserDefaults(suiteName: suite))
+        defer { defaults.removePersistentDomain(forName: suite) }
+        let origins = FeedOrigins(defaults: defaults)
+        let store = SwiftDataSyncStore(container: there, origins: origins)
+        let payloads = [finished.syncPayload, running.syncPayload]
+        _ = try store.apply(Dictionary(uniqueKeysWithValues: payloads.map { ($0.key, $0.content()) }))
+
+        #expect(origins.wasStartedHere(running.id) == false)
+        #expect(origins.wasStartedHere(finished.id))
+        // A feed this phone started itself was never applied from sync.
+        #expect(origins.wasStartedHere(UUID()))
+    }
+
     /// A bottle changed into nothing but a note still drops its details row.
     @Test func detailsThatAreGoneAreRemoved() throws {
         let container = try makeInMemoryContainer()

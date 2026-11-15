@@ -82,7 +82,7 @@ Run each case on an **iPhone 14 Pro or later** (Dynamic Island). Where marked â€
 | D23 | Each parent logs a feed, edits one of the other's and deletes one | Both phones agree after each step |
 | D24 | Both phones in airplane mode: edit the same feed on both, then go back online | The later edit wins on both phones; nothing is duplicated |
 | D25 | Owner taps Partner â†’ Stop Sharing (or the partner leaves) | Partner sees "Sharing has ended" and keeps every feed so far; new feeds no longer cross |
-| D26 | Start a feed on one phone while sharing | The other phone shows the feed in History when it ends; its Live Activity does not start (Live Activities are per phone) |
+| D26 | Start a feed on one phone while sharing and leave it running past the "Still feeding?" time | The other phone's app shows the running timer once opened (its Lock Screen activity appears only then). "Still feeding?" arrives only on the phone that started the feed |
 
 ## 6. CI (proposed)
 

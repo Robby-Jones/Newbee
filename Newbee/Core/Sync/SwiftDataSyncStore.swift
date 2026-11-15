@@ -14,9 +14,12 @@ final class SwiftDataSyncStore: SyncLocalStore {
     private let container: ModelContainer
     private let context: ModelContext
 
-    init(container: ModelContainer) {
+    private let origins: FeedOrigins
+
+    init(container: ModelContainer, origins: FeedOrigins = FeedOrigins()) {
         self.container = container
         self.context = container.mainContext
+        self.origins = origins
     }
 
     func items() throws -> [SyncKey: SyncLocalItem] {
@@ -79,6 +82,10 @@ final class SwiftDataSyncStore: SyncLocalStore {
                         session = FeedingSession(id: payload.id, kind: .breast, status: .completed, startedAt: payload.startedAt)
                         context.insert(session)
                         existing[payload.id] = session
+                        // A feed that is still running on the phone it was started on.
+                        if payload.status != SessionStatus.completed.rawValue {
+                            origins.markStartedElsewhere(payload.id)
+                        }
                     }
                     session.apply(payload, in: context)
                     // One baby profile: every feed belongs to it. `BabyMerge` attaches any feed

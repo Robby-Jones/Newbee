@@ -79,6 +79,8 @@ its own:
   other's app. iOS only lets an app start a Live Activity while it is in use (ADR-009), so the
   other phone's Lock Screen shows it once Newbee is opened there. A Live Activity that is already
   showing does update and end from the background.
+- **"Still feeding?" asks only on the phone the timer was started on.** A running feed that
+  arrives through sync is noted in `FeedOrigins`, and `ReminderPlanner` skips it.
 - **If sharing stops**, because the first parent stops it or the second leaves (both from the
   same Sharing row), the second parent keeps a copy of every feed so far. Their phone goes back
   to syncing with their own iCloud, and the two logs are separate from then on.
