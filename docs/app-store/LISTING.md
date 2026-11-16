@@ -25,9 +25,9 @@ the Home Screen stays "Newbee" either way (`CFBundleDisplayName`).
 
 ### Promotional text (170)
 
-> Run the whole breastfeeding timer from your Lock Screen and Dynamic Island. Switch sides, pause and end a feed without opening the app. No account. No subscription.
+> The feeding timer that lives on your Lock Screen. Share the log with your partner, and let Night Shift keep one phone quiet while the other parent is on duty.
 
-164 / 170.
+158 / 170.
 
 ### Description (4,000)
 
@@ -40,6 +40,12 @@ the Home Screen stays "Newbee" either way (`CFBundleDisplayName`).
 > • A "since last feed" clock between feeds
 > • Time stays exact if the app closes, your iPhone restarts, or you change time zones
 > • Fell asleep with the timer running? Newbee asks and helps you fix the entry
+>
+> NIGHT SHIFT, FOR TWO TIRED PARENTS
+> • Share the feeding log with your partner through iCloud. You both see and log the same feeds
+> • One tap in the evening: "I'm on duty tonight"
+> • Feeding reminders ring only on the on-duty parent's iPhone, so the other parent can sleep
+> • In the morning, the parent who slept sees "While you slept": how many feeds, and when
 >
 > EVERY KIND OF FEED
 > • Breastfeeding by side, with a suggestion for which side to start on next
@@ -63,16 +69,16 @@ the Home Screen stays "Newbee" either way (`CFBundleDisplayName`).
 >
 > BRING YOUR HISTORY, KEEP IT IN SYNC
 > • Switching trackers? Import your feeds from a CSV export
-> • Syncs between your own iPhones and iPads through your private iCloud
+> • Optional iCloud sync between your own iPhones and iPads. It's off until you turn it on
 >
 > PRIVATE BY DESIGN
 > • No account, no ads, no tracking
-> • Your data stays on your devices and in your own iCloud. It is never collected by us
+> • Your data stays on your iPhone unless you turn on iCloud sync or sharing, and then it lives in your own iCloud. It is never collected by us
 >
 > Newbee is a log, not medical advice. Always talk to your pediatrician about feeding concerns.
 
-The "BRING YOUR HISTORY" section is true only for a build with the import (43+) and iCloud sync
-(47+). Remove it if an older build is submitted.
+Everything in this description is in TestFlight build 60 and later (version 1.0.0). Don't submit
+an older build with this text.
 
 ### Keywords (100)
 
@@ -108,19 +114,19 @@ and subtitle (nursing, timer, log, feeds, lock, screen) are indexed anyway. No c
 
 ## Screenshots
 
-Six captioned screenshots, 1206 x 2622, in this order. The first three show the Lock Screen and
-Dynamic Island, which a plain app screen can't, and come from a real iPhone.
+Seven captioned screenshots, 1206 x 2622, in this order. The first three show the Lock Screen and
+Dynamic Island and come from a real iPhone. The rest come from the **Screenshots** workflow.
 
 1. Lock Screen with the timer running: "Your feeding timer, on the Lock Screen"
 2. Dynamic Island expanded: "Switch sides without opening the app"
 3. Lock Screen between feeds: "Always know when your baby last ate"
-4. Home: "Breast, bottle and pumping in two taps"
-5. Insights: "See the pattern"
-6. History: "Every feed, ready for your pediatrician"
+4. Home with the Night Shift card: "Night Shift: one parent on duty, one asleep"
+5. Home: "Breast, bottle and pumping in two taps"
+6. Insights: "See the pattern"
+7. History: "Every feed, ready for your pediatrician"
 
-Shots 4 to 6 start from the **Screenshots** workflow output (Actions → Screenshots → Run
-workflow, artifact `app-store-screenshots`, 6.3" iPhone Pro simulator with two weeks of sample
-feeds). `scripts/caption-screenshots.py` adds the caption and background to any screenshot.
+`scripts/caption-screenshots.py` adds the caption and background to any screenshot. The finished
+set is in the project files as `newbee-screenshots-captioned.zip`.
 
 Upload them to the **iPhone with Dynamic Island (medium display)** tab. Apple scales them for
 other iPhones. Skip the iPhone Duo, iPad and Apple Watch tabs: Newbee is iPhone-only.
