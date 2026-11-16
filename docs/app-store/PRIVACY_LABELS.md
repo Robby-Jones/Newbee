@@ -20,7 +20,7 @@ Why each likely category is "not collected":
 | Settings and reminders | On device and in the user's iCloud key-value storage | No |
 | Crash reports | Apple's own opt-in diagnostics only; no SDK in the app | No |
 
-iCloud sync (from 1.1) keeps data in the user's own private iCloud database and key-value
+iCloud sync (optional, off until the user turns it on) keeps data in the user's own private iCloud database and key-value
 storage. Partner sharing uses iCloud's own sharing: the feeds and baby profile become visible to
 the one person the user invites, through Apple, and never to the developer. Apple's guidance is that data the developer can't access isn't "collected", so the
 answers stay "Data Not Collected".
