@@ -6,6 +6,7 @@ name: Screenshots
 # Run on demand: Actions → Screenshots → Run workflow. Test: NewbeeUITests/AppStoreScreenshots.swift.
 # Choosing "ReviewScreenshots" instead takes pictures of new screens for review
 # (NewbeeUITests/ReviewScreenshots.swift, artifact "review-screenshots").
+# Choose "dark" for dark mode captures (artifact name ends in "-dark").
 
 on:
   workflow_dispatch:
@@ -17,6 +18,13 @@ on:
         options:
           - AppStoreScreenshots
           - ReviewScreenshots
+      appearance:
+        description: Light or dark mode
+        type: choice
+        default: light
+        options:
+          - light
+          - dark
   # Also when the screenshot setup itself changes, so a PR shows the result.
   pull_request:
     paths:
@@ -54,12 +62,12 @@ jobs:
           fi
           xcrun simctl list devices | grep "$UDID"
           echo "udid=$UDID" >> "$GITHUB_OUTPUT"
-      - name: Prepare simulator (light mode, full battery and signal)
+      - name: Prepare simulator (appearance, full battery and signal)
         run: |
           UDID="${{ steps.sim.outputs.udid }}"
           xcrun simctl boot "$UDID" || true
           xcrun simctl bootstatus "$UDID" -b
-          xcrun simctl ui "$UDID" appearance light
+          xcrun simctl ui "$UDID" appearance "${{ inputs.appearance || 'light' }}"
           # The sample feeds are relative to now, so a run in the early morning shows a nearly
           # empty "Today". Run the app in a time zone where it is about 9 PM instead, and show
           # that local time in the status bar so it matches the feed times on screen.
@@ -91,7 +99,7 @@ jobs:
       - name: Upload screenshots
         uses: actions/upload-artifact@v4
         with:
-          name: ${{ inputs.test == 'ReviewScreenshots' && 'review-screenshots' || 'app-store-screenshots' }}
+          name: ${{ inputs.test == 'ReviewScreenshots' && 'review-screenshots' || 'app-store-screenshots' }}${{ inputs.appearance == 'dark' && '-dark' || '' }}
           path: ${{ runner.temp }}/screenshots/*.png
           if-no-files-found: error
       - name: Upload test results
