@@ -119,7 +119,11 @@ struct HistoryView: View {
         .listRowBackground(Color.clear)
         .swipeActions(edge: .trailing, allowsFullSwipe: false) {
             if canEdit {
-                Button("Delete", systemImage: "trash", role: .destructive) { pendingDelete = item }
+                // No `.destructive` role: with it, List animates the row away the moment the
+                // button is tapped, then snaps it back while the confirmation is still up.
+                // The row is removed for real once the delete is confirmed.
+                Button("Delete", systemImage: "trash") { pendingDelete = item }
+                    .tint(.red)
             }
         }
         .swipeActions(edge: .leading) {
