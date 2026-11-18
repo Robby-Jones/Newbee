@@ -79,11 +79,15 @@ private struct InsightsContent: View {
             let unit = bottleModel?.unit ?? .milliliters
             VStack(alignment: .leading, spacing: NBSpacing.l) {
                 if entries.isEmpty {
-                    ContentUnavailableView(
-                        "Insights appear after a couple of days of tracking",
-                        systemImage: "chart.bar",
-                        description: Text("Log feeds with the timer or a bottle and your patterns show up here.")
-                    )
+                    ContentUnavailableView {
+                        Label {
+                            Text("Insights appear after a couple of days of tracking")
+                        } icon: {
+                            BeeMascot(size: 64)
+                        }
+                    } description: {
+                        Text("Log feeds with the timer or a bottle and your patterns show up here.")
+                    }
                     .padding(.top, NBSpacing.xl)
                 } else {
                     FeedsCard(report: report)

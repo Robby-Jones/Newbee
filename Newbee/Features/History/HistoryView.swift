@@ -259,11 +259,15 @@ struct HistoryView: View {
     @ViewBuilder
     private var emptyState: some View {
         if sessions.isEmpty && pumpSessions.isEmpty {
-            ContentUnavailableView(
-                "Your feeds will appear here",
-                systemImage: "list.bullet",
-                description: Text("Finished breastfeeds, bottles and pumping sessions show up in this timeline, newest first.")
-            )
+            ContentUnavailableView {
+                Label {
+                    Text("Your feeds will appear here")
+                } icon: {
+                    BeeMascot(size: 64)
+                }
+            } description: {
+                Text("Finished breastfeeds, bottles and pumping sessions show up in this timeline, newest first.")
+            }
         } else {
             ContentUnavailableView(
                 emptyFilterTitle,

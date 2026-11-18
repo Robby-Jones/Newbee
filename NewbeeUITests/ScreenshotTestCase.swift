@@ -20,12 +20,11 @@ class ScreenshotTestCase: XCTestCase {
         }
     }
 
-    /// Launches the app with sample feeds, in US English, plus `arguments`.
+    /// Launches the app with sample feeds (or an empty log), in US English, plus `arguments`.
     @MainActor
-    func launch(_ arguments: [String] = []) -> XCUIApplication {
+    func launch(_ arguments: [String] = [], sampleData: Bool = true) -> XCUIApplication {
         let app = XCUIApplication()
-        app.launchArguments = [
-            "-uiTesting", "-screenshotData",
+        app.launchArguments = ["-uiTesting"] + (sampleData ? ["-screenshotData"] : []) + [
             "-AppleLanguages", "(en-US)", "-AppleLocale", "en_US",
         ] + arguments
         // Chosen by the workflow so it is evening in the app, whatever time the run starts.

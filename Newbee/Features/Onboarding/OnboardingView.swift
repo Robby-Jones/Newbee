@@ -186,6 +186,11 @@ private struct WelcomeStep: View {
             VStack(spacing: NBSpacing.xl) {
                 Spacer(minLength: NBSpacing.l)
                 FeedButtonsIllustration()
+                    .overlay(alignment: .topTrailing) {
+                        BeeMascot(size: 40)
+                            .beeFlyIn(from: CGSize(width: -220, height: 60), delay: 0.4)
+                            .offset(x: 14, y: -34)
+                    }
                 StepHeading(
                     title: "Track feeds in two taps",
                     subtitle: "Time each breast, log bottles and pumping, and see your baby's patterns at a glance."

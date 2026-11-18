@@ -189,10 +189,13 @@ private struct CalendarWeekView: View {
                         onEditPump: { editPump($0) }
                     )
                 } else if entries.isEmpty && pumps.isEmpty {
-                    Text("No feeds this week")
-                        .font(.headline)
-                        .foregroundStyle(NBColor.secondaryText)
-                        .frame(maxWidth: .infinity)
+                    HStack(spacing: NBSpacing.s) {
+                        BeeMascot(pose: .resting, size: 28)
+                        Text("No feeds this week")
+                            .font(.headline)
+                            .foregroundStyle(NBColor.secondaryText)
+                    }
+                    .frame(maxWidth: .infinity)
                         .padding(.top, NBSpacing.l)
                 } else {
                     PeriodSummary(title: "This week", totals: FeedTotals(entries), pumps: PumpSummary(entries: pumps), unit: unit, pumpUnit: pumpUnit)
@@ -595,10 +598,13 @@ private struct CalendarMonthView: View {
                         onEditPump: { editPump($0) }
                     )
                 } else if grid.isEmpty {
-                    Text("No feeds this month")
-                        .font(.headline)
-                        .foregroundStyle(NBColor.secondaryText)
-                        .frame(maxWidth: .infinity)
+                    HStack(spacing: NBSpacing.s) {
+                        BeeMascot(pose: .resting, size: 28)
+                        Text("No feeds this month")
+                            .font(.headline)
+                            .foregroundStyle(NBColor.secondaryText)
+                    }
+                    .frame(maxWidth: .infinity)
                         .padding(.top, NBSpacing.l)
                 } else {
                     PeriodSummary(title: "This month", totals: grid.totals, pumps: grid.pumps, unit: unit, pumpUnit: pumpUnit)

@@ -105,6 +105,11 @@ private struct ProfileHeader: View {
                         Circle().strokeBorder(NBColor.accent.opacity(0.35), lineWidth: 3)
                     }
                 }
+                // The icon's bee keeps the baby company; it naps through the night.
+                .overlay(alignment: .topTrailing) {
+                    BeeMascot(pose: Self.isNight(now) ? .sleeping : .hovering, size: image == nil ? 24 : 30)
+                        .offset(x: image == nil ? 24 : 26, y: -4)
+                }
             Text(name.isEmpty ? DashboardView.greeting(at: now) : name)
                 .font(.title2.weight(.bold))
                 .accessibilityAddTraits(.isHeader)
@@ -117,6 +122,12 @@ private struct ProfileHeader: View {
         .frame(maxWidth: .infinity)
         .padding(.top, NBSpacing.s)
         .accessibilityElement(children: .combine)
+    }
+
+    /// 10 PM to 5 AM, the "Hello, night owl" hours.
+    static func isNight(_ date: Date, calendar: Calendar = .current) -> Bool {
+        let hour = calendar.component(.hour, from: date)
+        return hour >= 22 || hour < 5
     }
 }
 

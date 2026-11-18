@@ -65,6 +65,7 @@ struct NightShiftCardView: View {
             Card(padding: NBSpacing.m) {
                 row(
                     symbol: "moon.zzz.fill",
+                    sleepingBee: true,
                     title: String(localized: "Your partner is on duty"),
                     subtitle: String(localized: "Until \(Self.time(until)). This iPhone stays quiet.")
                 ) {
@@ -105,6 +106,7 @@ struct NightShiftCardView: View {
     /// Symbol, two or three lines of text, and one control on the right.
     private func row<Trailing: View>(
         symbol: String,
+        sleepingBee: Bool = false,
         title: String,
         titleColor: Color = .primary,
         subtitle: String,
@@ -112,11 +114,18 @@ struct NightShiftCardView: View {
         @ViewBuilder trailing: () -> Trailing
     ) -> some View {
         HStack(spacing: NBSpacing.m) {
-            Image(systemName: symbol)
-                .font(.title2)
-                .foregroundStyle(NBColor.accent)
-                .frame(width: 32)
-                .accessibilityHidden(true)
+            Group {
+                // Off duty tonight, like the bee from the icon.
+                if sleepingBee {
+                    BeeMascot(pose: .sleeping, size: 32)
+                } else {
+                    Image(systemName: symbol)
+                        .font(.title2)
+                        .foregroundStyle(NBColor.accent)
+                }
+            }
+            .frame(width: 32)
+            .accessibilityHidden(true)
             VStack(alignment: .leading, spacing: 2) {
                 Text(title)
                     .font(.headline)

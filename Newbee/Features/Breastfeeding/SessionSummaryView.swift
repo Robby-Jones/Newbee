@@ -35,6 +35,12 @@ struct SessionSummaryView: View {
                             .font(.system(size: 44))
                             .foregroundStyle(NBColor.accent)
                             .accessibilityHidden(true)
+                            // The bee flies in once to say well done, then hovers off to the side.
+                            .overlay(alignment: .topTrailing) {
+                                BeeMascot(size: 30)
+                                    .beeFlyIn(from: CGSize(width: -160, height: 40))
+                                    .offset(x: 36, y: -14)
+                            }
                         Text("Feed saved")
                             .font(.title2.weight(.semibold))
                         Text(DurationText.short(total))

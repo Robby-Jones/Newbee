@@ -30,7 +30,13 @@ struct DayFeedsView: View {
         let pumps = pumpSessions.compactMap(\.pumpEntry)
         List {
             if rows.isEmpty && pumps.isEmpty {
-                ContentUnavailableView("No feeds on this day", systemImage: "calendar")
+                ContentUnavailableView {
+                    Label {
+                        Text("No feeds on this day")
+                    } icon: {
+                        BeeMascot(pose: .resting, size: 56)
+                    }
+                }
                     .listRowBackground(Color.clear)
             } else if !rows.isEmpty {
                 Section {

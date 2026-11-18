@@ -56,6 +56,67 @@ final class ReviewScreenshots: ScreenshotTestCase {
         }
     }
 
+    /// The bee from the app icon in each place it appears.
+    @MainActor
+    func testBeeMascot() throws {
+        // Onboarding's welcome step, once the bee has flown in.
+        var app = launch(["-showOnboarding"], sampleData: false)
+        XCTAssertTrue(app.buttons["onboarding.next"].firstMatch.waitForExistence(timeout: 15))
+        Thread.sleep(forTimeInterval: 1.5)
+        settle()
+        capture("bee-onboarding")
+        app.terminate()
+
+        // An empty log: Home, History, Calendar and Insights.
+        app = launch(sampleData: false)
+        XCTAssertTrue(app.buttons["breastfeedButton"].firstMatch.waitForExistence(timeout: 15))
+        settle()
+        capture("bee-home-empty")
+        app.tabBars.buttons["History"].tap()
+        XCTAssertTrue(app.navigationBars["History"].waitForExistence(timeout: 5))
+        settle()
+        capture("bee-history-empty")
+        let calendarMode = app.segmentedControls.buttons["Calendar"].firstMatch
+        if calendarMode.waitForExistence(timeout: 5) {
+            calendarMode.tap()
+            settle()
+            capture("bee-calendar-empty")
+        }
+        app.tabBars.buttons["Insights"].tap()
+        settle()
+        capture("bee-insights-empty")
+        app.terminate()
+
+        // Home with feeds, the running timer, and Feed saved.
+        app = launch(["-screenshotActiveFeed"])
+        let endFeed = app.buttons["End feed"]
+        if !endFeed.waitForExistence(timeout: 5) {
+            let pill = app.buttons["activeSessionPill"].firstMatch
+            XCTAssertTrue(pill.waitForExistence(timeout: 10))
+            settle()
+            capture("bee-home")
+            pill.tap()
+        }
+        XCTAssertTrue(endFeed.waitForExistence(timeout: 5))
+        settle()
+        capture("bee-timer")
+        endFeed.tap()
+        XCTAssertTrue(app.buttons["summary.undo"].firstMatch.waitForExistence(timeout: 5))
+        Thread.sleep(forTimeInterval: 1.5)
+        settle()
+        capture("bee-feed-saved")
+        app.terminate()
+
+        // Night Shift while the partner is on duty: the bee naps.
+        app = launch(["-sharingPreview", "shared", "-nightShiftPreview", "partnerOnDuty"])
+        let takeOver = app.buttons["nightShift.takeOver"].firstMatch
+        XCTAssertTrue(takeOver.waitForExistence(timeout: 15))
+        reveal(takeOver, in: app)
+        settle()
+        capture("bee-night-shift")
+        app.terminate()
+    }
+
     /// Scrolls the list until `element` can be tapped.
     @MainActor
     private func reveal(_ element: XCUIElement, in app: XCUIApplication) {

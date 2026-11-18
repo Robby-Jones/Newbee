@@ -213,6 +213,9 @@ private struct TimerContent: View {
                         Image(systemName: "pause.fill")
                     }
                     Text(display.isPaused ? "Paused" : "Total")
+                    // Keeps the feed company: hovers while it runs, rests while paused.
+                    BeeMascot(pose: display.isPaused ? .resting : .hovering, size: 22)
+                        .padding(.leading, NBSpacing.xs)
                 }
                 .font(.headline)
                 .foregroundStyle(NBColor.secondaryText)
@@ -240,6 +243,10 @@ private struct TimerContent: View {
                 .font(.largeTitle)
                 .foregroundStyle(NBColor.accent)
                 .accessibilityHidden(true)
+                .overlay(alignment: .topTrailing) {
+                    BeeMascot(pose: .resting, size: 24)
+                        .offset(x: 22, y: -10)
+                }
             Text("Ready when you are")
                 .font(.title2.weight(.semibold))
             if let ended = display.lastFeedEnded, let side = display.lastFeedSide {
