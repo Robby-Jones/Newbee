@@ -575,4 +575,19 @@ struct LiveActivityPlannerTests {
             .request(FeedingActivityAttributes(sessionID: sessionID, babyName: ""), state, staleDate: state.staleDate(after: minutes(45)), replacing: "a"),
         ])
     }
+
+    @Test func refreshLongAfterTheFeedNeverRequestsAlreadyStaleContent() {
+        // Two hours after the feed the count's one-hour mark has passed. A request with a stale
+        // date in the past may not be shown, so it gets one in the future.
+        let completed = completedSpecExample()
+        let state = State(snapshot: completed)
+        let later = t0 + minutes(140)
+        #expect(state.staleDate(after: minutes(45)) < later)
+        #expect(planner.plan(for: completed, existing: [], activitiesEnabled: true, mode: .refresh, now: later) == [
+            .request(
+                FeedingActivityAttributes(sessionID: sessionID, babyName: ""), state,
+                staleDate: later + LiveActivityPlanner.activityLifetime
+            ),
+        ])
+    }
 }

@@ -12,7 +12,7 @@ struct LiveActivityCoordinatorTests {
     let id = UUID()
 
     func makeCoordinator() -> LiveActivityCoordinator {
-        LiveActivityCoordinator(client: client, clock: clock)
+        LiveActivityCoordinator(client: client, clock: clock, refreshCheckDelay: .zero)
     }
 
     func active(on side: Side, revision: Int, since start: Date) -> SessionSnapshot {
@@ -292,6 +292,45 @@ struct LiveActivityCoordinatorTests {
         #expect(client.calls.isEmpty)
         await coordinator.sync(snapshot, lastBottle: nil, mode: .refresh)
         #expect(client.calls == [.request(sessionID: id, revision: 1)])
+    }
+
+    // MARK: - Settings' refresh result
+
+    func completedFeed() -> SessionSnapshot {
+        let start = clock.now
+        return SessionSnapshot(
+            id: id, status: .completed, segments: [Segment(side: .left, start: start, end: start + 600)],
+            startedAt: start, endedAt: start + 600, revision: 2
+        )
+    }
+
+    @Test func refreshReportsShownWhenTheActivityComesBack() async {
+        let coordinator = makeCoordinator()
+        let completed = completedFeed()
+        #expect(await coordinator.refresh(completed, lastBottle: nil) == .shown)
+        client.userDismisses("activity-1")
+        // Swiped away, then refreshed again: a fresh one.
+        #expect(await coordinator.refresh(completed, lastBottle: nil) == .shown)
+        #expect(client.activities.filter { $0.phase == .live }.map(\.id) == ["activity-2"])
+    }
+
+    @Test func refreshReportsWhyNothingCameBack() async {
+        let coordinator = makeCoordinator()
+        #expect(await coordinator.refresh(nil, lastBottle: nil) == .nothingToShow)
+
+        client.refuseRequests = true
+        guard case .refused = await coordinator.refresh(completedFeed(), lastBottle: nil) else {
+            Issue.record("expected .refused")
+            return
+        }
+
+        client.refuseRequests = false
+        client.dropRequestedActivities = true
+        #expect(await coordinator.refresh(completedFeed(), lastBottle: nil) == .removedRightAway)
+
+        client.dropRequestedActivities = false
+        client.areActivitiesEnabled = false
+        #expect(await coordinator.refresh(completedFeed(), lastBottle: nil) == .disabled)
     }
 }
 

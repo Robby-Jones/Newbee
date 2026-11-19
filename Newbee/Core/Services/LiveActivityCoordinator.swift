@@ -37,6 +37,8 @@ final class LiveActivityCoordinator {
     private let client: any LiveActivityClient
     private let clock: any AppClock
     private let planner: LiveActivityPlanner
+    /// How long after Settings' refresh to check that iOS kept the new activity.
+    private let refreshCheckDelay: Duration
     /// Session id → revision the parent swiped away. Not persisted: after a relaunch we show it again.
     @ObservationIgnored private var dismissedRevisions: [UUID: Int] = [:]
     /// The last queued sync. Each sync waits for the previous one so ActivityKit calls never interleave.
@@ -46,11 +48,13 @@ final class LiveActivityCoordinator {
     init(
         client: any LiveActivityClient,
         clock: any AppClock = SystemClock(),
-        planner: LiveActivityPlanner = LiveActivityPlanner()
+        planner: LiveActivityPlanner = LiveActivityPlanner(),
+        refreshCheckDelay: Duration = .seconds(1)
     ) {
         self.client = client
         self.clock = clock
         self.planner = planner
+        self.refreshCheckDelay = refreshCheckDelay
         self.activitiesEnabled = client.areActivitiesEnabled
         client.onUserDismissal = { [weak self] sessionID, revision in
             self?.dismissedRevisions[sessionID] = revision
@@ -69,16 +73,35 @@ final class LiveActivityCoordinator {
     /// (`LiveActivitySyncMode`). Safe to call repeatedly; returns once every ActivityKit call for
     /// this and earlier syncs has finished.
     func sync(_ snapshot: SessionSnapshot?, lastBottle: BottleEntry?, mode: LiveActivitySyncMode) async {
-        let previous = tail
-        let task = Task { [weak self] in
-            await previous?.value
-            await self?.reconcile(snapshot, lastBottle: lastBottle, mode: mode)
-        }
-        tail = task
-        await task.value
+        _ = await enqueue(snapshot, lastBottle: lastBottle, mode: mode)
     }
 
-    private func reconcile(_ snapshot: SessionSnapshot?, lastBottle: BottleEntry?, mode: LiveActivitySyncMode) async {
+    /// Settings' "Refresh Live Activity": a `.refresh` sync that reports how it went. When iOS
+    /// accepts the request, checks a moment later that the activity is still running, since iOS
+    /// drops one it can't draw without an error.
+    func refresh(_ snapshot: SessionSnapshot?, lastBottle: BottleEntry?) async -> LiveActivityRefreshResult {
+        await enqueue(snapshot, lastBottle: lastBottle, mode: .refresh)
+    }
+
+    private func enqueue(
+        _ snapshot: SessionSnapshot?,
+        lastBottle: BottleEntry?,
+        mode: LiveActivitySyncMode
+    ) async -> LiveActivityRefreshResult {
+        let previous = tail
+        let task = Task { [weak self] () -> LiveActivityRefreshResult in
+            await previous?.value
+            return await self?.reconcile(snapshot, lastBottle: lastBottle, mode: mode) ?? .nothingToShow
+        }
+        tail = Task { _ = await task.value }
+        return await task.value
+    }
+
+    private func reconcile(
+        _ snapshot: SessionSnapshot?,
+        lastBottle: BottleEntry?,
+        mode: LiveActivitySyncMode
+    ) async -> LiveActivityRefreshResult {
         activitiesEnabled = client.areActivitiesEnabled
         let actions = planner.plan(
             for: snapshot,
@@ -93,8 +116,25 @@ final class LiveActivityCoordinator {
             mode: mode,
             now: clock.now
         )
+        var result: LiveActivityRefreshResult = activitiesEnabled ? .nothingToShow : .disabled
+        var requested: String?
         for action in actions {
-            await perform(action)
+            switch await perform(action) {
+            case .requested(let id):
+                requested = id
+                result = .shown
+            case .refused(let reason):
+                result = .refused(reason)
+            case .done:
+                break
+            }
+        }
+        if mode == .refresh, let requested {
+            try? await Task.sleep(for: refreshCheckDelay)
+            if client.records().first(where: { $0.id == requested })?.phase != .live {
+                logger.error("Live Activity \(requested) was gone right after the refresh")
+                result = .removedRightAway
+            }
         }
         if mode != .update {
             // The parent asked for the activity back, so an earlier swipe no longer holds.
@@ -104,17 +144,25 @@ final class LiveActivityCoordinator {
         } else {
             dismissedRevisions.removeAll()
         }
+        return result
     }
 
-    private func perform(_ action: LiveActivityAction) async {
+    private enum Outcome {
+        case done
+        case requested(id: String)
+        case refused(reason: String)
+    }
+
+    private func perform(_ action: LiveActivityAction) async -> Outcome {
         switch action {
         case let .request(attributes, state, staleDate, replacing):
             do {
-                _ = try client.request(attributes, state: state, staleDate: staleDate)
+                let id = try client.request(attributes, state: state, staleDate: staleDate)
                 // Only now remove the activity it replaces, so the parent never sees a gap.
                 if let replacing {
                     await client.end(id: replacing, finalState: nil, dismissal: .immediate)
                 }
+                return .requested(id: id)
             } catch {
                 // Expected when the app is in the background (e.g. Start on the Lock Screen, or
                 // a Lock Screen intent after a reboot) or activities are off.
@@ -125,11 +173,22 @@ final class LiveActivityCoordinator {
                     await client.update(id: replacing, state: state, staleDate: staleDate)
                 }
                 // Otherwise recovery requests it again on the next foreground.
+                return .refused(reason: Self.reason(for: error))
             }
         case let .update(id, state, staleDate):
             await client.update(id: id, state: state, staleDate: staleDate)
         case let .end(id, finalState, dismissal):
             await client.end(id: id, finalState: finalState, dismissal: dismissal)
         }
+        return .done
+    }
+
+    /// iOS's own words for a refused request, for Settings to show.
+    private static func reason(for error: any Error) -> String {
+        if let error = error as? any LocalizedError {
+            let parts = [error.errorDescription, error.failureReason].compactMap { $0 }.filter { !$0.isEmpty }
+            if !parts.isEmpty { return parts.joined(separator: " ") }
+        }
+        return String(describing: error)
     }
 }

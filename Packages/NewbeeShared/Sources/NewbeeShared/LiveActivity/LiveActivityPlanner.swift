@@ -84,6 +84,9 @@ public struct LiveActivityPlanner: Sendable {
     /// Lock Screen nudges exactly when the app would ask.
     public var staleAfter: TimeInterval
 
+    /// How long iOS keeps an activity running (ActivityKit's 8-hour limit).
+    public static let activityLifetime: TimeInterval = 8 * 3600
+
     public init(staleAfter: TimeInterval = 45 * 60) {
         self.staleAfter = staleAfter
     }
@@ -142,8 +145,13 @@ public struct LiveActivityPlanner: Sendable {
                 let suggested = startingSide.suggestedSide(after: snapshot)
                 state.suggestedSide = suggested == state.currentSide.opposite ? nil : suggested
             }
+            // The count's stale date is only a redraw hint at the one-hour mark. Once that has
+            // passed, give a future date instead: a request whose content is already stale may
+            // not be shown by iOS (Settings' refresh an hour or more after a feed).
+            var staleDate = state.staleDate(after: staleAfter)
+            if staleDate <= now { staleDate = now.addingTimeInterval(Self.activityLifetime) }
             return planSinceLastFeed(
-                feedID: latest.id, state: state, staleDate: state.staleDate(after: staleAfter),
+                feedID: latest.id, state: state, staleDate: staleDate,
                 live: live, ended: ended, babyName: babyName, mode: activitiesEnabled ? mode : .update
             )
         }

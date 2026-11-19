@@ -16,6 +16,24 @@ import Foundation
 @MainActor
 public protocol LiveActivitySyncing: AnyObject {
     func sync(_ snapshot: SessionSnapshot?, lastBottle: BottleEntry?, mode: LiveActivitySyncMode) async
+    /// Settings' "Refresh Live Activity": a `.refresh` sync that also says how it went, so the
+    /// button can show a checkmark or why nothing came back.
+    func refresh(_ snapshot: SessionSnapshot?, lastBottle: BottleEntry?) async -> LiveActivityRefreshResult
+}
+
+/// How Settings' "Refresh Live Activity" went.
+public enum LiveActivityRefreshResult: Sendable, Hashable {
+    /// A fresh activity was requested and is still running a moment later.
+    case shown
+    /// No feeds yet, so there is nothing to show.
+    case nothingToShow
+    /// Live Activities are off for Newbee in iOS Settings.
+    case disabled
+    /// iOS refused the request; the text is its reason.
+    case refused(String)
+    /// iOS accepted the request but ended or removed the activity right away (e.g. it couldn't
+    /// draw it).
+    case removedRightAway
 }
 
 /// How far a Live Activity sync may go to put an activity on screen.
@@ -34,6 +52,11 @@ public enum LiveActivitySyncMode: Sendable, Hashable {
 }
 
 extension LiveActivitySyncing {
+    public func refresh(_ snapshot: SessionSnapshot?, lastBottle: BottleEntry?) async -> LiveActivityRefreshResult {
+        await sync(snapshot, lastBottle: lastBottle, mode: .refresh)
+        return .shown
+    }
+
     public func sync(_ snapshot: SessionSnapshot?, lastBottle: BottleEntry?) async {
         await sync(snapshot, lastBottle: lastBottle, mode: .update)
     }
