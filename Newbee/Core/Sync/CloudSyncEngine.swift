@@ -124,8 +124,29 @@ final class CloudSyncEngine {
 
     /// Fetches everything new from iCloud: this parent's own log and any shared one.
     func fetchAll() async {
-        try? await privateEngine?.fetchChanges()
-        try? await sharedEngine?.fetchChanges()
+        try? await Self.fetch(privateEngine)
+        try? await Self.fetch(sharedEngine)
+    }
+
+    // MARK: - Calling CKSyncEngine
+
+    // `CKSyncEngine` stops the app ("cannot guarantee serial delegate callbacks if you recurse")
+    // when `fetchChanges` or `sendChanges` runs in a task that began inside one of its own
+    // delegate callbacks, because a plain `Task {}` carries the callback's task-local values
+    // along. That happens without looking like it: storing a fetched feed saves the store, the
+    // save posts `ModelContext.didSave`, and the follow-up work (`localDataDidChange`) starts
+    // inside the callback. In the background it then sent at once, and crashed (build 63).
+    // Every fetch and send goes through these, which make the call from a detached task: it
+    // starts with no task-locals, so CloudKit sees an ordinary call.
+
+    private static func fetch(_ engine: CKSyncEngine?) async throws {
+        guard let engine else { return }
+        try await Task.detached { try await engine.fetchChanges() }.value
+    }
+
+    private static func send(_ engine: CKSyncEngine?) async throws {
+        guard let engine else { return }
+        try await Task.detached { try await engine.sendChanges() }.value
     }
 
     private func makeEngine(database: CKDatabase, serialization: CKSyncEngine.State.Serialization?) -> CKSyncEngine {
@@ -152,8 +173,7 @@ final class CloudSyncEngine {
         blocked = [:]
         enqueuePending()
         Task { [weak self] in
-            try? await self?.privateEngine?.fetchChanges()
-            try? await self?.sharedEngine?.fetchChanges()
+            await self?.fetchAll()
         }
     }
 
@@ -164,7 +184,7 @@ final class CloudSyncEngine {
         enqueuePending()
         guard let engine = activeEngine else { return }
         let task = UIApplication.shared.beginBackgroundTask(withName: "Newbee sync")
-        try? await engine.sendChanges()
+        try? await Self.send(engine)
         persistNow()
         UIApplication.shared.endBackgroundTask(task)
     }
@@ -202,12 +222,12 @@ final class CloudSyncEngine {
 
     /// Brings in everything from this parent's own iCloud.
     func fetchOwnChanges() async throws {
-        try await privateEngine?.fetchChanges()
+        try await Self.fetch(privateEngine)
     }
 
     /// Looks for a shared log this parent was invited to, and for changes in it.
     func fetchSharedChanges() async throws {
-        try await sharedEngine?.fetchChanges()
+        try await Self.fetch(sharedEngine)
     }
 
     /// This parent accepted an invitation: from now on the phone syncs with the other parent's
@@ -226,8 +246,9 @@ final class CloudSyncEngine {
         if let sharedEngine {
             replace(sharedEngine)
             persistSoon()
+            // This runs inside the old engine's callback: the fetch must not inherit it.
             Task { [weak self] in
-                try? await self?.sharedEngine?.fetchChanges()
+                try? await self?.fetchSharedChanges()
             }
         }
         onSharingChange?()
