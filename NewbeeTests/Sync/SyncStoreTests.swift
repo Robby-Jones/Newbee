@@ -66,7 +66,8 @@ struct SyncStoreTests {
         #expect(items.count == 4)
         var contents: [SyncKey: SyncContent] = [:]
         for key in items.keys {
-            contents[key] = try #require(try source.content(for: key))
+            let content = try source.content(for: key)
+            contents[key] = try #require(content)
         }
         let stored = try target.apply(contents)
 
