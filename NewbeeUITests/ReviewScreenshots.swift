@@ -44,7 +44,7 @@ final class ReviewScreenshots: ScreenshotTestCase {
 
             if state == "onDuty" {
                 app.tabBars.buttons["Settings"].tap()
-                XCTAssertTrue(app.buttons["settings.sharing"].firstMatch.waitForExistence(timeout: 10))
+                XCTAssertTrue(app.navigationBars["Settings"].waitForExistence(timeout: 10))
                 // Bring the whole Night Shift section, footer included, above the tab bar.
                 let shiftEnd = app.descendants(matching: .any)["settings.nightShiftEnd"].firstMatch
                 reveal(shiftEnd, in: app)
@@ -86,7 +86,7 @@ final class ReviewScreenshots: ScreenshotTestCase {
         settle()
         capture("pink-insights")
         app.tabBars.buttons["Settings"].tap()
-        XCTAssertTrue(app.buttons["settings.sharing"].firstMatch.waitForExistence(timeout: 10))
+        XCTAssertTrue(app.navigationBars["Settings"].waitForExistence(timeout: 10))
         // A Form row can expose its buttons as any element type.
         let swatch = app.descendants(matching: .any)["settings.theme.standard"].firstMatch
         for _ in 0..<15 where !(swatch.exists && swatch.isHittable) {
@@ -95,7 +95,10 @@ final class ReviewScreenshots: ScreenshotTestCase {
         settle()
         capture("pink-settings-appearance")
         // Back to indigo from the picker, to check the switch redraws everything.
-        XCTAssertTrue(swatch.isHittable)
+        guard swatch.isHittable else {
+            XCTFail("The Indigo swatch isn't on screen")
+            return
+        }
         swatch.tap()
         settle()
         capture("pink-settings-switched-to-indigo")
