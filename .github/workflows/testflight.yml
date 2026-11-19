@@ -27,7 +27,7 @@ concurrency:
 jobs:
   upload:
     name: Build and upload to TestFlight
-    runs-on: macos-15
+    runs-on: xcode-27
     timeout-minutes: 45
     env:
       APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
@@ -52,7 +52,7 @@ jobs:
 
       - name: Select Xcode
         if: steps.secrets.outputs.ready == 'true'
-        run: scripts/select-xcode.sh 26
+        run: scripts/select-xcode.sh 27
 
       - name: Install XcodeGen
         if: steps.secrets.outputs.ready == 'true'

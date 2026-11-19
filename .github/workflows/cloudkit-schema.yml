@@ -19,7 +19,7 @@ on:
 jobs:
   schema:
     name: Upload and compare
-    runs-on: macos-15
+    runs-on: xcode-27
     timeout-minutes: 15
     env:
       APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
@@ -36,7 +36,7 @@ jobs:
       - uses: actions/checkout@v4
 
       - name: Select Xcode
-        run: scripts/select-xcode.sh 26
+        run: scripts/select-xcode.sh 27
 
       # A copy of what was there before, in case anything needs comparing later.
       - name: Export the current development schema

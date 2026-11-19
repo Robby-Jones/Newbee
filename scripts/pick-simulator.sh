@@ -34,9 +34,15 @@ print(sorted(rts, key=lambda r: [int(x) for x in r["version"].split(".")])[-1]["
   }
   rt="$(runtime)"
   if [ -z "$rt" ]; then
-    echo "Downloading iOS $MAJOR simulator runtime..." >&2
-    xcodebuild -downloadPlatform iOS -buildVersion "$MAJOR.5" >&2
-    rt="$(runtime)"
+    # Apple only offers some point releases for download, and which ones depends on the Xcode
+    # version (Xcode 27 no longer offers iOS 18.5), so try the newest first.
+    for minor in 6 5 4 3 2 1 0; do
+      echo "Downloading iOS $MAJOR.$minor simulator runtime..." >&2
+      if xcodebuild -downloadPlatform iOS -buildVersion "$MAJOR.$minor" >&2; then
+        rt="$(runtime)"
+        [ -n "$rt" ] && break
+      fi
+    done
   fi
   [ -n "$rt" ] || { echo "No iOS $MAJOR runtime available" >&2; exit 1; }
   udid="$(xcrun simctl create "iPhone 15 Pro (iOS $MAJOR)" com.apple.CoreSimulator.SimDeviceType.iPhone-15-Pro "$rt")"

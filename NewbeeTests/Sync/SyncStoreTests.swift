@@ -66,7 +66,13 @@ struct SyncStoreTests {
         #expect(items.count == 4)
         var contents: [SyncKey: SyncContent] = [:]
         for key in items.keys {
-            contents[key] = try #require(try source.content(for: key))
+            // A guard rather than #require: Xcode 27's Swift Testing wrongly flags #require on this
+            // optional as redundant.
+            guard let content = try source.content(for: key) else {
+                Issue.record("No content for \(key)")
+                return
+            }
+            contents[key] = content
         }
         let stored = try target.apply(contents)
 

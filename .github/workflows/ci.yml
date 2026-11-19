@@ -26,7 +26,7 @@ jobs:
 
   ios:
     name: iOS ${{ matrix.label }}
-    runs-on: macos-15
+    runs-on: ${{ matrix.runner }}
     timeout-minutes: 60
     strategy:
       fail-fast: false
@@ -36,28 +36,40 @@ jobs:
           # their own and run alongside the unit tests instead of after them. They run on latest
           # iOS only, on one simulator: 3 parallel clones overloaded the runner (PR #63).
           - label: UI tests (latest iOS)
+            runner: xcode-27
+            xcode: "27"
             ios_major: ""
             test_flags: -only-testing:NewbeeUITests
             results: ui-latest
           - label: build and unit tests (latest iOS)
+            runner: xcode-27
+            xcode: "27"
             ios_major: ""
             test_flags: -skip-testing:NewbeeUITests
             results: unit-latest
+          # Xcode 27 can't download an iOS 18 simulator runtime ("iOS 18.x is not available for
+          # download"), so the iOS 18 leg stays on the macos-15 image with Xcode 26, which can. The
+          # app itself (TestFlight) is built with Xcode 27 and the iOS 27 SDK.
           - label: build and unit tests (iOS 18 minimum)
+            runner: macos-15
+            xcode: "26"
             ios_major: "18"
             test_flags: -skip-testing:NewbeeUITests
             results: unit-18
     steps:
       - uses: actions/checkout@v4
       - name: Select Xcode
-        run: scripts/select-xcode.sh 26
+        run: scripts/select-xcode.sh ${{ matrix.xcode }}
       - name: Install XcodeGen and xcbeautify
         run: brew install xcodegen xcbeautify
       - name: Generate project
         run: xcodegen generate
       - name: Pick simulator
         id: sim
-        run: echo "udid=$(scripts/pick-simulator.sh ${{ matrix.ios_major }})" >> "$GITHUB_OUTPUT"
+        # Assign first so a failure stops the job here instead of booting an empty UDID.
+        run: |
+          UDID="$(scripts/pick-simulator.sh ${{ matrix.ios_major }})"
+          echo "udid=$UDID" >> "$GITHUB_OUTPUT"
       # A fresh simulator keeps setting itself up for a few minutes after it first boots, and UI
       # tests that launch the app during that time fail with "Timed out while acquiring background
       # assertion". Boot it and wait before building: booting while building (tried in PR #64)
