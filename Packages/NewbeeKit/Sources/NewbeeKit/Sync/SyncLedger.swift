@@ -206,4 +206,16 @@ public struct SyncLedger: Codable, Sendable, Equatable {
             }
         }
     }
+
+    /// Stops trusting what the server is known to hold, for the zone this device already syncs
+    /// with: used before the log is shared, so the partner is sure to get every feed. Every local
+    /// item is sent again. Where the server has it already, the save comes back as a conflict with
+    /// the same content and is simply matched; where it doesn't, the item is uploaded. Unlike
+    /// `forgetServer`, deletes the server hasn't been told about yet are kept: they still apply.
+    public mutating func recheckServer() {
+        for (key, entry) in entries where entry.local != nil {
+            entries[key]?.synced = nil
+            entries[key]?.systemFields = nil
+        }
+    }
 }

@@ -213,12 +213,35 @@ final class CloudSyncEngine {
     /// This parent accepted an invitation: from now on the phone syncs with the other parent's
     /// log. Their own feeds are merged into it; where both have the same feed, the one changed
     /// last wins.
+    ///
+    /// The whole shared log is then downloaded again by a fresh engine. The fetch that found the
+    /// log may already have handed over some of its feeds, or failed to store them, and CloudKit
+    /// never sends a record twice to the same engine: without this, feeds the other parent logged
+    /// before sharing could stay missing here for good.
     private func join(_ zoneID: CKRecordZone.ID) {
         log.info("Joining shared log \(zoneID.zoneName, privacy: .public)")
         state.joinedZone = CloudSyncState.Zone(zoneID)
         startOver()
         clearPending(privateEngine)
+        if let sharedEngine {
+            replace(sharedEngine)
+            persistSoon()
+            Task { [weak self] in
+                try? await self?.sharedEngine?.fetchChanges()
+            }
+        }
         onSharingChange?()
+    }
+
+    /// This parent is about to share their log. Every feed on the phone is sent to their zone
+    /// again, so the partner gets the whole history even if iCloud is missing some of it. Feeds
+    /// iCloud already has come back as conflicts with the same content and aren't stored twice.
+    func recheckOwnZone() {
+        guard isRunning, !isJoined else { return }
+        log.info("Checking that iCloud has every feed before sharing")
+        core.recheckServer()
+        blocked = [:]
+        enqueuePending()
     }
 
     /// The shared log is gone (the other parent stopped sharing, or this one left). Every feed
@@ -491,6 +514,12 @@ final class CloudSyncEngine {
     private func refetchEverything(_ engine: CKSyncEngine) {
         guard !didResetEngine else { return }
         didResetEngine = true
+        replace(engine)
+    }
+
+    /// Swaps `engine` for a new one that knows nothing yet, so its next fetch brings in every
+    /// record in its database again.
+    private func replace(_ engine: CKSyncEngine) {
         // The replaced engine's events are ignored, so its running fetch never reports its end.
         for kind: CloudSyncEvent.Kind in [.import, .export] {
             abandon(activityKey(kind, engine), kind: kind)

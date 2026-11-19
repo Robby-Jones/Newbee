@@ -100,6 +100,14 @@ then on that phone syncs with the first parent's zone through the shared databas
 its own:
 
 - **Both see one log.** Either can add, change and delete feeds, and the baby profile.
+- **The whole history comes along**, not only what is logged from then on. Before the partner
+  joins, opening the sharing sheet checks that iCloud has every feed on the first parent's phone
+  (`CloudSyncEngine.recheckOwnZone`): each one is sent again, and feeds iCloud already has come
+  back as conflicts with the same content and are simply matched. On joining, the second
+  parent's phone downloads the whole shared log again with a fresh `CKSyncEngine`, because
+  CloudKit never sends a record twice to the same engine: feeds the fetch that found the log
+  failed to store would otherwise stay missing (2026-11-19, imported Huckleberry feeds that never
+  reached the partner).
 - **The joining parent's own feeds are merged in.** Everything already on their phone is uploaded
   to the shared log. Where both parents have the same feed, the one changed last wins. Their two
   baby profiles are merged into one (`BabyMerge`).
