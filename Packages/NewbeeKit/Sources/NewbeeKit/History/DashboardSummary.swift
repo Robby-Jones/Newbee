@@ -72,6 +72,11 @@ public struct DashboardSummary: Sendable, Hashable {
 
     /// The side to offer next: opposite the side the last breastfeed ended on. Left with no history.
     public var suggestedNextSide: Side {
-        lastBreastFeed?.lastSide?.opposite ?? .left
+        suggestedNextSide(StartingSideSuggestion())
+    }
+
+    /// The side to offer next, per Settings' "Suggested starting side".
+    public func suggestedNextSide(_ rule: StartingSideSuggestion) -> Side {
+        rule.suggestedSide(firstSide: lastBreastFeed?.firstSide, lastSide: lastBreastFeed?.lastSide)
     }
 }

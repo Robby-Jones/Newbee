@@ -158,6 +158,20 @@ struct PreferencesTests {
         #expect(reloaded.appearance == .dark)
     }
 
+    @Test func startingSideSettingPersistsAndResets() {
+        let defaults = freshDefaults()
+        let preferences = AppPreferences(defaults: defaults)
+        // Existing users keep today's behavior: alternate from the side the last feed ended on.
+        #expect(preferences.startingSide == StartingSideSuggestion(mode: .alternate, switchFrom: .ended))
+        preferences.startingSide.switchFrom = .started
+        preferences.startingSide.mode = .alwaysRight
+        let reloaded = AppPreferences(defaults: defaults)
+        #expect(reloaded.startingSide == StartingSideSuggestion(mode: .alwaysRight, switchFrom: .started))
+        reloaded.resetToDefaults()
+        #expect(reloaded.startingSide == StartingSideSuggestion())
+        #expect(AppPreferences(defaults: defaults).startingSide == StartingSideSuggestion())
+    }
+
     @Test func resetKeepsAppearance() {
         let defaults = freshDefaults()
         let preferences = AppPreferences(defaults: defaults, locale: Locale(identifier: "en_GB"))

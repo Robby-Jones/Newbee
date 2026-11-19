@@ -22,6 +22,7 @@ struct SettingsView: View {
             if let preferences {
                 NightShiftSettingsSection(preferences: preferences)
                 UnitsSection(preferences: preferences)
+                BreastfeedingSection(preferences: preferences)
                 TimeSinceLastFeedSection(preferences: preferences)
                 RemindersSection(preferences: preferences, reminders: reminders)
                 LiveActivitiesSection()
@@ -451,6 +452,40 @@ private struct PresetRows: View {
         var values = presets
         values.remove(at: index)
         withAnimation { storedML = values.map(\.milliliters) }
+    }
+}
+
+// MARK: - Breastfeeding
+
+/// "Suggested starting side": which breast the Timer tags as Suggested (also Home's "Next:",
+/// manual entries and the Live Activity tint). "Switch from" only shows while alternating.
+private struct BreastfeedingSection: View {
+    @Bindable var preferences: AppPreferences
+
+    var body: some View {
+        Section {
+            Picker("Suggested starting side", selection: $preferences.startingSide.mode) {
+                Text("Alternate").tag(StartingSideSuggestion.Mode.alternate)
+                Text("Always left").tag(StartingSideSuggestion.Mode.alwaysLeft)
+                Text("Always right").tag(StartingSideSuggestion.Mode.alwaysRight)
+            }
+            .accessibilityIdentifier("settings.startingSide")
+            if preferences.startingSide.mode == .alternate {
+                Picker("Switch from", selection: $preferences.startingSide.switchFrom) {
+                    Text("Side you ended on").tag(StartingSideSuggestion.SwitchFrom.ended)
+                    Text("Side you started on").tag(StartingSideSuggestion.SwitchFrom.started)
+                }
+                .accessibilityIdentifier("settings.switchFrom")
+            }
+        } header: {
+            SettingsSectionHeader(
+                "Breastfeeding",
+                info: String(
+                    localized: "The side the timer suggests for the next feed. Alternate offers the other side from the one your last breastfeed ended or started on, and Left before your first feed."
+                ),
+                identifier: "breastfeeding"
+            )
+        }
     }
 }
 
