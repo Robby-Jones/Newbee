@@ -12,15 +12,18 @@ import WidgetKit
 struct FeedingLiveActivity: Widget {
     var body: some WidgetConfiguration {
         ActivityConfiguration(for: FeedingActivityAttributes.self) { context in
+            // Black (2026-11-19), or blush in the pink theme, whatever the phone's or the app's
+            // appearance.
+            let palette = ActivityPalette.lockScreen(context.state.theme)
             LockScreenFeedingView(
                 attributes: context.attributes,
                 state: context.state,
                 isStale: context.isStale
             )
-            // Always dark (2026-11-19), whatever the phone's or the app's appearance.
-            .environment(\.colorScheme, .dark)
-            .activityBackgroundTint(ActivityPalette.background)
-            .activitySystemActionForegroundColor(ActivityPalette.newFeed)
+            .environment(\.colorScheme, palette.colorScheme)
+            .environment(\.activityPalette, palette)
+            .activityBackgroundTint(palette.background)
+            .activitySystemActionForegroundColor(palette.newFeed)
             // Tapping anywhere once a feed has ended opens Home, like the "+".
             .widgetURL(context.state.status == .ended ? NewbeeLink.home : nil)
         } dynamicIsland: { context in

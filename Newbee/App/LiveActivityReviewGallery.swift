@@ -9,9 +9,10 @@ import UIKit
 /// Screen that a UI test can photograph. Uses the very view the widget draws
 /// (`SinceLastFeedActivityContent`), on mock Lock Screen and Dynamic Island shapes.
 ///
-/// UI tests only: `-uiTesting -liveActivityReview lockScreen` (or `island`).
+/// UI tests only: `-uiTesting -liveActivityReview lockScreen` (or `lockScreenPink`, the pink
+/// theme's blush card, `lockScreenThemes`, one card in each other color theme, or `island`).
 struct LiveActivityReviewGallery: View {
-    enum Page: String { case lockScreen, island }
+    enum Page: String { case lockScreen, lockScreenPink, lockScreenThemes, island }
 
     static var requestedPage: Page? {
         guard AppConfiguration.isUITesting,
@@ -29,14 +30,41 @@ struct LiveActivityReviewGallery: View {
             )
             .ignoresSafeArea()
             switch page {
-            case .lockScreen: lockScreen
+            case .lockScreen: lockScreen(.night)
+            case .lockScreenPink: lockScreen(.blush)
+            case .lockScreenThemes: themedLockScreens
             case .island: island
             }
         }
         .environment(\.colorScheme, .dark)
     }
 
-    private var lockScreen: some View {
+    /// The first two samples on each tinted theme's card.
+    private var themedLockScreens: some View {
+        VStack(spacing: 8) {
+            ForEach([NBTheme.sage, .ocean, .lavender, .peach]) { theme in
+                let palette = ActivityPalette.lockScreen(theme)
+                VStack(alignment: .leading, spacing: 4) {
+                    caption(theme.rawValue.capitalized)
+                    ForEach(Sample.all.prefix(2)) { sample in
+                        SinceLastFeedActivityContent(
+                            state: sample.state, babyName: sample.name, since: sample.state.sinceLastFeedStart!,
+                            style: .island, photo: sample.photo
+                        )
+                        .padding(10)
+                        .background(RoundedRectangle(cornerRadius: 20, style: .continuous).fill(palette.background))
+                        .environment(\.activityPalette, palette)
+                        .environment(\.colorScheme, palette.colorScheme)
+                    }
+                }
+            }
+            Spacer(minLength: 0)
+        }
+        .padding(.horizontal, 12)
+        .padding(.top, 50)
+    }
+
+    private func lockScreen(_ palette: ActivityPalette) -> some View {
         VStack(spacing: 10) {
             Text(Date.now, format: .dateTime.hour().minute())
                 .font(.system(size: 72, weight: .semibold, design: .rounded))
@@ -50,7 +78,9 @@ struct LiveActivityReviewGallery: View {
                         style: .lockScreen, photo: sample.photo
                     )
                     .padding(16)
-                    .background(RoundedRectangle(cornerRadius: 24, style: .continuous).fill(ActivityPalette.background))
+                    .background(RoundedRectangle(cornerRadius: 24, style: .continuous).fill(palette.background))
+                    .environment(\.activityPalette, palette)
+                    .environment(\.colorScheme, palette.colorScheme)
                 }
             }
             Spacer(minLength: 0)

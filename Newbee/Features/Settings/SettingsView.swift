@@ -801,22 +801,6 @@ private struct ICloudSyncSection: View {
     }
 }
 
-// MARK: - Appearance
-
-private struct AppearanceSection: View {
-    @Bindable var preferences: AppPreferences
-
-    var body: some View {
-        Section("Appearance") {
-            Picker("Theme", selection: $preferences.appearance) {
-                ForEach(AppPreferences.Appearance.allCases) { appearance in
-                    Text(appearance.title).tag(appearance)
-                }
-            }
-        }
-    }
-}
-
 // MARK: - Data
 
 /// What the "Your data" section has open. Settings presents it from the Form (see `SettingsView`).

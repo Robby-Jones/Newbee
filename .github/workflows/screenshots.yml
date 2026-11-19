@@ -97,6 +97,8 @@ jobs:
           ls -l "$RUNNER_TEMP/screenshots"
           sips -g pixelWidth -g pixelHeight "$RUNNER_TEMP"/screenshots/*.png
       - name: Upload screenshots
+        # Also after a failed test, so the captures taken before it are kept.
+        if: ${{ !cancelled() }}
         uses: actions/upload-artifact@v4
         with:
           name: ${{ inputs.test == 'ReviewScreenshots' && 'review-screenshots' || 'app-store-screenshots' }}${{ inputs.appearance == 'dark' && '-dark' || '' }}

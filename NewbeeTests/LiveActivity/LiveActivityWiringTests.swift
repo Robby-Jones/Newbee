@@ -240,6 +240,26 @@ struct LiveActivityWiringTests {
         #expect(client.activities.last?.state.sinceLastFeedStart == feed.endedAt)
     }
 
+    @Test func theLockScreenCardFollowsTheColorTheme() async throws {
+        let clock = TestClock()
+        let client = FakeLiveActivityClient()
+        let coordinator = LiveActivityCoordinator(client: client, clock: clock)
+        let defaults = try #require(UserDefaults(suiteName: "color-theme-\(UUID())"))
+        let dependencies = AppDependencies(clock: clock, storage: .inMemory, liveActivity: coordinator, defaults: defaults)
+        let manager = dependencies.sessionManager
+
+        try manager.start(side: .left)
+        await manager.waitForPendingEffects()
+        #expect(client.activities.last?.state.theme == nil)
+
+        dependencies.preferences.colorTheme = .pink
+        await manager.reload() // what NewbeeApp does when the setting changes
+        #expect(client.activities.last?.state.theme == .pink)
+        dependencies.preferences.colorTheme = .standard
+        await manager.reload()
+        #expect(client.activities.last?.state.theme == nil)
+    }
+
     @Test(arguments: [
         (LiveActivityCommand.switchTo(.left), SessionCommand.switchTo(.left)),
         (.switchTo(.right), .switchTo(.right)),

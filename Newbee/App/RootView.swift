@@ -47,6 +47,9 @@ struct RootView: View {
                 .tabItem { Label("Settings", systemImage: "gearshape") }
                 .tag(TabID.settings)
         }
+        // The design tokens read the color theme when they're drawn, so a new theme rebuilds
+        // the tabs to redraw everything in it. The selected tab is kept.
+        .id(preferences?.colorTheme)
         .tint(NBColor.accent)
         // First launch only (docs/UX_SPEC.md §3.1).
         .onboardingPresentation()

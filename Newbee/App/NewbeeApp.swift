@@ -88,6 +88,10 @@ struct NewbeeApp: App {
                 .onChange(of: dependencies.preferences.reminders.basis) {
                     Task { await dependencies.sessionManager.reload() }
                 }
+                // Re-draws the Lock Screen Live Activity in the newly chosen color theme.
+                .onChange(of: dependencies.preferences.colorTheme) {
+                    Task { await dependencies.sessionManager.reload() }
+                }
                 // Settings' "Suggested starting side", here or from another device: the Timer and
                 // Home follow it at once, and the reload re-tints the Live Activity.
                 .onChange(of: dependencies.preferences.startingSide) {
