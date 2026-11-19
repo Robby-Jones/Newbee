@@ -16,6 +16,8 @@ final class ReviewScreenshots: ScreenshotTestCase {
             capture("sharing-\(state)")
 
             if state == "shared" || state == "joined" {
+                // Delete all is on the Your data page.
+                app.openYourData()
                 let deleteAll = app.buttons["settings.deleteAll"].firstMatch
                 reveal(deleteAll, in: app)
                 deleteAll.tap()
@@ -89,14 +91,33 @@ final class ReviewScreenshots: ScreenshotTestCase {
         app.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.08)).tap()
         settle()
 
-        let remindersInfo = app.buttons["settings.info.reminders"].firstMatch
-        reveal(remindersInfo, in: app)
+        let notificationsInfo = app.buttons["settings.info.notifications"].firstMatch
+        reveal(notificationsInfo, in: app)
         settle()
         capture("settings-info-middle")
-        remindersInfo.tap()
+        notificationsInfo.tap()
         XCTAssertTrue(app.staticTexts["settings.infoText"].firstMatch.waitForExistence(timeout: 5))
         settle()
-        capture("settings-info-reminders-popover")
+        capture("settings-info-notifications-popover")
+        app.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.08)).tap()
+        settle()
+
+        // Your data and About open as their own pages.
+        let bottomRows = app.buttons["settings.about"].firstMatch
+        reveal(bottomRows, in: app)
+        app.swipeUp()
+        settle()
+        capture("settings-info-bottom")
+        app.openYourData()
+        settle()
+        capture("settings-your-data")
+        app.navigationBars.buttons.firstMatch.tap()
+        let about = app.buttons["settings.about"].firstMatch
+        XCTAssertTrue(about.waitForExistence(timeout: 5))
+        about.tap()
+        XCTAssertTrue(app.navigationBars["About"].waitForExistence(timeout: 5))
+        settle()
+        capture("settings-about")
         app.terminate()
     }
 

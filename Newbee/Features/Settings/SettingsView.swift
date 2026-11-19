@@ -13,13 +13,6 @@ import UIKit
 struct SettingsView: View {
     @Environment(AppPreferences.self) private var preferences: AppPreferences?
     @Environment(ReminderScheduler.self) private var reminders: ReminderScheduler?
-    @State private var dataPresentation: DataPresentation?
-    @State private var dataError: String?
-    @State private var isConfirmingRemoveImported = false
-    @Query(FeedingSession.imported()) private var importedSessions: [FeedingSession]
-    @Environment(\.dataManagement) private var actions
-    @Environment(BottleLogUIModel.self) private var bottleModel: BottleLogUIModel?
-    @Environment(PumpLogUIModel.self) private var pumpModel: PumpLogUIModel?
 
     var body: some View {
         Form {
@@ -34,13 +27,45 @@ struct SettingsView: View {
                 LiveActivitiesSection()
                 AppearanceSection(preferences: preferences)
             }
+            // Like iOS Settings: rows that open their own page.
+            Section {
+                NavigationLink {
+                    DataSettingsView()
+                } label: {
+                    Label("Your data", systemImage: "externaldrive")
+                }
+                .accessibilityIdentifier("settings.yourData")
+                NavigationLink {
+                    AboutSettingsView()
+                } label: {
+                    Label("About", systemImage: "info.circle")
+                }
+                .accessibilityIdentifier("settings.about")
+            }
+        }
+        .navigationTitle("Settings")
+        .task { await reminders?.reschedule() }
+    }
+}
+
+/// Settings → Your data: export, import, remove imported and delete all, on a page of its own.
+struct DataSettingsView: View {
+    @State private var dataPresentation: DataPresentation?
+    @State private var dataError: String?
+    @State private var isConfirmingRemoveImported = false
+    @Query(FeedingSession.imported()) private var importedSessions: [FeedingSession]
+    @Environment(\.dataManagement) private var actions
+    @Environment(BottleLogUIModel.self) private var bottleModel: BottleLogUIModel?
+    @Environment(PumpLogUIModel.self) private var pumpModel: PumpLogUIModel?
+
+    var body: some View {
+        Form {
             DataSection(
                 presentation: $dataPresentation,
                 errorMessage: $dataError,
                 importedCount: importedSessions.count,
                 isConfirmingRemoveImported: $isConfirmingRemoveImported
             )
-            AboutSection()
         }
         // Presented from the Form, not from the Section: a modifier on a Section applies to each
         // of its rows, so every row tried to present the same sheet and it closed itself again.
@@ -64,8 +89,8 @@ struct SettingsView: View {
         } message: {
             Text(dataError ?? "")
         }
-        .navigationTitle("Settings")
-        .task { await reminders?.reschedule() }
+        .navigationTitle("Your data")
+        .navigationBarTitleDisplayMode(.inline)
     }
 
     private func removeImported() async {
@@ -80,6 +105,17 @@ struct SettingsView: View {
         } catch {
             dataError = error.localizedDescription
         }
+    }
+}
+
+/// Settings → About: version, privacy, disclaimer and links, on a page of its own.
+struct AboutSettingsView: View {
+    var body: some View {
+        Form {
+            AboutSection()
+        }
+        .navigationTitle("About")
+        .navigationBarTitleDisplayMode(.inline)
     }
 }
 
@@ -501,9 +537,9 @@ private struct RemindersSection: View {
             }
         } header: {
             SettingsSectionHeader(
-                "Reminders",
+                "Notifications",
                 info: String(localized: "A gentle nudge, not medical advice. Quiet hours hold feeding reminders until morning; \u{201C}Still feeding?\u{201D} asks when one side or a pause runs long, in case the timer was left on."),
-                identifier: "reminders"
+                identifier: "notifications"
             )
         } footer: {
             if let next = nextReminderText { Text(next) }
@@ -797,7 +833,15 @@ private struct DataSection: View {
             }
             .disabled(actions == nil)
             .accessibilityIdentifier("settings.importHuckleberry")
+        } header: {
+            SettingsSectionHeader(
+                "Export and import",
+                info: String(localized: "Feeds are stored on this iPhone and, with iCloud sync on, in your private iCloud. Share a PDF report with your pediatrician, export a CSV to keep a copy, or bring in your history from Huckleberry."),
+                identifier: "data"
+            )
+        }
 
+        Section {
             if importedCount > 0 {
                 Button(role: .destructive) {
                     isConfirmingRemoveImported = true
@@ -817,12 +861,6 @@ private struct DataSection: View {
             }
             .disabled(actions == nil)
             .accessibilityIdentifier("settings.deleteAll")
-        } header: {
-            SettingsSectionHeader(
-                "Your data",
-                info: String(localized: "Feeds are stored on this iPhone and, with iCloud sync on, in your private iCloud. Share a PDF report with your pediatrician, export a CSV to keep a copy, or bring in your history from Huckleberry."),
-                identifier: "data"
-            )
         }
     }
 
@@ -986,8 +1024,6 @@ private struct AboutSection: View {
             Link(destination: Self.supportURL) {
                 Label("Help & Support", systemImage: "questionmark.circle")
             }
-        } header: {
-            Text("About")
         }
     }
 

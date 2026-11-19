@@ -13,7 +13,7 @@ Night Shift doesn't appear anywhere.
 |---|---|
 | How a shift starts | One tap on Home, "I'm on duty tonight", offered from 6:00 PM until the morning time |
 | How it ends | By itself at the morning time (Settings → Night Shift → Shift ends at, 7:00 AM by default), when the parent on duty taps End, or when the other parent taps Take over |
-| Reminders on duty | The normal feeding reminder (Settings → Reminders), on the on-duty iPhone only. Quiet hours don't hold it back during the shift |
+| Reminders on duty | The normal feeding reminder (Settings → Notifications), on the on-duty iPhone only. Quiet hours don't hold it back during the shift |
 | Ring as alarm | Optional switch, iOS 26 and later (AlarmKit): the reminder rings like an alarm, also in Silent mode. On older iOS it stays a notification and the switch isn't shown |
 | The other phone | No feeding reminder while the shift runs |
 | "Still feeding?" | Only on the phone that started the timer, shift or not |
