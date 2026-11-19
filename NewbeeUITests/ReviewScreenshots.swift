@@ -71,6 +71,35 @@ final class ReviewScreenshots: ScreenshotTestCase {
         }
     }
 
+    /// Settings with help text behind (i) buttons in the section headers, and two of the popovers.
+    @MainActor
+    func testSettingsInfoButtons() throws {
+        let app = launch(["-sharingPreview", "shared"])
+        app.tabBars.buttons["Settings"].tap()
+        let sharingInfo = app.buttons["settings.info.sharing"].firstMatch
+        XCTAssertTrue(sharingInfo.waitForExistence(timeout: 10))
+        settle()
+        capture("settings-info-top")
+
+        sharingInfo.tap()
+        XCTAssertTrue(app.staticTexts["settings.infoText"].firstMatch.waitForExistence(timeout: 5))
+        settle()
+        capture("settings-info-sharing-popover")
+        // A tap outside the popover (on the title) closes it.
+        app.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.08)).tap()
+        settle()
+
+        let remindersInfo = app.buttons["settings.info.reminders"].firstMatch
+        reveal(remindersInfo, in: app)
+        settle()
+        capture("settings-info-middle")
+        remindersInfo.tap()
+        XCTAssertTrue(app.staticTexts["settings.infoText"].firstMatch.waitForExistence(timeout: 5))
+        settle()
+        capture("settings-info-reminders-popover")
+        app.terminate()
+    }
+
     /// Scrolls the list until `element` can be tapped.
     @MainActor
     private func reveal(_ element: XCUIElement, in app: XCUIApplication) {

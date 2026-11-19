@@ -118,12 +118,14 @@ private struct BabyProfileSection: View {
                 )
             }
         } header: {
-            Text("Baby")
+            SettingsSectionHeader(
+                "Baby",
+                info: String(localized: "Optional. The name and age show under the greeting on Home."),
+                identifier: "baby"
+            )
         } footer: {
             if let birthDate = baby?.birthDate {
                 Text(BabyAge.text(from: birthDate))
-            } else {
-                Text("Optional. Shown on Home.")
             }
         }
     }
@@ -293,9 +295,11 @@ private struct UnitsSection: View {
             }
             .accessibilityIdentifier("settings.pumpPresets")
         } header: {
-            Text("Bottle and pumping")
-        } footer: {
-            Text("Every amount in Newbee, past entries included, is shown in these units. Presets are quick amounts on the Log Bottle sheet and, for each side, on the Log Pumping sheet. Up to \(BottlePresets.maximumCount) each.")
+            SettingsSectionHeader(
+                "Bottle and pumping",
+                info: String(localized: "Every amount in Newbee, past entries included, is shown in these units. Presets are quick amounts on the Log Bottle sheet and, for each side, on the Log Pumping sheet. Up to \(BottlePresets.maximumCount) each."),
+                identifier: "units"
+            )
         }
     }
 }
@@ -429,9 +433,11 @@ private struct TimeSinceLastFeedSection: View {
             }
             .accessibilityIdentifier("settings.countFrom")
         } header: {
-            Text("Time since last feed")
-        } footer: {
-            Text("Used on Home, on the Lock Screen and in the Dynamic Island, and for feeding reminders.")
+            SettingsSectionHeader(
+                "Time since last feed",
+                info: String(localized: "Used on Home, on the Lock Screen and in the Dynamic Island, and for feeding reminders."),
+                identifier: "timeSinceLastFeed"
+            )
         }
     }
 }
@@ -494,12 +500,13 @@ private struct RemindersSection: View {
                 }
             }
         } header: {
-            Text("Reminders")
+            SettingsSectionHeader(
+                "Reminders",
+                info: String(localized: "A gentle nudge, not medical advice. Quiet hours hold feeding reminders until morning; \u{201C}Still feeding?\u{201D} asks when one side or a pause runs long, in case the timer was left on."),
+                identifier: "reminders"
+            )
         } footer: {
-            VStack(alignment: .leading, spacing: NBSpacing.xs) {
-                if let next = nextReminderText { Text(next) }
-                Text("A gentle nudge, not medical advice. Quiet hours hold feeding reminders until morning; \u{201C}Still feeding?\u{201D} asks when one side or a pause runs long, in case the timer was left on.")
-            }
+            if let next = nextReminderText { Text(next) }
         }
         .onChange(of: preferences.reminders) { old, new in
             Task {
@@ -577,9 +584,11 @@ private struct LiveActivitiesSection: View {
                 .accessibilityIdentifier("settings.refreshLiveActivity")
             }
         } header: {
-            Text("Live Activities")
-        } footer: {
-            Text("While a breastfeed runs, the timer and side buttons stay on the Lock Screen and in the Dynamic Island. After you end a feed, it counts the time since the last feed, with a + to open Newbee for the next one. If it's gone or looks wrong, Refresh Live Activity puts it back.")
+            SettingsSectionHeader(
+                "Live Activities",
+                info: String(localized: "While a breastfeed runs, the timer and side buttons stay on the Lock Screen and in the Dynamic Island. After you end a feed, it counts the time since the last feed, with a + to open Newbee for the next one. If it's gone or looks wrong, Refresh Live Activity puts it back."),
+                identifier: "liveActivities"
+            )
         }
         .onReceive(NotificationCenter.default.publisher(for: UIApplication.didBecomeActiveNotification)) { _ in
             enabled = ActivityAuthorizationInfo().areActivitiesEnabled
@@ -635,12 +644,16 @@ private struct ICloudSyncSection: View {
                     }
                 }
             } header: {
-                Text("iCloud")
+                SettingsSectionHeader(
+                    "iCloud",
+                    info: Self.info(for: monitor.status),
+                    identifier: "iCloud"
+                )
             } footer: {
                 if let errorMessage {
                     Text(errorMessage).foregroundStyle(NBColor.destructive)
-                } else {
-                    Text(Self.footer(for: monitor.status, hasAccount: monitor.hasICloudAccount))
+                } else if let status = Self.statusFooter(for: monitor.status, hasAccount: monitor.hasICloudAccount) {
+                    Text(status)
                 }
             }
             .alert("Turn off iCloud sync?", isPresented: $isConfirmingOff) {
@@ -675,15 +688,23 @@ private struct ICloudSyncSection: View {
         }
     }
 
-    static func footer(for status: CloudSyncMonitor.Status, hasAccount: Bool) -> String {
+    /// What sync does, behind the header's info button.
+    static func info(for status: CloudSyncMonitor.Status) -> String {
         switch status {
         case .off:
-            let about = String(localized: "Feeds are kept on this iPhone only. Turn on to sync them through your private iCloud to your other devices, and to share with your partner.")
-            return hasAccount
-                ? about
-                : String(localized: "\(about) First sign in to iCloud in the Settings app.")
+            String(localized: "Feeds are kept on this iPhone only. Turn on to sync them through your private iCloud to your other devices, and to share with your partner.")
+        default:
+            String(localized: "Feeds, the baby profile and settings sync through your private iCloud to every iPhone and iPad signed in to your Apple ID. Only you, and a partner you share with, can see the feeds.")
+        }
+    }
+
+    /// Why sync isn't working, or what to do first; nil while all is well.
+    static func statusFooter(for status: CloudSyncMonitor.Status, hasAccount: Bool) -> String? {
+        switch status {
+        case .off:
+            return hasAccount ? nil : String(localized: "First sign in to iCloud in the Settings app.")
         case .unavailable, .checking, .syncing, .upToDate:
-            return String(localized: "Feeds, the baby profile and settings sync through your private iCloud to every iPhone and iPad signed in to your Apple ID. Only you, and a partner you share with, can see the feeds.")
+            return nil
         case .signedOut:
             return String(localized: "Sign in to iCloud in the Settings app, and check that iCloud is on for Newbee, to sync your feeds to your other devices. Until then they're kept on this iPhone.")
         case .restricted:
@@ -797,9 +818,11 @@ private struct DataSection: View {
             .disabled(actions == nil)
             .accessibilityIdentifier("settings.deleteAll")
         } header: {
-            Text("Your data")
-        } footer: {
-            Text("Feeds are stored on this iPhone and, with iCloud sync on, in your private iCloud. Share a PDF report with your pediatrician, export a CSV to keep a copy, or bring in your history from Huckleberry.")
+            SettingsSectionHeader(
+                "Your data",
+                info: String(localized: "Feeds are stored on this iPhone and, with iCloud sync on, in your private iCloud. Share a PDF report with your pediatrician, export a CSV to keep a copy, or bring in your history from Huckleberry."),
+                identifier: "data"
+            )
         }
     }
 
