@@ -151,12 +151,12 @@ private struct BabyPhotoRow: View {
 
     var body: some View {
         // Read on the main actor here: the picker's label closure is Sendable.
-        let pickerTitle: LocalizedStringKey = store.image == nil ? "Add photo" : "Change photo"
+        let hasPhoto = store.image != nil
         HStack(spacing: NBSpacing.m) {
             BabyAvatar(image: store.image, size: 56)
             VStack(alignment: .leading, spacing: NBSpacing.xs) {
                 PhotosPicker(selection: $selection, matching: .images) {
-                    Text(pickerTitle)
+                    Text(hasPhoto ? "Change photo" : "Add photo")
                 }
                 .accessibilityIdentifier("settings.babyPhoto")
                 if store.image != nil {
