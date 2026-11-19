@@ -20,6 +20,8 @@ public enum NBColor {
     /// Used as text, as a button fill under white text and as a tint, so it passes AA as is in
     /// every theme (at least 4.9:1 on the canvas).
     public static let accent = Color(themed: { $0.accent })
+    /// Breastfeeds in charts (`NBThemeColors.chartBreast`).
+    public static let chartBreast = Color(themed: { $0.chartBreast })
     public static let left = Color(light: 0x9C8CE0, dark: 0xB3A6F0)
     public static let right = Color(light: 0x4FB3A9, dark: 0x6FCFC4)
     public static let bottleBreastMilk = Color(light: 0xF2A37B, dark: 0xF5B593)
@@ -90,6 +92,16 @@ public struct NBThemeColors: Sendable {
     public let canvas: NBColorPair
     public let card: NBColorPair
     public let accent: NBColorPair
+    /// Breastfeeds in charts, next to the peach bottle color. The accent, except in themes whose
+    /// accent is too close to the bottle color to tell apart.
+    public let chartBreast: NBColorPair
+
+    init(canvas: NBColorPair, card: NBColorPair, accent: NBColorPair, chartBreast: NBColorPair? = nil) {
+        self.canvas = canvas
+        self.card = card
+        self.accent = accent
+        self.chartBreast = chartBreast ?? accent
+    }
 }
 
 extension NBTheme {
@@ -106,7 +118,9 @@ extension NBTheme {
         case .lavender:
             NBThemeColors(canvas: NBColorPair(0xF7F5FB, 0x110F15), card: NBColorPair(0xFFFFFF, 0x1D1A23), accent: NBColorPair(0x6B4FB0, 0xB9A3F0))
         case .peach:
-            NBThemeColors(canvas: NBColorPair(0xFCF6F2, 0x14100D), card: NBColorPair(0xFFFFFF, 0x221B17), accent: NBColorPair(0x9E4A1C, 0xF3A77E))
+            NBThemeColors(canvas: NBColorPair(0xFCF6F2, 0x14100D), card: NBColorPair(0xFFFFFF, 0x221B17), accent: NBColorPair(0x9E4A1C, 0xF3A77E),
+                          // The peach accent looks like the bottle color in a chart: a deep terracotta instead.
+                          chartBreast: NBColorPair(0x9E4A1C, 0xB5532A))
         }
     }
 }

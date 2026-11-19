@@ -183,7 +183,7 @@ private struct FeedsCard: View {
                         .foregroundStyle(NBColor.secondaryText)
                 }
             }
-            .chartForegroundStyleScale([String(localized: "Breast"): NBColor.accent, String(localized: "Bottle"): NBColor.bottleBreastMilk])
+            .chartForegroundStyleScale([String(localized: "Breast"): NBColor.chartBreast, String(localized: "Bottle"): NBColor.bottleBreastMilk])
             .chartYScale(domain: 0...BarLabels.axisTop(tallest: tallest))
             .chartYAxis { AxisMarks(position: .leading, values: .automatic(desiredCount: 4)) }
             .chartXAxis { dateAxis(for: report) }

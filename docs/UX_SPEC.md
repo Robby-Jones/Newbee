@@ -89,7 +89,7 @@ Settings → Appearance has a **Color** picker (Indigo, Pink, Sage, Ocean, Laven
 | Lavender | `#F7F5FB` / `#110F15` | `#1D1A23` | `#6B4FB0` / `#B9A3F0` | `#ECE5F8` |
 | Peach | `#FCF6F2` / `#14100D` | `#221B17` | `#9E4A1C` / `#F3A77E` | `#FCE6D8` |
 
-Cards are white in light mode in every theme. Light accents reach at least 4.9:1 on their canvas and white, dark accents at least 7.8:1 on their dark card. On each tinted Lock Screen card (`ActivityPalette.lockScreen`) text and the side, pause and End inks are at least 5.2:1. The Dynamic Island stays black in every theme. Each theme's icon is the same bee with only the background gradient changed (`AppIcon-Pink`, `-Sage`, `-Ocean`, `-Lavender`, `-Peach`).
+Cards are white in light mode in every theme. Charts draw breastfeeds in the accent (`chartBreast`), except Peach, whose accent looks like the bottle color there: it uses a deep terracotta (`#9E4A1C` / `#B5532A`). Light accents reach at least 4.9:1 on their canvas and white, dark accents at least 7.8:1 on their dark card. On each tinted Lock Screen card (`ActivityPalette.lockScreen`) text and the side, pause and End inks are at least 5.2:1. The Dynamic Island stays black in every theme. Each theme's icon is the same bee with only the background gradient changed (`AppIcon-Pink`, `-Sage`, `-Ocean`, `-Lavender`, `-Peach`).
 
 ### Typography
 - SF Pro **Rounded** for numerals and headings; SF Pro for body.
