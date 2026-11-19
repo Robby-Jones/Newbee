@@ -39,60 +39,69 @@ struct NewbeeApp: App {
 
     var body: some Scene {
         WindowGroup {
-            if let container = dependencies.modelContainer {
-                let recovery = dependencies.recovery
-                RootView(sessionModel: sessionModel, bottleModel: bottleModel, pumpModel: pumpModel)
-                    .modelContainer(container)
-                    .environment(dependencies.preferences)
-                    .environment(dependencies.reminders)
-                    .environment(dependencies.babyPhoto)
-                    .environment(dependencies.cloudSync)
-                    .environment(dependencies.cloudSyncSwitch)
-                    .environment(dependencies.cloudSharing)
-                    .environment(dependencies.nightShift)
-                    .environment(\.dataManagement, DataManagementActions(dependencies: dependencies))
-                    // Restore any session interrupted by termination, reboot or a clock change
-                    // (docs/TIMER_ENGINE.md §5). Reconciling is idempotent, so overlapping
-                    // triggers are harmless.
-                    .task { await recovery.reconcile() }
-                    .onChange(of: scenePhase) { _, phase in
-                        if phase == .active {
-                            Task { await recovery.reconcile() }
-                            // Today's bottle and pumping totals roll over at midnight.
-                            bottleModel.refresh()
-                            pumpModel.refresh()
-                            // Picks up permission changes made in iOS Settings.
-                            Task { await dependencies.reminders.reschedule() }
-                            // Looks for the other phone's changes, in case a push was missed.
-                            dependencies.cloudEngine?.appBecameActive()
-                        } else if phase == .background {
-                            // Sends what was just logged before iOS suspends the app.
-                            Task { await dependencies.cloudEngine?.sendNow() }
-                        }
-                    }
-                    // Re-draws the Live Activity in the newly chosen Light / Dark / System look.
-                    .onChange(of: dependencies.preferences.appearance) {
-                        Task { await dependencies.sessionManager.reload() }
-                    }
-                    // Re-draws the since-last-feed count from the newly chosen start or end.
-                    .onChange(of: dependencies.preferences.reminders.basis) {
-                        Task { await dependencies.sessionManager.reload() }
-                    }
-                    // Feeds from another device can change today's bottle and pumping totals.
-                    .onChange(of: dependencies.cloudSync.importCount) {
+            #if DEBUG
+            if let page = LiveActivityReviewGallery.requestedPage {
+                LiveActivityReviewGallery(page: page)
+            } else {
+                appContent
+            }
+            #else
+            appContent
+            #endif
+        }
+    }
+
+    @ViewBuilder
+    private var appContent: some View {
+        if let container = dependencies.modelContainer {
+            let recovery = dependencies.recovery
+            RootView(sessionModel: sessionModel, bottleModel: bottleModel, pumpModel: pumpModel)
+                .modelContainer(container)
+                .environment(dependencies.preferences)
+                .environment(dependencies.reminders)
+                .environment(dependencies.babyPhoto)
+                .environment(dependencies.cloudSync)
+                .environment(dependencies.cloudSyncSwitch)
+                .environment(dependencies.cloudSharing)
+                .environment(dependencies.nightShift)
+                .environment(\.dataManagement, DataManagementActions(dependencies: dependencies))
+                // Restore any session interrupted by termination, reboot or a clock change
+                // (docs/TIMER_ENGINE.md §5). Reconciling is idempotent, so overlapping
+                // triggers are harmless.
+                .task { await recovery.reconcile() }
+                .onChange(of: scenePhase) { _, phase in
+                    if phase == .active {
+                        Task { await recovery.reconcile() }
+                        // Today's bottle and pumping totals roll over at midnight.
                         bottleModel.refresh()
                         pumpModel.refresh()
-                    }
-                    // Reminder settings changed on another device.
-                    .onChange(of: dependencies.preferences.cloudChangeCount) {
+                        // Picks up permission changes made in iOS Settings.
                         Task { await dependencies.reminders.reschedule() }
+                        // Looks for the other phone's changes, in case a push was missed.
+                        dependencies.cloudEngine?.appBecameActive()
+                    } else if phase == .background {
+                        // Sends what was just logged before iOS suspends the app.
+                        Task { await dependencies.cloudEngine?.sendNow() }
                     }
-                    .onReceive(NotificationCenter.default.publisher(for: .NSSystemClockDidChange)) { _ in
-                        Task { await recovery.reconcile() }
-                    }
-            } else {
-                StoreErrorView(error: dependencies.storeError)
-            }
+                }
+                // Re-draws the since-last-feed count from the newly chosen start or end.
+                .onChange(of: dependencies.preferences.reminders.basis) {
+                    Task { await dependencies.sessionManager.reload() }
+                }
+                // Feeds from another device can change today's bottle and pumping totals.
+                .onChange(of: dependencies.cloudSync.importCount) {
+                    bottleModel.refresh()
+                    pumpModel.refresh()
+                }
+                // Reminder settings changed on another device.
+                .onChange(of: dependencies.preferences.cloudChangeCount) {
+                    Task { await dependencies.reminders.reschedule() }
+                }
+                .onReceive(NotificationCenter.default.publisher(for: .NSSystemClockDidChange)) { _ in
+                    Task { await recovery.reconcile() }
+                }
+        } else {
+            StoreErrorView(error: dependencies.storeError)
         }
     }
 

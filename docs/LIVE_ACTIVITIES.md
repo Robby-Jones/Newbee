@@ -25,7 +25,7 @@ Re-verify each item against current Apple docs and on device in Phase 5.
 struct FeedingActivityAttributes: ActivityAttributes {
     // Static: identity + stable info
     var sessionID: UUID
-    var babyName: String          // "" → generic "Feeding"
+    var babyName: String          // the profile's name, under the avatar; "" → none
     var schemaVersion: Int = 1    // versioned for forward-compat
 
     struct ContentState: Codable, Hashable {
@@ -71,26 +71,39 @@ side pills and controls are one shared view (`ActivitySidesAndControls`). Minima
 - `PauseIntent` / `ResumeIntent` in one round slot that flips, then `EndIntent`. **End** is the only
   control in the destructive color and sits last with extra space before it, so it isn't hit by
   accident.
-- Since last feed (after End): "Since last feed" over a large stopwatch ("4:12", "2:15:03"), the main focus, with
-  one round **+** on the right that opens the app on Home (`Link` to `NewbeeLink.home`,
-  `newbee://home`; the whole activity has the same `widgetURL`). A footnote gives the last feed's
-  side times and end time. See §3.5.
-- **Colors.** Text uses `ActivityColor` (adaptive, like `NBColor.card`), never the system's
-  `.primary` / `.secondary`: on device those were drawn for the opposite appearance from the
-  card, which hid the big number (white on white in light mode, black on dark at night). Side text
-  uses `ActivityColor.sideInk`, darker than the side fill colors, for AA contrast on its tint.
-- **Appearance.** The activity follows the app's Light / Dark / System setting:
-  `ContentState.appearance` carries it (the coordinator reads `AppPreferences.appearance` at every
-  sync, and a change in Settings re-syncs). Light or dark forces that color scheme and a fixed
-  background; System uses the adaptive `NBColor.card`. `activitySystemActionForegroundColor` uses
-  the accent color. The Dynamic Island is always drawn in the dark scheme with fixed white / gray
-  text (`IslandColor`).
+- Since last feed (after End), modeled on Huckleberry's (2026-11-19), see §3.5:
+  ```
+  ┌──────────────────────────────────────────────────────────┐
+  │  (photo)🐝        28 min, 30 sec ago                      │
+  │                 Last fed: 10:33 PM              ( + )    │
+  │   Millie           (🍼) 1 oz                              │
+  └──────────────────────────────────────────────────────────┘
+  ```
+  The baby's photo (or a rose circle with the name's initial; the bee alone with no name) with a
+  tiny bee on its corner and the name underneath; a live relative line, the bold "Last fed" time
+  and the feed (a bottle and its amount, or a heart in the side's color and "L 12m · R 9m"); one
+  round indigo **+** on the right that opens the app on Home (`Link` to `NewbeeLink.home`,
+  `newbee://home`; the whole activity has the same `widgetURL`). `SinceLastFeedActivityContent`
+  lives in `LiveActivityIntents/` so the app can draw it for review screenshots
+  (`LiveActivityReviewGallery`, `-liveActivityReview`).
+- **Always dark (2026-11-19).** A black card (`activityBackgroundTint`) in the dark color scheme,
+  whatever the phone's or the app's appearance; the app's Light / Dark setting no longer reaches
+  the activity (`ContentState.appearance` was removed; older content's key is ignored). Text uses
+  fixed values (`ActivityPalette`, `ActivityColor`), never the system's `.primary` / `.secondary`:
+  on device those were drawn for the opposite appearance from the card, which hid the big number.
+  Side text uses `ActivityColor.sideInk` for AA contrast on its tint. The Dynamic Island uses
+  fixed white / gray text (`IslandColor`).
+- **Photo.** The widget can't open the store, so the app keeps a 192 px square JPEG copy of the
+  profile photo in the App Group (`LiveActivityAvatar`, `Library/Caches/LiveActivity/avatar.jpg`),
+  written by `BabyPhotoStore` on save, remove and reload. The activity reads it when drawn, so a
+  new photo shows from the activity's next update. The name comes from the profile when the
+  activity is requested (`LiveActivityCoordinator.babyName`).
 
 ### 3.2 Dynamic Island: expanded
 - **Bottom only.** The island draws the Lock Screen's own layouts (`ActivityFeedingContent`,
-  `ActivitySinceLastFeedContent`) in its bottom region at a smaller scale
-  (`ActivityLayoutStyle.island`: total 28 pt, since-last-feed clock 36 pt, + 44 pt), in fixed
-  white / gray text.
+  `SinceLastFeedActivityContent`) in its bottom region at a smaller scale
+  (`ActivityLayoutStyle.island`: total 28 pt; `SinceLastFeedActivityStyle.island`: avatar and + 48 pt,
+  "Last fed" 22 pt), in fixed white / gray text.
 - **Why not leading / trailing:** the regions beside the camera are only about 100 pt wide. With the
   status and clock there, a device showed "Since last…" and "1:00:…" (2026-11-08). The bottom
   region spans the island's full width.
@@ -108,12 +121,15 @@ side pills and controls are one shared view (`ActivitySidesAndControls`). Minima
 
 ### 3.5 Since last feed (after End)
 - On End, from the Lock Screen or in the app, the **same activity stays** and updates to `.ended`:
-  the header counts up from the feed's start or end, per Settings' **Count from**
-  (`ContentState.countFrom`, `sinceLastFeedStart`), and the footnote keeps the feed's L/R times
-  with "started 3:20 PM" or "ended 3:40 PM" to match. There is no Undo on the activity any more (removed with this change);
+  it shows how long ago and when the last feed was, from the feed's start or end per Settings'
+  **Count from** (`ContentState.countFrom`, `sinceLastFeedStart`), and what it was (L/R times or
+  the bottle amount). There is no Undo on the activity any more (removed with this change);
   Undo on the in-app "Feed saved" summary covers an End tapped by mistake, and puts the feed back on the activity, paused.
-- The count is a stopwatch with seconds: "4:12", then "2:15:03" (`SinceLastFeedText`, the same
-  `Text(timerInterval:)` as the side pills and the total, which draws correctly on the Lock Screen).
+- On the Lock Screen and expanded island the count is a live relative date the system ticks,
+  "28 min, 30 sec ago", then "1 hr, 5 min ago" past an hour (`Text(_:style: .relative)`), with the
+  fixed "Last fed: 10:33 PM" under it. The compact island keeps a stopwatch with seconds: "4:12",
+  then "2:15:03" (`SinceLastFeedText`, the same `Text(timerInterval:)` as the side pills and the
+  total, which draws correctly on the Lock Screen).
   - **Why not `hh:mm`:** iOS has no live format that shows hours and minutes as digits without
     seconds (`SystemFormatStyle.Stopwatch` switches to words like "1 hour, 23 minutes" at minute
     precision). Two builds drew a clock with seconds and clipped them off; both looked right in
@@ -125,7 +141,7 @@ side pills and controls are one shared view (`ActivitySidesAndControls`). Minima
     shows in this state.
 - **Count from.** One setting (Settings → Time since last feed, stored as `reminder.basis`) for
   Home's "Time since last feed", this count and feeding reminders. The coordinator reads it at
-  every sync like the appearance, and a change re-syncs (`NewbeeApp`), so the activity redraws at
+  every sync, and a change re-syncs (`NewbeeApp`), so the activity redraws at
   once. `nil` in content means the end (older builds); a bottle counts from its start or end the
   same way.
 - **Bottles count too.** The count runs from the latest feed of either kind, by start time, with

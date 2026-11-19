@@ -19,6 +19,8 @@ final class BabyPhotoStore {
 
     @ObservationIgnored private let container: ModelContainer?
     @ObservationIgnored private let legacyFileURL: URL?
+    /// Where the Live Activity's copy of the photo goes (`LiveActivityAvatar`); `nil` keeps none.
+    @ObservationIgnored private let liveActivityAvatarURL: URL?
     /// The bytes `image` was decoded from, so `reload()` only decodes a changed photo.
     @ObservationIgnored private var loadedData: Data?
 
@@ -27,8 +29,11 @@ final class BabyPhotoStore {
     ///     photo is then only kept in memory.
     ///   - legacyDirectory: Where builds before schema V3 saved the photo file, to move it into
     ///     the store. Only the real store passes it.
-    init(container: ModelContainer?, legacyDirectory: URL? = nil) {
+    ///   - liveActivityAvatarURL: Where to keep the Live Activity's copy of the photo. Only the
+    ///     real store passes it.
+    init(container: ModelContainer?, legacyDirectory: URL? = nil, liveActivityAvatarURL: URL? = nil) {
         self.container = container
+        self.liveActivityAvatarURL = liveActivityAvatarURL
         legacyFileURL = legacyDirectory?
             .appendingPathComponent("BabyPhoto", isDirectory: true)
             .appendingPathComponent("photo.jpg")
@@ -63,6 +68,7 @@ final class BabyPhotoStore {
         }
         image = scaled
         loadedData = jpeg
+        updateLiveActivityAvatar()
     }
 
     /// Removes the photo. Also used by "Delete all data".
@@ -76,6 +82,7 @@ final class BabyPhotoStore {
         }
         image = nil
         loadedData = nil
+        updateLiveActivityAvatar()
     }
 
     /// Reads the photo from the store again, e.g. after iCloud brought in a change from another
@@ -86,6 +93,14 @@ final class BabyPhotoStore {
         guard data != loadedData else { return }
         loadedData = data
         image = data.flatMap(UIImage.init(data:))
+        updateLiveActivityAvatar()
+    }
+
+    /// Keeps the Live Activity's copy in step with `image`. It shows from the activity's next
+    /// update (the next feed, or Settings' Refresh Live Activity).
+    private func updateLiveActivityAvatar() {
+        guard let liveActivityAvatarURL else { return }
+        LiveActivityAvatar.save(image, to: liveActivityAvatarURL)
     }
 
     /// Moves a photo saved by a build before schema V3 into the store, unless the baby already

@@ -98,7 +98,6 @@ public struct LiveActivityPlanner: Sendable {
     ///   - dismissedAtRevision: If the parent swiped this session's activity away, the revision it
     ///     showed then. We don't bring it back until the session changes again.
     ///   - babyName: Shown in the activity's header; `""` for a generic title.
-    ///   - appearance: The app's Light / Dark / System setting (`ContentState.appearance`).
     ///   - countFrom: Settings' "Count from": the since-last-feed count runs from the last feed's
     ///     start or end (`ContentState.countFrom`).
     ///   - mode: `.update` only brings what's showing up to date (and requests for a running feed
@@ -113,13 +112,10 @@ public struct LiveActivityPlanner: Sendable {
         activitiesEnabled: Bool,
         dismissedAtRevision: Int? = nil,
         babyName: String = "",
-        appearance: LiveActivityAppearance = .system,
         countFrom: ReminderSettings.Basis = .end,
         mode: LiveActivitySyncMode = .update,
         now: Date
     ) -> [LiveActivityAction] {
-        // `nil` is drawn as system, and keeps content identical to older builds'.
-        let appearance = appearance == .system ? nil : appearance
         let live = existing.filter { $0.phase == .live }
         let ended = existing.filter { $0.phase == .ended }
         // `nil` is the end, and keeps content identical to older builds'.
@@ -131,7 +127,6 @@ public struct LiveActivityPlanner: Sendable {
                 return live.map(Self.removeNow)
             }
             var state = FeedingActivityAttributes.ContentState(latest: latest, lastBreastSide: snapshot?.lastSide)
-            state.appearance = appearance
             state.countFrom = countFrom
             return planSinceLastFeed(
                 feedID: latest.id, state: state, staleDate: state.staleDate(after: staleAfter),
@@ -140,7 +135,6 @@ public struct LiveActivityPlanner: Sendable {
         }
 
         var state = FeedingActivityAttributes.ContentState(snapshot: snapshot)
-        state.appearance = appearance
         state.countFrom = countFrom
         let staleDate = state.staleDate(after: staleAfter)
         let mine = live.filter { $0.sessionID == snapshot.id }

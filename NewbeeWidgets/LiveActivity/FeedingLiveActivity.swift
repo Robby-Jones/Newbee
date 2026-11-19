@@ -17,10 +17,10 @@ struct FeedingLiveActivity: Widget {
                 state: context.state,
                 isStale: context.isStale
             )
-            // The app's Light / Dark / System setting: text and background change together.
-            .activityAppearance(context.state.appearance)
-            .activityBackgroundTint(ActivityColor.background(context.state.appearance))
-            .activitySystemActionForegroundColor(NBColor.accent)
+            // Always dark (2026-11-19), whatever the phone's or the app's appearance.
+            .environment(\.colorScheme, .dark)
+            .activityBackgroundTint(ActivityPalette.background)
+            .activitySystemActionForegroundColor(ActivityPalette.newFeed)
             // Tapping anywhere once a feed has ended opens Home, like the "+".
             .widgetURL(context.state.status == .ended ? NewbeeLink.home : nil)
         } dynamicIsland: { context in

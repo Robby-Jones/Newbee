@@ -1,12 +1,13 @@
 import NewbeeKit
 import NewbeeShared
 import SwiftUI
+import UIKit
 import WidgetKit
 
 /// Lock Screen and banner presentation (docs/LIVE_ACTIVITIES.md §3.1).
 ///
 /// Draws the same shared layouts as the expanded Dynamic Island (`ActivityFeedingContent`,
-/// `ActivitySinceLastFeedContent`) so the activity looks and works the same wherever the parent
+/// `SinceLastFeedActivityContent`) so the activity looks and works the same wherever the parent
 /// sees it. While a feed is open: the total and a quiet status on one line, then the two
 /// side pills (each shows its own time and switches to that side) with pause and end.
 ///
@@ -15,26 +16,29 @@ import WidgetKit
 ///  [  L 12:05  ] [  R 6:37  ]   (⏸)   (■)
 /// ```
 ///
-/// After the feed ends, the same activity counts the time since it, large, with one "+" that
-/// opens the app on Home, and a line about that feed:
+/// After the feed ends, the same activity shows the baby, how long ago and when they last fed,
+/// what that feed was, and one "+" that opens the app on Home:
 ///
 /// ```
-///  Since last feed 🕒
-///  2:15:03                                   (+)
-///  Last feed L 12:05 · R 9:00 · ended 3:40 PM
+///   (photo)🐝      28 min, 30 sec ago
+///                Last fed: 10:33 PM          (+)
+///    Millie         (🍼) 1 oz
 /// ```
 ///
-/// Colors come from `ActivityColor` and follow the app's Light / Dark / System setting
-/// (`ContentState.appearance`), applied by `FeedingLiveActivity`.
+/// Always dark: a black card (`ActivityPalette`), whatever the phone's or the app's appearance.
 struct LockScreenFeedingView: View {
     let attributes: FeedingActivityAttributes
     let state: FeedingState
     let isStale: Bool
+    /// The baby's photo from the App Group (`LiveActivityAvatar`).
+    var photo: UIImage? = LiveActivityAvatar.load()
 
     var body: some View {
         Group {
             if let since = state.sinceLastFeedStart {
-                ActivitySinceLastFeedContent(state: state, isStale: isStale, since: since, style: .lockScreen)
+                SinceLastFeedActivityContent(
+                    state: state, babyName: attributes.babyName, since: since, style: .lockScreen, photo: photo
+                )
             } else {
                 ActivityFeedingContent(attributes: attributes, state: state, isStale: isStale, style: .lockScreen)
             }

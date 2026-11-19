@@ -25,15 +25,5 @@ extension SessionCommand {
     }
 }
 
-extension LiveActivityAppearance {
-    init(_ appearance: AppPreferences.Appearance) {
-        switch appearance {
-        case .system: self = .system
-        case .light: self = .light
-        case .dark: self = .dark
-        }
-    }
-}
-
 /// The manager drives the coordinator after every saved change.
 extension LiveActivityCoordinator: LiveActivitySyncing {}
