@@ -10,8 +10,8 @@ import UIKit
 /// system's `.primary` / `.secondary` (those were drawn for the wrong appearance on the Lock
 /// Screen before). Text meets WCAG AA on the card.
 ///
-/// The Dynamic Island is always `night` (black). The Lock Screen card is `night` too, or `blush`
-/// in the pink theme (`ContentState.theme`). Views read the palette from the environment
+/// The Dynamic Island is always `night` (black). The Lock Screen card is `night` in the standard
+/// theme, or a soft tint of the theme's color otherwise (`ContentState.theme`). Views read the palette from the environment
 /// (`\.activityPalette`, `night` unless set).
 struct ActivityPalette: Sendable {
     var background: Color
@@ -49,7 +49,27 @@ struct ActivityPalette: Sendable {
 
     /// The Lock Screen card for a theme.
     static func lockScreen(_ theme: NBTheme?) -> ActivityPalette {
-        theme == .pink ? .blush : .night
+        switch theme ?? .standard {
+        case .standard: .night
+        case .pink: .blush
+        // Ratios for each card are in docs/UX_SPEC.md §2.1; all text is at least 5.2:1 on it.
+        case .sage: .tinted(background: 0xE3EFE3, primaryText: 0x17251A, secondaryText: 0x4D5F50, newFeed: 0x8CC79A, accentInk: 0x3E6848)
+        case .ocean: .tinted(background: 0xDFEBF6, primaryText: 0x142230, secondaryText: 0x4A5B6B, newFeed: 0x7FB4E3, accentInk: 0x275A82)
+        case .lavender: .tinted(background: 0xECE5F8, primaryText: 0x221A33, secondaryText: 0x5A4E6E, newFeed: 0xB49CEB, accentInk: 0x5C449E)
+        case .peach: .tinted(background: 0xFCE6D8, primaryText: 0x2E1A10, secondaryText: 0x6B4E3E, newFeed: 0xF2A57A, accentInk: 0x93461C)
+        }
+    }
+
+    /// A light card in a theme's color, otherwise the same as `blush`: the side, bottle and End
+    /// colors stay put, and pass AA on every tinted card.
+    static func tinted(background: UInt32, primaryText: UInt32, secondaryText: UInt32, newFeed: UInt32, accentInk: UInt32) -> ActivityPalette {
+        var palette = blush
+        palette.background = Color(rgb: background)
+        palette.primaryText = Color(rgb: primaryText)
+        palette.secondaryText = Color(rgb: secondaryText)
+        palette.newFeed = Color(rgb: newFeed)
+        palette.accentInk = Color(rgb: accentInk)
+        return palette
     }
 
     /// Black card, white text: the standard theme and the Dynamic Island.
@@ -109,16 +129,6 @@ extension EnvironmentValues {
     var activityPalette: ActivityPalette {
         get { self[ActivityPaletteKey.self] }
         set { self[ActivityPaletteKey.self] = newValue }
-    }
-}
-
-private extension Color {
-    init(rgb: UInt32) {
-        self.init(
-            red: Double((rgb >> 16) & 0xFF) / 255,
-            green: Double((rgb >> 8) & 0xFF) / 255,
-            blue: Double(rgb & 0xFF) / 255
-        )
     }
 }
 

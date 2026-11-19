@@ -3,7 +3,8 @@ import Foundation
 /// The app's color theme, picked in Settings → Appearance (docs/UX_SPEC.md §2.1).
 ///
 /// Only the accent, the canvas and the card change with the theme, plus the Lock Screen Live
-/// Activity's card (black, or blush in the pink theme). The side, bottle and pump colors stay the
+/// Activity's card (black in the standard theme, a soft tint of the theme's color otherwise) and,
+/// if the parent picks it, the app icon's background. The side, bottle and pump colors stay the
 /// same in every theme so feed types read the same way. The theme is kept per device, not synced,
 /// so each parent can pick their own.
 ///
@@ -14,6 +15,14 @@ public enum NBTheme: String, CaseIterable, Codable, Hashable, Identifiable, Send
     case standard
     /// Soft rose accent on a faint blush canvas, with a blush Lock Screen Live Activity.
     case pink
+    /// Deep sage green on a faint green-gray canvas.
+    case sage
+    /// Deep ocean blue on a faint blue-gray canvas.
+    case ocean
+    /// Deep violet on a faint lilac canvas.
+    case lavender
+    /// Burnt orange on a faint peach canvas.
+    case peach
 
     public var id: String { rawValue }
 

@@ -62,7 +62,7 @@ final class ReviewScreenshots: ScreenshotTestCase {
     /// Dynamic Island shapes (`LiveActivityReviewGallery`).
     @MainActor
     func testSinceLastFeedLiveActivity() throws {
-        for page in ["lockScreen", "lockScreenPink", "island"] {
+        for page in ["lockScreen", "lockScreenPink", "lockScreenThemes", "island"] {
             let app = launch(["-liveActivityReview", page])
             let plus = app.descendants(matching: .any)
                 .matching(NSPredicate(format: "label == %@", "Open Newbee to start a feed")).firstMatch
@@ -105,6 +105,21 @@ final class ReviewScreenshots: ScreenshotTestCase {
         settle()
         capture("pink-settings-switched-to-indigo")
         app.terminate()
+    }
+
+    /// Home and Insights in each of the other color themes.
+    @MainActor
+    func testOtherColorThemes() throws {
+        for theme in ["sage", "ocean", "lavender", "peach"] {
+            let app = launch(["-uiTestColorTheme", theme])
+            XCTAssertTrue(app.tabBars.buttons["Home"].waitForExistence(timeout: 15))
+            settle()
+            capture("theme-\(theme)-home")
+            app.tabBars.buttons["Insights"].tap()
+            settle()
+            capture("theme-\(theme)-insights")
+            app.terminate()
+        }
     }
 
     /// Settings with help text behind (i) buttons in the section headers, and two of the popovers.

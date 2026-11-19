@@ -93,8 +93,9 @@ side pills and controls are one shared view (`ActivitySidesAndControls`). Minima
   on device those were drawn for the opposite appearance from the card, which hid the big number.
   Side text uses `ActivityPalette.sideInk` for AA contrast on its tint. The Dynamic Island uses
   fixed white / gray text (`IslandColor`).
-- **Pink theme.** With Settings' Color set to Pink, the Lock Screen card is blush instead of black
-  (`ActivityPalette.blush`, light color scheme, dark plum text, all AA on the card). The theme
+- **Color themes.** With Settings' Color set to anything but Indigo, the Lock Screen card is a
+  soft tint of that color instead of black (`ActivityPalette.lockScreen`: `blush` for Pink,
+  `tinted(…)` for the others; light color scheme, dark text, all AA on the card). The theme
   travels in the content (`ContentState.theme`, `nil` for the standard theme), so picking another
   theme updates the activity (`NewbeeApp` reloads the session manager). The Dynamic Island stays
   black (`ActivityPalette.night`) in every theme.

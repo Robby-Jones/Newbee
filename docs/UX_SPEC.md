@@ -78,15 +78,18 @@ Side, feed and pump colors are soft pastels for fills, chart marks and borders; 
 Side and feed colors are always paired with a letter or icon.
 
 ### 2.1 Color themes
-Settings → Appearance has a **Color** picker (Indigo, Pink) and an **App icon** picker (blue bee, pink bee). Both are kept on this phone only: they are not synced to the parent's other devices or to a partner, and "Delete all data" keeps them. The theme (`NBTheme`) changes only the canvas, the card and the accent. Side, bottle and pump colors and their inks stay the same in every theme, so feed types read the same way.
+Settings → Appearance has a **Color** picker (Indigo, Pink, Sage, Ocean, Lavender, Peach) and an **App icon** picker (the bee on each theme's color). Both are kept on this phone only: they are not synced to the parent's other devices or to a partner, and "Delete all data" keeps them. The theme (`NBTheme.colors`) changes only the canvas, the card and the accent. Side, bottle and pump colors and their inks stay the same in every theme, so feed types read the same way.
 
-| Token | Indigo light | Indigo dark | Pink light | Pink dark |
+| Theme | Canvas light / dark | Card dark | Accent light / dark | Lock Screen card |
 |---|---|---|---|---|
-| `bg.canvas` | `#FAF8F5` | `#0F0F12` | blush `#FDF4F7` | `#130E11` |
-| `bg.card` | `#FFFFFF` | `#1B1B20` | `#FFFFFF` | `#211A1E` |
-| `accent` | `#5054C2` | `#8E91F0` | deep rose `#A8336A` (5.8:1 on canvas) | soft rose `#E97DAE` (7:1 on canvas) |
+| Indigo | `#FAF8F5` / `#0F0F12` | `#1B1B20` | `#5054C2` / `#8E91F0` | black |
+| Pink | `#FDF4F7` / `#130E11` | `#211A1E` | `#A8336A` / `#E97DAE` | `#FBE1EA` |
+| Sage | `#F5F8F4` / `#0E120F` | `#1A1F1B` | `#4A7553` / `#8FC29A` | `#E3EFE3` |
+| Ocean | `#F4F7FA` / `#0D1115` | `#191E24` | `#2F6690` / `#7FB8E6` | `#DFEBF6` |
+| Lavender | `#F7F5FB` / `#110F15` | `#1D1A23` | `#6B4FB0` / `#B9A3F0` | `#ECE5F8` |
+| Peach | `#FCF6F2` / `#14100D` | `#221B17` | `#9E4A1C` / `#F3A77E` | `#FCE6D8` |
 
-The Lock Screen Live Activity follows the theme too: black in Indigo, a soft blush card (`#FBE1EA`, dark plum text) in Pink (`ActivityPalette.blush`). The Dynamic Island stays black. The pink app icon is the same bee with the sky-blue background changed to pink (`AppIcon-Pink`).
+Cards are white in light mode in every theme. Light accents reach at least 4.9:1 on their canvas and white, dark accents at least 7.8:1 on their dark card. On each tinted Lock Screen card (`ActivityPalette.lockScreen`) text and the side, pause and End inks are at least 5.2:1. The Dynamic Island stays black in every theme. Each theme's icon is the same bee with only the background gradient changed (`AppIcon-Pink`, `-Sage`, `-Ocean`, `-Lavender`, `-Peach`).
 
 ### Typography
 - SF Pro **Rounded** for numerals and headings; SF Pro for body.
