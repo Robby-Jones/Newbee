@@ -13,6 +13,8 @@ final class FakeLiveActivityClient: LiveActivityClient {
 
     var areActivitiesEnabled = true
     var refuseRequests = false
+    /// Simulates iOS accepting a request but dropping the activity at once (e.g. it couldn't draw it).
+    var dropRequestedActivities = false
     var onUserDismissal: (@MainActor (UUID, Int) -> Void)?
     var onEnablementChange: (@MainActor (Bool) -> Void)?
 
@@ -34,7 +36,8 @@ final class FakeLiveActivityClient: LiveActivityClient {
         nextID += 1
         let session = LiveActivityRecord.sessionID(attributes: attributes, state: state)
         activities.append(LiveActivityRecord(
-            id: id, sessionID: session, requestedForSessionID: attributes.sessionID, state: state, phase: .live
+            id: id, sessionID: session, requestedForSessionID: attributes.sessionID, state: state,
+            phase: dropRequestedActivities ? .dismissed : .live
         ))
         calls.append(.request(sessionID: attributes.sessionID, revision: state.revision))
         return id

@@ -127,8 +127,13 @@ final class PreviewSessionController: FeedingSessionControlling {
         return s
     }
 
-    func refreshLiveActivity() async {
+    /// Set by previews and UI tests to show each outcome of the Settings button.
+    var refreshResult: LiveActivityRefreshResult = .shown
+
+    @discardableResult
+    func refreshLiveActivity() async -> LiveActivityRefreshResult {
         log.append("refreshLiveActivity")
+        return refreshResult
     }
 
     func addFeed(_ snapshot: SessionSnapshot) throws {

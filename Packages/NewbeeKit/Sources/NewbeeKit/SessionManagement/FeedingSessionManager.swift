@@ -314,11 +314,20 @@ public final class FeedingSessionManager {
 
     /// Settings' "Refresh Live Activity": re-reads the store and replaces whatever activity is
     /// showing with a fresh one for the running feed or the since-last-feed count, bringing it
-    /// back if it was swiped away or reached the time limit.
-    public func refreshLiveActivity() async {
+    /// back if it was swiped away or reached the time limit. Runs in order with other queued
+    /// updates and returns how it went.
+    @discardableResult
+    public func refreshLiveActivity() async -> LiveActivityRefreshResult {
         try? refresh()
-        enqueueEffects(activity: .sync(liveActivitySnapshot, mode: .refresh), reminders: false)
-        await waitForPendingEffects()
+        let snapshot = liveActivitySnapshot
+        let lastBottle = (snapshot?.status ?? .completed) == .completed ? latestBottle() : nil
+        let previous = effectsTail
+        let refreshing = Task { @MainActor [liveActivity] () -> LiveActivityRefreshResult in
+            await previous?.value
+            return await liveActivity.refresh(snapshot, lastBottle: lastBottle)
+        }
+        effectsTail = Task { @MainActor in _ = await refreshing.value }
+        return await refreshing.value
     }
 
     /// `.show` when the feed the parent just entered is now the latest finished feed (and none

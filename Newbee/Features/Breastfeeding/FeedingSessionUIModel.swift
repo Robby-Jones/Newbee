@@ -218,7 +218,8 @@ final class FeedingSessionUIModel {
     }
 
     /// Settings' "Refresh Live Activity".
-    func refreshLiveActivity() async {
+    @discardableResult
+    func refreshLiveActivity() async -> LiveActivityRefreshResult {
         await controller.refreshLiveActivity()
     }
 

@@ -620,8 +620,16 @@ private struct LiveActivitiesSection: View {
     @Environment(\.openURL) private var openURL
     @Environment(FeedingSessionUIModel.self) private var sessionModel: FeedingSessionUIModel?
     @State private var enabled = ActivityAuthorizationInfo().areActivitiesEnabled
-    @State private var refreshing = false
-    @State private var refreshed = false
+    @State private var refreshState = RefreshState.ready
+    /// Why the last refresh didn't bring the activity back; cleared on the next tap.
+    @State private var refreshProblem: String?
+    @State private var refreshReset: Task<Void, Never>?
+
+    /// The refresh button's trailing icon: a refresh symbol when it can be tapped, a spinner while
+    /// it runs, then a checkmark (or a warning) for a moment before it can be tapped again.
+    enum RefreshState: Equatable {
+        case ready, refreshing, refreshed, failed
+    }
 
     var body: some View {
         Section {
@@ -632,27 +640,22 @@ private struct LiveActivitiesSection: View {
                 }
             } else if let sessionModel {
                 Button {
-                    refreshing = true
-                    Task {
-                        await sessionModel.refreshLiveActivity()
-                        refreshing = false
-                        refreshed = true
-                    }
+                    startRefresh(sessionModel)
                 } label: {
                     HStack {
                         Text("Refresh Live Activity")
                         Spacer()
-                        if refreshing {
-                            ProgressView()
-                        } else if refreshed {
-                            Image(systemName: "checkmark")
-                                .foregroundStyle(NBColor.accent)
-                                .accessibilityLabel("Refreshed")
-                        }
+                        refreshIcon
                     }
                 }
-                .disabled(refreshing)
+                .disabled(refreshState == .refreshing)
                 .accessibilityIdentifier("settings.refreshLiveActivity")
+                if let refreshProblem {
+                    Text(refreshProblem)
+                        .font(.footnote)
+                        .foregroundStyle(NBColor.secondaryText)
+                        .accessibilityIdentifier("settings.refreshLiveActivity.problem")
+                }
             }
         } header: {
             SettingsSectionHeader(
@@ -663,6 +666,69 @@ private struct LiveActivitiesSection: View {
         }
         .onReceive(NotificationCenter.default.publisher(for: UIApplication.didBecomeActiveNotification)) { _ in
             enabled = ActivityAuthorizationInfo().areActivitiesEnabled
+        }
+        .onDisappear {
+            refreshReset?.cancel()
+            refreshState = .ready
+        }
+    }
+
+    @ViewBuilder
+    private var refreshIcon: some View {
+        switch refreshState {
+        case .ready:
+            Image(systemName: "arrow.triangle.2.circlepath")
+                .foregroundStyle(NBColor.accent)
+                .accessibilityHidden(true)
+        case .refreshing:
+            ProgressView()
+                .accessibilityLabel("Refreshing")
+        case .refreshed:
+            Image(systemName: "checkmark")
+                .foregroundStyle(NBColor.accent)
+                .accessibilityLabel("Refreshed")
+                .accessibilityIdentifier("settings.refreshLiveActivity.done")
+        case .failed:
+            Image(systemName: "exclamationmark.triangle.fill")
+                .foregroundStyle(NBColor.destructive)
+                .accessibilityLabel("Couldn't refresh")
+                .accessibilityIdentifier("settings.refreshLiveActivity.failed")
+        }
+    }
+
+    /// How long the checkmark or warning stays before the refresh symbol comes back.
+    private static let resultShownFor: Duration = .seconds(2)
+
+    private func startRefresh(_ sessionModel: FeedingSessionUIModel) {
+        refreshReset?.cancel()
+        refreshProblem = nil
+        refreshState = .refreshing
+        Task {
+            let result = await sessionModel.refreshLiveActivity()
+            enabled = ActivityAuthorizationInfo().areActivitiesEnabled
+            refreshProblem = Self.problem(for: result)
+            withAnimation(.snappy) { refreshState = result == .shown ? .refreshed : .failed }
+            refreshReset = Task {
+                try? await Task.sleep(for: Self.resultShownFor)
+                guard !Task.isCancelled else { return }
+                withAnimation(.snappy) { refreshState = .ready }
+            }
+        }
+    }
+
+    /// What to tell the parent when the refresh didn't bring the activity back.
+    private static func problem(for result: LiveActivityRefreshResult) -> String? {
+        switch result {
+        case .shown:
+            nil
+        case .nothingToShow:
+            String(localized: "Nothing to show yet. Log a feed and it will appear.")
+        case .disabled:
+            String(localized: "Live Activities are turned off for Newbee in iOS Settings.")
+        case .refused(let reason):
+            String(localized: "iOS didn't start the Live Activity: \(reason)")
+        case .removedRightAway:
+            String(localized: "iOS removed the Live Activity right after it started. Try again, or restart your iPhone if it keeps happening.")
         }
     }
 }

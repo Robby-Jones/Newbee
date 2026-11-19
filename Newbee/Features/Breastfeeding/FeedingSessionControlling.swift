@@ -52,7 +52,9 @@ protocol FeedingSessionControlling: AnyObject, Observable {
 
     /// Settings' "Refresh Live Activity": replaces the Live Activity with a fresh one for the
     /// running feed or the since-last-feed count, bringing it back if it was swiped away.
-    func refreshLiveActivity() async
+    /// Returns how it went, for the button's checkmark or error.
+    @discardableResult
+    func refreshLiveActivity() async -> LiveActivityRefreshResult
 
     /// Inserts a new finished feed entered by hand. If it is the latest feed, the Live
     /// Activity's since-last-feed count comes back even if the parent swiped it away.

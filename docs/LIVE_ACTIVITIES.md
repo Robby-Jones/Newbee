@@ -182,7 +182,12 @@ side pills and controls are one shared view (`ActivitySidesAndControls`). Minima
       earlier than the latest feed doesn't. Edits, deletes and undo never bring it back;
     - Settings → Live Activities → **Refresh Live Activity** (`manager.refreshLiveActivity()`,
       `.refresh`): a fresh request for the running feed or the count, replacing whatever is
-      showing, even after a swipe.
+      showing, even after a swipe. It returns a `LiveActivityRefreshResult`: about a second
+      after a successful request the coordinator checks the new activity is still running (iOS
+      drops one it can't draw without an error), and Settings shows a checkmark for 2 s, or a
+      warning with iOS's reason, before the refresh icon comes back.
+  - The count's stale date is the one-hour mark; once that has passed, a request or update uses
+    now + 8 h instead, so a refresh long after a feed never asks for already-stale content.
   - Typical newborn gaps (2–4 h) fit easily. A gap over about 8 h minus the feed's length (a long
     night) outlives the activity: the system ends it, and it may stay up to 4 h more with the
     count still drawn. It is replaced at the next feed.
