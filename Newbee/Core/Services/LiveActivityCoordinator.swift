@@ -22,12 +22,9 @@ final class LiveActivityCoordinator {
     /// Whether Live Activities are allowed in iOS Settings. Drives the gentle in-app hint.
     private(set) var activitiesEnabled: Bool
 
-    /// Name shown in the activity header; empty for a generic "Feeding".
-    /// TODO(5b): set from the baby profile once onboarding stores a name.
-    @ObservationIgnored var babyName = ""
-    /// The app's appearance setting, read at every sync so the Lock Screen activity matches the
-    /// app. A change in Settings re-syncs (see `NewbeeApp`).
-    @ObservationIgnored var appearance: @MainActor () -> LiveActivityAppearance = { .system }
+    /// The baby's name from the profile, shown under the avatar once a feed has ended; empty when
+    /// none is set. Read when an activity is requested (it's part of the activity's attributes).
+    @ObservationIgnored var babyName: @MainActor () -> String = { "" }
     /// Settings' "Count from" (the since-last-feed count runs from the last feed's start or end),
     /// read at every sync. A change in Settings re-syncs (see `NewbeeApp`).
     @ObservationIgnored var countFrom: @MainActor () -> ReminderSettings.Basis = { .end }
@@ -84,8 +81,7 @@ final class LiveActivityCoordinator {
             existing: client.records(),
             activitiesEnabled: activitiesEnabled,
             dismissedAtRevision: snapshot.flatMap { dismissedRevisions[$0.id] },
-            babyName: babyName,
-            appearance: appearance(),
+            babyName: babyName(),
             countFrom: countFrom(),
             mode: mode,
             now: clock.now

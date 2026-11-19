@@ -56,6 +56,21 @@ final class ReviewScreenshots: ScreenshotTestCase {
         }
     }
 
+    /// The since-last-feed Live Activity (always dark), drawn in the app on mock Lock Screen and
+    /// Dynamic Island shapes (`LiveActivityReviewGallery`).
+    @MainActor
+    func testSinceLastFeedLiveActivity() throws {
+        for page in ["lockScreen", "island"] {
+            let app = launch(["-liveActivityReview", page])
+            let plus = app.descendants(matching: .any)
+                .matching(NSPredicate(format: "label == %@", "Open Newbee to start a feed")).firstMatch
+            XCTAssertTrue(plus.waitForExistence(timeout: 15))
+            settle()
+            capture("since-last-feed-\(page)")
+            app.terminate()
+        }
+    }
+
     /// Scrolls the list until `element` can be tapped.
     @MainActor
     private func reveal(_ element: XCUIElement, in app: XCUIApplication) {

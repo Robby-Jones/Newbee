@@ -53,9 +53,6 @@ public struct FeedingActivityAttributes: Codable, Hashable, Sendable {
         /// The amount, while counting from a bottle (then `sessionID` is the bottle's id).
         /// `nil` otherwise, and in content from older builds.
         public var lastBottle: BottleAmount?
-        /// The app's Light / Dark / System setting, so the Lock Screen activity matches the app.
-        /// `nil` in content from older builds, which is drawn as `.system`.
-        public var appearance: LiveActivityAppearance?
         /// Settings' "Count from": the since-last-feed count runs from the last feed's start
         /// (`.start`) or end. `nil` means the end (and is what older builds sent).
         public var countFrom: ReminderSettings.Basis?
@@ -71,7 +68,6 @@ public struct FeedingActivityAttributes: Codable, Hashable, Sendable {
             revision: Int,
             sessionID: UUID? = nil,
             lastBottle: BottleAmount? = nil,
-            appearance: LiveActivityAppearance? = nil,
             countFrom: ReminderSettings.Basis? = nil
         ) {
             self.status = status
@@ -84,7 +80,6 @@ public struct FeedingActivityAttributes: Codable, Hashable, Sendable {
             self.revision = revision
             self.sessionID = sessionID
             self.lastBottle = lastBottle
-            self.appearance = appearance
             self.countFrom = countFrom
         }
 
@@ -115,11 +110,6 @@ public struct FeedingActivityAttributes: Codable, Hashable, Sendable {
             currentSegmentStart?.addingTimeInterval(-(leftAccumulated + rightAccumulated))
         }
     }
-}
-
-/// The app's appearance setting, carried to the Live Activity (`ContentState.appearance`).
-public enum LiveActivityAppearance: String, Codable, Hashable, Sendable {
-    case system, light, dark
 }
 
 /// Links into the app from the Live Activity.

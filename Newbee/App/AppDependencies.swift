@@ -125,7 +125,11 @@ final class AppDependencies {
         let isInMemory: Bool
         if case .inMemory = resolvedStorage { isInMemory = true } else { isInMemory = false }
         // Only the real store takes over a photo file saved by builds before schema V3.
-        babyPhoto = BabyPhotoStore(container: container, legacyDirectory: isAppStore ? BabyPhotoStore.legacyDirectory : nil)
+        babyPhoto = BabyPhotoStore(
+            container: container,
+            legacyDirectory: isAppStore ? BabyPhotoStore.legacyDirectory : nil,
+            liveActivityAvatarURL: isAppStore ? LiveActivityAvatar.fileURL : nil
+        )
         // Only the real app rings alarms.
         let nightAlarms: any NightAlarmClient = alarms ?? (isAppStore ? SystemNightAlarmClient() : NoNightAlarmClient())
         let reminders = ReminderScheduler(
@@ -168,9 +172,9 @@ final class AppDependencies {
                 planner: LiveActivityPlanner(staleAfter: policy.effectiveThreshold)
             )
         }
-        // The Lock Screen activity follows the app's Light / Dark / System setting.
-        (activity as? LiveActivityCoordinator)?.appearance = { [preferences] in
-            LiveActivityAppearance(preferences.appearance)
+        (activity as? LiveActivityCoordinator)?.babyName = { [container] in
+            guard let context = container?.mainContext else { return "" }
+            return Baby.primary(in: context)?.name.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
         }
         (activity as? LiveActivityCoordinator)?.countFrom = { [preferences] in
             preferences.reminders.basis

@@ -29,7 +29,10 @@ struct IslandExpandedBottom: View {
     var body: some View {
         Group {
             if let since = state.sinceLastFeedStart {
-                ActivitySinceLastFeedContent(state: state, isStale: isStale, since: since, style: .island)
+                SinceLastFeedActivityContent(
+                    state: state, babyName: attributes.babyName, since: since, style: .island,
+                    photo: LiveActivityAvatar.load()
+                )
             } else {
                 ActivityFeedingContent(attributes: attributes, state: state, isStale: isStale, style: .island)
             }

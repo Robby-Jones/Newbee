@@ -233,21 +233,6 @@ struct LiveActivityCoordinatorTests {
         #expect(client.calls == [.request(sessionID: id, revision: 1)])
     }
 
-    @Test func carriesTheAppsAppearanceAndRedrawsWhenItChanges() async {
-        let coordinator = makeCoordinator()
-        let setting = AppearanceSetting()
-        coordinator.appearance = { setting.value }
-        let snapshot = active(on: .left, revision: 1, since: clock.now)
-        await coordinator.sync(snapshot)
-        #expect(client.activities[0].state.appearance == .dark)
-
-        // Changed in Settings: the same snapshot syncs again and the activity is redrawn.
-        setting.value = .light
-        await coordinator.sync(snapshot)
-        #expect(client.calls.last == .update(id: "activity-1", revision: 1))
-        #expect(client.activities[0].state.appearance == .light)
-    }
-
     @Test func carriesCountFromAndRedrawsTheCountWhenItChanges() async {
         let coordinator = makeCoordinator()
         let setting = CountFromSetting()
@@ -313,9 +298,4 @@ struct LiveActivityCoordinatorTests {
 @MainActor
 private final class CountFromSetting {
     var value = ReminderSettings.Basis.start
-}
-
-@MainActor
-private final class AppearanceSetting {
-    var value = LiveActivityAppearance.dark
 }
