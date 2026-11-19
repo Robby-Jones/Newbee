@@ -57,7 +57,10 @@ jobs:
         run: xcodegen generate
       - name: Pick simulator
         id: sim
-        run: echo "udid=$(scripts/pick-simulator.sh ${{ matrix.ios_major }})" >> "$GITHUB_OUTPUT"
+        # Assign first so a failure stops the job here instead of booting an empty UDID.
+        run: |
+          UDID="$(scripts/pick-simulator.sh ${{ matrix.ios_major }})"
+          echo "udid=$UDID" >> "$GITHUB_OUTPUT"
       # A fresh simulator keeps setting itself up for a few minutes after it first boots, and UI
       # tests that launch the app during that time fail with "Timed out while acquiring background
       # assertion". Boot it and wait before building: booting while building (tried in PR #64)
