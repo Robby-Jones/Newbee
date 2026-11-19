@@ -161,8 +161,14 @@ final class ReviewScreenshots: ScreenshotTestCase {
         settle()
         capture("starting-side-always-right")
 
-        // The Timer tags Right as Suggested.
-        app.tabBars.buttons["Timer"].tap()
+        // Home says "Next: Right" and the timer tags Right as Suggested.
+        app.tabBars.buttons["Home"].tap()
+        let breastfeed = app.buttons["breastfeedButton"].firstMatch
+        XCTAssertTrue(breastfeed.waitForExistence(timeout: 10))
+        settle()
+        capture("starting-side-home")
+        breastfeed.tap()
+        XCTAssertTrue(app.buttons["sideButton.right"].firstMatch.waitForExistence(timeout: 10))
         settle()
         capture("starting-side-timer")
         app.terminate()
