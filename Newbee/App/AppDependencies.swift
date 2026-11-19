@@ -179,6 +179,9 @@ final class AppDependencies {
         (activity as? LiveActivityCoordinator)?.countFrom = { [preferences] in
             preferences.reminders.basis
         }
+        (activity as? LiveActivityCoordinator)?.theme = { [preferences] in
+            preferences.colorTheme
+        }
         (activity as? LiveActivityCoordinator)?.startingSide = { [preferences] in
             preferences.startingSide
         }

@@ -56,6 +56,9 @@ public struct FeedingActivityAttributes: Codable, Hashable, Sendable {
         /// Settings' "Count from": the since-last-feed count runs from the last feed's start
         /// (`.start`) or end. `nil` means the end (and is what older builds sent).
         public var countFrom: ReminderSettings.Basis?
+        /// The app's color theme: the Lock Screen card is blush in the pink theme. `nil` means
+        /// the standard theme (and is what older builds sent).
+        public var theme: NBTheme?
         /// Settings' "Suggested starting side", while no feed is running. `nil` means the other
         /// side from `currentSide` (the default, and what older builds sent).
         public var suggestedSide: Side?
@@ -72,6 +75,7 @@ public struct FeedingActivityAttributes: Codable, Hashable, Sendable {
             sessionID: UUID? = nil,
             lastBottle: BottleAmount? = nil,
             countFrom: ReminderSettings.Basis? = nil,
+            theme: NBTheme? = nil,
             suggestedSide: Side? = nil
         ) {
             self.status = status
@@ -85,6 +89,7 @@ public struct FeedingActivityAttributes: Codable, Hashable, Sendable {
             self.sessionID = sessionID
             self.lastBottle = lastBottle
             self.countFrom = countFrom
+            self.theme = theme
             self.suggestedSide = suggestedSide
         }
 

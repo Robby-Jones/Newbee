@@ -6,24 +6,130 @@ import NewbeeShared
 import SwiftUI
 import UIKit
 
-/// The Live Activity's colors. It's always dark (2026-11-19): a black card with white text,
-/// whatever the phone's or the app's appearance, so these are fixed values, never adaptive ones
-/// or the system's `.primary` / `.secondary` (those were drawn for the wrong appearance on the
-/// Lock Screen before). Text meets WCAG AA on black.
-enum ActivityPalette {
-    static let background = Color.black
-    static let primaryText = Color.white
-    /// #B8B8BE, 10:1 on black.
-    static let secondaryText = Color(red: 0xB8 / 255, green: 0xB8 / 255, blue: 0xBE / 255)
-    /// Newbee's accent in dark mode (`NBColor.accent`), for the round "+".
-    static let newFeed = Color(red: 0x8E / 255, green: 0x91 / 255, blue: 0xF0 / 255)
-    /// Dark glyphs on the light fills above: the "+", the feed icon.
-    static let onFill = Color(red: 0x14 / 255, green: 0x14 / 255, blue: 0x1A / 255)
-    /// The initial's circle when there's no photo: a soft rose, with the bee's ink for the letter.
-    static let avatar = Color(red: 0xF2 / 255, green: 0x9D / 255, blue: 0xB8 / 255)
-    static let onAvatar = Color(red: 0x3B / 255, green: 0x2F / 255, blue: 0x4A / 255)
-    /// Bottle icon fill: the breast-milk bottle color in dark mode (`NBColor.bottleBreastMilk`).
-    static let bottle = Color(red: 0xF5 / 255, green: 0xB5 / 255, blue: 0x93 / 255)
+/// The Live Activity's colors: fixed values for one card color, never adaptive ones or the
+/// system's `.primary` / `.secondary` (those were drawn for the wrong appearance on the Lock
+/// Screen before). Text meets WCAG AA on the card.
+///
+/// The Dynamic Island is always `night` (black). The Lock Screen card is `night` in the standard
+/// theme, or a soft tint of the theme's color otherwise (`ContentState.theme`). Views read the palette from the environment
+/// (`\.activityPalette`, `night` unless set).
+struct ActivityPalette: Sendable {
+    var background: Color
+    /// The appearance the card reads as, so adaptive side colors pick the matching values.
+    var colorScheme: ColorScheme
+    var primaryText: Color
+    var secondaryText: Color
+    /// The round "+" (the theme's accent), with `onFill` on it.
+    var newFeed: Color
+    /// Dark glyphs on the light fills: the "+", the feed icon.
+    var onFill: Color
+    /// The initial's circle when there's no photo, with the bee's ink for the letter.
+    var avatar: Color
+    var onAvatar: Color
+    /// Bottle icon fill (`NBColor.bottleBreastMilk`).
+    var bottle: Color
+    /// Feed icon fills for a breastfeed that ended on each side.
+    var leftFill: Color
+    var rightFill: Color
+    /// A side's color for text and icons on a soft tint of it.
+    var leftInk: Color
+    var rightInk: Color
+    /// Pause.
+    var accentInk: Color
+    /// End.
+    var destructiveInk: Color
+
+    func sideInk(_ side: Side) -> Color {
+        side == .left ? leftInk : rightInk
+    }
+
+    func sideFill(_ side: Side) -> Color {
+        side == .left ? leftFill : rightFill
+    }
+
+    /// The Lock Screen card for a theme.
+    static func lockScreen(_ theme: NBTheme?) -> ActivityPalette {
+        switch theme ?? .standard {
+        case .standard: .night
+        case .pink: .blush
+        // Ratios for each card are in docs/UX_SPEC.md §2.1; all text is at least 5.2:1 on it.
+        case .sage: .tinted(background: 0xE3EFE3, primaryText: 0x17251A, secondaryText: 0x4D5F50, newFeed: 0x8CC79A, accentInk: 0x3E6848)
+        case .ocean: .tinted(background: 0xDFEBF6, primaryText: 0x142230, secondaryText: 0x4A5B6B, newFeed: 0x7FB4E3, accentInk: 0x275A82)
+        case .lavender: .tinted(background: 0xECE5F8, primaryText: 0x221A33, secondaryText: 0x5A4E6E, newFeed: 0xB49CEB, accentInk: 0x5C449E)
+        case .peach: .tinted(background: 0xFCE6D8, primaryText: 0x2E1A10, secondaryText: 0x6B4E3E, newFeed: 0xF2A57A, accentInk: 0x93461C)
+        }
+    }
+
+    /// A light card in a theme's color, otherwise the same as `blush`: the side, bottle and End
+    /// colors stay put, and pass AA on every tinted card.
+    static func tinted(background: UInt32, primaryText: UInt32, secondaryText: UInt32, newFeed: UInt32, accentInk: UInt32) -> ActivityPalette {
+        var palette = blush
+        palette.background = Color(rgb: background)
+        palette.primaryText = Color(rgb: primaryText)
+        palette.secondaryText = Color(rgb: secondaryText)
+        palette.newFeed = Color(rgb: newFeed)
+        palette.accentInk = Color(rgb: accentInk)
+        return palette
+    }
+
+    /// Black card, white text: the standard theme and the Dynamic Island.
+    static let night = ActivityPalette(
+        background: .black,
+        colorScheme: .dark,
+        primaryText: .white,
+        // #B8B8BE, 10:1 on black.
+        secondaryText: Color(rgb: 0xB8B8BE),
+        // The standard accent in dark mode (`NBColor.accent`).
+        newFeed: Color(rgb: 0x8E91F0),
+        onFill: Color(rgb: 0x14141A),
+        avatar: Color(rgb: 0xF29DB8),
+        onAvatar: Color(rgb: 0x3B2F4A),
+        bottle: Color(rgb: 0xF5B593),
+        leftFill: Color(rgb: 0xB3A6F0),
+        rightFill: Color(rgb: 0x6FCFC4),
+        leftInk: Color(rgb: 0xC3B8F5),
+        rightInk: Color(rgb: 0x7FD8CD),
+        accentInk: Color(rgb: 0xA5A8F5),
+        destructiveInk: Color(rgb: 0xF0A0AE)
+    )
+
+    /// Soft blush card, dark plum text: the pink theme's Lock Screen. Ratios are on #FBE1EA.
+    static let blush = ActivityPalette(
+        background: Color(rgb: 0xFBE1EA),
+        colorScheme: .light,
+        // 13.7:1.
+        primaryText: Color(rgb: 0x2A1720),
+        // 6.1:1.
+        secondaryText: Color(rgb: 0x6E4B5A),
+        // A rose pastel; the dark "+" on it is 7:1.
+        newFeed: Color(rgb: 0xE87FA6),
+        onFill: Color(rgb: 0x14141A),
+        // White, so the initial's circle stands out from the blush card.
+        avatar: .white,
+        onAvatar: Color(rgb: 0x3B2F4A),
+        bottle: Color(rgb: 0xF2A37B),
+        leftFill: Color(rgb: 0x9C8CE0),
+        rightFill: Color(rgb: 0x4FB3A9),
+        // 5.3:1 and 5.2:1, and above 4.5:1 on their soft tints too.
+        leftInk: Color(rgb: 0x5E4CB8),
+        rightInk: Color(rgb: 0x24696A),
+        // 5.3:1.
+        accentInk: Color(rgb: 0xA3335F),
+        // 5.2:1.
+        destructiveInk: Color(rgb: 0xAE2F4B)
+    )
+}
+
+private struct ActivityPaletteKey: EnvironmentKey {
+    static let defaultValue = ActivityPalette.night
+}
+
+extension EnvironmentValues {
+    /// The Live Activity palette the views below draw with (`ActivityPalette`).
+    var activityPalette: ActivityPalette {
+        get { self[ActivityPaletteKey.self] }
+        set { self[ActivityPaletteKey.self] = newValue }
+    }
 }
 
 /// Sizes for the since-last-feed layout on the Lock Screen and in the expanded Dynamic Island.
@@ -64,6 +170,7 @@ struct SinceLastFeedActivityContent: View {
     var style: SinceLastFeedActivityStyle = .lockScreen
     /// The baby's photo; `nil` draws the initial (or the bee with no name either).
     var photo: UIImage?
+    @Environment(\.activityPalette) private var palette
 
     var body: some View {
         HStack(alignment: .center, spacing: 12) {
@@ -72,12 +179,12 @@ struct SinceLastFeedActivityContent: View {
                 Text("\(since, style: .relative) ago")
                     .font(.system(size: style.relativeSize, weight: .medium))
                     .monospacedDigit()
-                    .foregroundStyle(ActivityPalette.primaryText)
+                    .foregroundStyle(palette.primaryText)
                     .lineLimit(1)
                     .minimumScaleFactor(0.8)
                 Text("Last fed: \(since, style: .time)")
                     .font(.system(size: style.headlineSize, weight: .bold, design: .rounded))
-                    .foregroundStyle(ActivityPalette.primaryText)
+                    .foregroundStyle(palette.primaryText)
                     .lineLimit(1)
                     .minimumScaleFactor(0.7)
                 LastFeedDetail(state: state, size: style.detailSize)
@@ -102,6 +209,7 @@ struct BabyAvatarColumn: View {
     let photo: UIImage?
     let size: CGFloat
     var showsName = true
+    @Environment(\.activityPalette) private var palette
 
     private var trimmedName: String { name.trimmingCharacters(in: .whitespacesAndNewlines) }
 
@@ -119,7 +227,7 @@ struct BabyAvatarColumn: View {
             if showsName, !trimmedName.isEmpty {
                 Text(trimmedName)
                     .font(.system(size: 13, weight: .semibold))
-                    .foregroundStyle(ActivityPalette.secondaryText)
+                    .foregroundStyle(palette.secondaryText)
                     .lineLimit(1)
                     .minimumScaleFactor(0.8)
             }
@@ -137,15 +245,15 @@ struct BabyAvatarColumn: View {
                 .clipShape(Circle())
         } else if let initial = trimmedName.first {
             Circle()
-                .fill(ActivityPalette.avatar)
+                .fill(palette.avatar)
                 .overlay {
                     Text(String(initial).uppercased())
                         .font(.system(size: size * 0.48, weight: .semibold, design: .rounded))
-                        .foregroundStyle(ActivityPalette.onAvatar)
+                        .foregroundStyle(palette.onAvatar)
                 }
         } else {
             Circle()
-                .fill(ActivityPalette.avatar)
+                .fill(palette.avatar)
                 .overlay { TinyBee(width: size * 0.62) }
         }
     }
@@ -156,29 +264,28 @@ struct BabyAvatarColumn: View {
 struct LastFeedDetail: View {
     let state: FeedingActivityAttributes.ContentState
     var size: CGFloat = 17
+    @Environment(\.activityPalette) private var palette
 
     var body: some View {
         HStack(spacing: 8) {
             Image(systemName: state.lastBottle == nil ? "heart.fill" : "waterbottle.fill")
                 .font(.system(size: size * 0.75, weight: .semibold))
-                .foregroundStyle(ActivityPalette.onFill)
+                .foregroundStyle(palette.onFill)
                 .frame(width: size * 1.6, height: size * 1.6)
                 .background(Circle().fill(iconFill))
             Text(Self.amount(state))
                 .font(.system(size: size, weight: .regular))
                 .monospacedDigit()
-                .foregroundStyle(ActivityPalette.secondaryText)
+                .foregroundStyle(palette.secondaryText)
                 .lineLimit(1)
                 .minimumScaleFactor(0.8)
         }
     }
 
-    /// Bottle color, or the side the breastfeed ended on (its color in dark mode).
+    /// Bottle color, or the side the breastfeed ended on.
     private var iconFill: Color {
-        guard state.lastBottle == nil else { return ActivityPalette.bottle }
-        return state.currentSide == .left
-            ? Color(red: 0xB3 / 255, green: 0xA6 / 255, blue: 0xF0 / 255)
-            : Color(red: 0x6F / 255, green: 0xCF / 255, blue: 0xC4 / 255)
+        guard state.lastBottle == nil else { return palette.bottle }
+        return palette.sideFill(state.currentSide)
     }
 
     /// "90 mL", or "L 12m · R 9m" with any side that wasn't used left out.
@@ -199,14 +306,15 @@ struct LastFeedDetail: View {
 /// The round "+" shown once a feed has ended: opens the app on Home to log the next feed.
 struct NewFeedButton: View {
     var size: CGFloat = 60
+    @Environment(\.activityPalette) private var palette
 
     var body: some View {
         Link(destination: NewbeeLink.home) {
             Image(systemName: "plus")
                 .font(.system(size: size * 0.42, weight: .semibold))
-                .foregroundStyle(ActivityPalette.onFill)
+                .foregroundStyle(palette.onFill)
                 .frame(width: size, height: size)
-                .background(Circle().fill(ActivityPalette.newFeed))
+                .background(Circle().fill(palette.newFeed))
                 .contentShape(Circle())
         }
         .accessibilityLabel("Open Newbee to start a feed")
