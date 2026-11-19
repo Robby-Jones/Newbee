@@ -56,6 +56,9 @@ public struct FeedingActivityAttributes: Codable, Hashable, Sendable {
         /// Settings' "Count from": the since-last-feed count runs from the last feed's start
         /// (`.start`) or end. `nil` means the end (and is what older builds sent).
         public var countFrom: ReminderSettings.Basis?
+        /// Settings' "Suggested starting side", while no feed is running. `nil` means the other
+        /// side from `currentSide` (the default, and what older builds sent).
+        public var suggestedSide: Side?
 
         public init(
             status: Status,
@@ -68,7 +71,8 @@ public struct FeedingActivityAttributes: Codable, Hashable, Sendable {
             revision: Int,
             sessionID: UUID? = nil,
             lastBottle: BottleAmount? = nil,
-            countFrom: ReminderSettings.Basis? = nil
+            countFrom: ReminderSettings.Basis? = nil,
+            suggestedSide: Side? = nil
         ) {
             self.status = status
             self.currentSide = currentSide
@@ -81,6 +85,12 @@ public struct FeedingActivityAttributes: Codable, Hashable, Sendable {
             self.sessionID = sessionID
             self.lastBottle = lastBottle
             self.countFrom = countFrom
+            self.suggestedSide = suggestedSide
+        }
+
+        /// The side to offer for the next feed, as the app suggests it.
+        public var suggestedNextSide: Side {
+            suggestedSide ?? currentSide.opposite
         }
 
         public func accumulated(on side: Side) -> TimeInterval {

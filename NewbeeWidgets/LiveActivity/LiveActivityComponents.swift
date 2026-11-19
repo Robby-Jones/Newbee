@@ -19,10 +19,6 @@ extension FeedingState {
         case .ended: return "Since last feed"
         }
     }
-
-    /// The side to offer for the next feed: the other side from the one the last feed ended on,
-    /// as the app suggests.
-    var suggestedNextSide: Side { currentSide.opposite }
 }
 
 /// Text and control colors for the Live Activity while a feed is open.

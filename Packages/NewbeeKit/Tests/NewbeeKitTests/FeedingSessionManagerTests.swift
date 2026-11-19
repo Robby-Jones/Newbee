@@ -186,6 +186,25 @@ struct FeedingSessionManagerTests {
         #expect(relaunched.suggestedNextSide == .left)
     }
 
+    @Test func suggestedSideFollowsTheStartingSideSetting() throws {
+        let manager = makeManager()
+        manager.startingSide = StartingSideSuggestion(mode: .alwaysRight)
+        #expect(manager.suggestedNextSide == .right)
+
+        try manager.start(side: .left)
+        clock.advance(by: 300)
+        try manager.switchSide(to: .right)
+        clock.advance(by: 300)
+        try manager.end()
+
+        manager.startingSide = StartingSideSuggestion()
+        #expect(manager.suggestedNextSide == .left) // ended on the right
+        manager.startingSide = StartingSideSuggestion(mode: .alternate, switchFrom: .started)
+        #expect(manager.suggestedNextSide == .right) // started on the left
+        manager.startingSide = StartingSideSuggestion(mode: .alwaysLeft)
+        #expect(manager.suggestedNextSide == .left)
+    }
+
     @Test func relaunchRestoresTheActiveSessionFromTheStore() throws {
         let manager = makeManager()
         try manager.start(side: .right)

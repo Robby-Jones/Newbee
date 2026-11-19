@@ -47,6 +47,8 @@ public final class FeedingSessionManager {
     /// Set by `RecoveryCoordinator` when the parent must confirm what happened ("Were you still
     /// feeding?"). Cleared by `dismissRecovery()` or by any accepted command.
     public internal(set) var recoveryPrompt: RecoveryPrompt?
+    /// Settings' "Suggested starting side", applied by `suggestedNextSide`.
+    public var startingSide = StartingSideSuggestion()
 
     @ObservationIgnored public let clock: any AppClock
     @ObservationIgnored let repository: any FeedingRepository
@@ -83,9 +85,10 @@ public final class FeedingSessionManager {
         activeSession?.lastSide ?? lastCompletedSession?.lastSide
     }
 
-    /// The side to offer next: the opposite of the side used last. Left when there's no history.
+    /// The side to offer next, per `startingSide`: by default the opposite of the side used last
+    /// (the running feed's, else the last finished one's). Left when there's no history.
     public var suggestedNextSide: Side {
-        lastSide?.opposite ?? .left
+        startingSide.suggestedSide(after: activeSession ?? lastCompletedSession)
     }
 
     /// What the Live Activity shows: the running or paused feed, or else the last finished one

@@ -88,6 +88,12 @@ struct NewbeeApp: App {
                 .onChange(of: dependencies.preferences.reminders.basis) {
                     Task { await dependencies.sessionManager.reload() }
                 }
+                // Settings' "Suggested starting side", here or from another device: the Timer and
+                // Home follow it at once, and the reload re-tints the Live Activity.
+                .onChange(of: dependencies.preferences.startingSide) {
+                    dependencies.sessionManager.startingSide = dependencies.preferences.startingSide
+                    Task { await dependencies.sessionManager.reload() }
+                }
                 // Feeds from another device can change today's bottle and pumping totals.
                 .onChange(of: dependencies.cloudSync.importCount) {
                     bottleModel.refresh()

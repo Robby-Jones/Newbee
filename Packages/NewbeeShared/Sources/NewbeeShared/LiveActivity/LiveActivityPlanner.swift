@@ -100,6 +100,8 @@ public struct LiveActivityPlanner: Sendable {
     ///   - babyName: Shown in the activity's header; `""` for a generic title.
     ///   - countFrom: Settings' "Count from": the since-last-feed count runs from the last feed's
     ///     start or end (`ContentState.countFrom`).
+    ///   - startingSide: Settings' "Suggested starting side", for the since-last-feed tint
+    ///     (`ContentState.suggestedSide`).
     ///   - mode: `.update` only brings what's showing up to date (and requests for a running feed
     ///     that has no activity); `.show` also starts the since-last-feed count if nothing is
     ///     showing, even after a swipe; `.refresh` replaces whatever is showing with a fresh
@@ -113,6 +115,7 @@ public struct LiveActivityPlanner: Sendable {
         dismissedAtRevision: Int? = nil,
         babyName: String = "",
         countFrom: ReminderSettings.Basis = .end,
+        startingSide: StartingSideSuggestion = StartingSideSuggestion(),
         mode: LiveActivitySyncMode = .update,
         now: Date
     ) -> [LiveActivityAction] {
@@ -128,6 +131,12 @@ public struct LiveActivityPlanner: Sendable {
             }
             var state = FeedingActivityAttributes.ContentState(latest: latest, lastBreastSide: snapshot?.lastSide)
             state.countFrom = countFrom
+            // `nil` when it's the other side, keeping content identical to older builds'. With
+            // only bottles so far, alternating keeps the other side from the placeholder too.
+            if snapshot != nil || startingSide.mode != .alternate {
+                let suggested = startingSide.suggestedSide(after: snapshot)
+                state.suggestedSide = suggested == state.currentSide.opposite ? nil : suggested
+            }
             return planSinceLastFeed(
                 feedID: latest.id, state: state, staleDate: state.staleDate(after: staleAfter),
                 live: live, ended: ended, babyName: babyName, mode: activitiesEnabled ? mode : .update

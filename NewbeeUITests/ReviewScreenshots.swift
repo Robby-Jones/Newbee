@@ -121,6 +121,48 @@ final class ReviewScreenshots: ScreenshotTestCase {
         app.terminate()
     }
 
+    /// Settings → Breastfeeding: "Suggested starting side" with its "Switch from" choice, the
+    /// picker's options, and the section once a fixed side hides "Switch from".
+    @MainActor
+    func testStartingSideSetting() throws {
+        let app = launch()
+        app.tabBars.buttons["Settings"].tap()
+        let picker = app.descendants(matching: .any)["settings.startingSide"].firstMatch
+        let switchFrom = app.descendants(matching: .any)["settings.switchFrom"].firstMatch
+        XCTAssertTrue(picker.waitForExistence(timeout: 10))
+        reveal(switchFrom, in: app)
+        settle()
+        capture("starting-side-alternate")
+
+        switchFrom.tap()
+        XCTAssertTrue(app.buttons["Side you started on"].firstMatch.waitForExistence(timeout: 5))
+        settle()
+        capture("starting-side-switch-from-menu")
+        app.buttons["Side you started on"].firstMatch.tap()
+        settle()
+
+        app.buttons["settings.info.breastfeeding"].firstMatch.tap()
+        XCTAssertTrue(app.staticTexts["settings.infoText"].firstMatch.waitForExistence(timeout: 5))
+        settle()
+        capture("starting-side-info")
+        app.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.08)).tap()
+        settle()
+
+        picker.tap()
+        XCTAssertTrue(app.buttons["Always right"].firstMatch.waitForExistence(timeout: 5))
+        settle()
+        capture("starting-side-menu")
+        app.buttons["Always right"].firstMatch.tap()
+        settle()
+        capture("starting-side-always-right")
+
+        // The Timer tags Right as Suggested.
+        app.tabBars.buttons["Timer"].tap()
+        settle()
+        capture("starting-side-timer")
+        app.terminate()
+    }
+
     /// Scrolls the list until `element` can be tapped.
     @MainActor
     private func reveal(_ element: XCUIElement, in app: XCUIApplication) {
