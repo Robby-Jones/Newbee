@@ -141,12 +141,17 @@ final class ReviewScreenshots: ScreenshotTestCase {
         app.buttons["Side you started on"].firstMatch.tap()
         settle()
 
+        // Room above the header so the popover isn't cut off by the navigation bar.
+        app.swipeDown()
+        settle()
         app.buttons["settings.info.breastfeeding"].firstMatch.tap()
         XCTAssertTrue(app.staticTexts["settings.infoText"].firstMatch.waitForExistence(timeout: 5))
         settle()
         capture("starting-side-info")
-        app.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.08)).tap()
+        // A tap in the left margin, well below the popover, closes it.
+        app.coordinate(withNormalizedOffset: CGVector(dx: 0.02, dy: 0.75)).tap()
         settle()
+        reveal(picker, in: app)
 
         picker.tap()
         XCTAssertTrue(app.buttons["Always right"].firstMatch.waitForExistence(timeout: 5))
