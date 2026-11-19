@@ -93,8 +93,11 @@ side pills and controls are one shared view (`ActivitySidesAndControls`). Minima
   on device those were drawn for the opposite appearance from the card, which hid the big number.
   Side text uses `ActivityColor.sideInk` for AA contrast on its tint. The Dynamic Island uses
   fixed white / gray text (`IslandColor`).
-- **Photo.** The widget can't open the store, so the app keeps a 192 px square JPEG copy of the
-  profile photo in the App Group (`LiveActivityAvatar`, `Library/Caches/LiveActivity/avatar.jpg`),
+- **Photo.** The widget can't open the store, so the app keeps an 84 px square JPEG copy (at most
+  4 KB) of the profile photo in the App Group (`LiveActivityAvatar`, `Library/Caches/LiveActivity/avatar.jpg`).
+  **Keep it tiny:** iOS doesn't show the activity at all when an image in it is too large. A
+  192 px copy left Refresh with a checkmark and nothing on the Lock Screen or island (2026-11-19);
+  the widget also ignores a file over the limit. The copy is
   written by `BabyPhotoStore` on save, remove and reload. The activity reads it when drawn, so a
   new photo shows from the activity's next update. The name comes from the profile when the
   activity is requested (`LiveActivityCoordinator.babyName`).
