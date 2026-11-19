@@ -175,6 +175,11 @@ final class CloudSharing {
         defer { isWorking = false }
         do {
             let share = try await currentShare()
+            // Before the partner joins, make sure iCloud has every feed on this phone, so the
+            // partner gets the whole history and not only what is logged from now on.
+            if !engine.isJoined, status != .shared {
+                engine.recheckOwnZone()
+            }
             guard let presenter = Self.topViewController() else { return }
             let controller = UICloudSharingController(share: share, container: engine.container)
             // Only people who are invited, and they can log feeds too.

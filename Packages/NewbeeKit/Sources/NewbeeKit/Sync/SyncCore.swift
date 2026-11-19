@@ -134,4 +134,11 @@ public final class SyncCore {
         sent = [:]
         ledger.forgetServer()
     }
+
+    /// Sends every local item to the same zone again, to be sure the server has them all
+    /// (`SyncLedger.recheckServer`).
+    public func recheckServer() {
+        sent = [:]
+        ledger.recheckServer()
+    }
 }

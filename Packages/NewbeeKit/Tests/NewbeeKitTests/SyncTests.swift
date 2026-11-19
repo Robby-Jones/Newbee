@@ -111,6 +111,11 @@ final class FakeCloudZone {
         return .saved(saved)
     }
 
+    /// The server is missing a record that a device believes it has, and nobody is told.
+    func lose(_ key: SyncKey) {
+        records[key] = nil
+    }
+
     func delete(_ key: SyncKey) {
         guard records[key] != nil else { return }
         records[key] = nil
@@ -148,6 +153,16 @@ final class FakeDevice {
         self.zone = zone
         cursor = 0
         core.forgetServer()
+    }
+
+    /// Downloads the whole zone again on the next fetch, as a new `CKSyncEngine` does.
+    func refetchFromScratch() {
+        cursor = 0
+    }
+
+    /// A fetch whose records never reach the store, though the server counts them as delivered.
+    func dropNextFetch() {
+        cursor = zone.changes(since: cursor).cursor
     }
 
     /// Relaunches the app: the ledger comes back from disk.
@@ -461,6 +476,83 @@ struct SyncCoreTests {
         #expect(Set(robby.store.feeds.keys) == [shared.id, his.id, hers.id])
         #expect(robby.store.feeds == wife.store.feeds)
         #expect(wife.store.feeds[shared.id]?.notes == "Robby's newer note")
+    }
+
+    /// Before sharing, the phone checks that iCloud has every feed. One iCloud is missing is sent
+    /// again; the rest come back as conflicts with the same content and aren't saved or stored twice.
+    @Test func checkingBeforeSharingResendsOnlyWhatIsMissing() throws {
+        let herZone = FakeCloudZone()
+        let wife = FakeDevice(zone: herZone, clock: clock)
+        let feeds = (0..<5).map { bottle(at: start.addingTimeInterval(Double($0) * -3_600)) }
+        for feed in feeds {
+            wife.store.feeds[feed.id] = feed
+        }
+        try syncUntilQuiet(wife)
+        herZone.lose(feeds[2].key)
+        let saves = herZone.saveCount
+        let applies = wife.store.applyCount
+
+        clock.advance(by: 86_400)
+        wife.core.recheckServer()
+        try syncUntilQuiet(wife)
+        #expect(Set(herZone.records.keys) == Set(feeds.map(\.key)))
+        #expect(herZone.saveCount == saves + 1)
+        #expect(wife.store.applyCount == applies)
+        // Nothing poses as a fresh edit.
+        #expect(herZone.records[feeds[2].key]?.changedAt == feeds[2].modifiedAt)
+
+        // The partner who joins now gets the whole history.
+        let robby = device()
+        robby.move(to: herZone)
+        try syncUntilQuiet(robby, wife)
+        #expect(robby.store.feeds == wife.store.feeds)
+    }
+
+    /// A delete iCloud hasn't heard about yet still goes through after the check.
+    @Test func checkingBeforeSharingKeepsUnsentDeletes() throws {
+        let wife = device()
+        let kept = bottle(), deleted = bottle(at: start.addingTimeInterval(-600))
+        wife.store.feeds = [kept.id: kept, deleted.id: deleted]
+        try syncUntilQuiet(wife)
+        wife.store.feeds[deleted.id] = nil
+        try wife.core.scan()
+
+        wife.core.recheckServer()
+        try syncUntilQuiet(wife)
+        #expect(Set(zone.records.keys) == [kept.key])
+    }
+
+    /// Joining downloads the shared log again from the start, so feeds the first fetch never
+    /// stored still arrive. A phone that already has everything changes nothing.
+    @Test func joiningDownloadsTheWholeLogAgain() throws {
+        let herZone = FakeCloudZone()
+        let wife = FakeDevice(zone: herZone, clock: clock)
+        let robby = device()
+        let hers = (0..<3).map { bottle(at: start.addingTimeInterval(Double($0) * -3_600)) }
+        let his = bottle(at: start.addingTimeInterval(-600))
+        for feed in hers {
+            wife.store.feeds[feed.id] = feed
+        }
+        robby.store.feeds[his.id] = his
+        try syncUntilQuiet(wife)
+        try syncUntilQuiet(robby)
+
+        robby.move(to: herZone)
+        robby.dropNextFetch()
+        try syncUntilQuiet(robby)
+        #expect(Array(robby.store.feeds.keys) == [his.id])
+
+        robby.refetchFromScratch()
+        try syncUntilQuiet(robby, wife)
+        #expect(Set(robby.store.feeds.keys) == Set(hers.map(\.id) + [his.id]))
+        #expect(robby.store.feeds == wife.store.feeds)
+
+        let saves = herZone.saveCount
+        let applies = robby.store.applyCount
+        robby.refetchFromScratch()
+        try syncUntilQuiet(robby)
+        #expect(herZone.saveCount == saves)
+        #expect(robby.store.applyCount == applies)
     }
 
     /// Sharing ended: the partner keeps every feed and syncs them to their own iCloud again.
