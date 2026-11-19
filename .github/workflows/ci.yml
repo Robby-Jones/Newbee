@@ -26,7 +26,7 @@ jobs:
 
   ios:
     name: iOS ${{ matrix.label }}
-    runs-on: macos-15
+    runs-on: xcode-27
     timeout-minutes: 60
     strategy:
       fail-fast: false
@@ -50,7 +50,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - name: Select Xcode
-        run: scripts/select-xcode.sh 26
+        run: scripts/select-xcode.sh 27
       - name: Install XcodeGen and xcbeautify
         run: brew install xcodegen xcbeautify
       - name: Generate project
