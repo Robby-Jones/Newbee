@@ -89,10 +89,15 @@ side pills and controls are one shared view (`ActivitySidesAndControls`). Minima
 - **Always dark (2026-11-19).** A black card (`activityBackgroundTint`) in the dark color scheme,
   whatever the phone's or the app's appearance; the app's Light / Dark setting no longer reaches
   the activity (`ContentState.appearance` was removed; older content's key is ignored). Text uses
-  fixed values (`ActivityPalette`, `ActivityColor`), never the system's `.primary` / `.secondary`:
+  fixed values (`ActivityPalette`), never the system's `.primary` / `.secondary`:
   on device those were drawn for the opposite appearance from the card, which hid the big number.
-  Side text uses `ActivityColor.sideInk` for AA contrast on its tint. The Dynamic Island uses
+  Side text uses `ActivityPalette.sideInk` for AA contrast on its tint. The Dynamic Island uses
   fixed white / gray text (`IslandColor`).
+- **Pink theme.** With Settings' Color set to Pink, the Lock Screen card is blush instead of black
+  (`ActivityPalette.blush`, light color scheme, dark plum text, all AA on the card). The theme
+  travels in the content (`ContentState.theme`, `nil` for the standard theme), so picking another
+  theme updates the activity (`NewbeeApp` reloads the session manager). The Dynamic Island stays
+  black (`ActivityPalette.night`) in every theme.
 - **Photo.** The widget can't open the store, so the app keeps an 84 px square JPEG copy (at most
   4 KB) of the profile photo in the App Group (`LiveActivityAvatar`, `Library/Caches/LiveActivity/avatar.jpg`).
   **Keep it tiny:** iOS doesn't show the activity at all when an image in it is too large. A

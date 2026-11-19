@@ -1,5 +1,6 @@
 import Foundation
 import NewbeeKit
+import NewbeeShared
 import Observation
 import SwiftUI
 
@@ -26,6 +27,8 @@ final class AppPreferences {
         static let stillFeedingEnabled = "stillFeeding.enabled"
         static let stillFeedingMinutes = "stillFeeding.minutes"
         static let appearance = "appearance"
+        /// Not synced and not reset: each parent picks their own theme on their own phone.
+        static let colorTheme = "colorTheme"
         static let onboardingComplete = "onboardingComplete"
         static let nightShiftMorningMinute = "nightShift.morningMinute"
         static let nightShiftAlarm = "nightShift.alarm"
@@ -144,6 +147,15 @@ final class AppPreferences {
         didSet { store(appearance.rawValue, forKey: Key.appearance) }
     }
 
+    /// Standard (indigo) or pink. Kept on this device only (docs/UX_SPEC.md §2.1). Setting it
+    /// also makes it the theme the design tokens resolve against (`NBTheme.current`).
+    var colorTheme: NBTheme {
+        didSet {
+            NBTheme.current = colorTheme
+            store(colorTheme.rawValue, forKey: Key.colorTheme)
+        }
+    }
+
     /// Set once first-run onboarding is finished or skipped, or found unneeded because the
     /// store already has data (docs/UX_SPEC.md §3.1).
     var onboardingComplete: Bool {
@@ -172,10 +184,12 @@ final class AppPreferences {
         nightShiftMorningMinute = Self.loadMorningMinute(defaults)
         nightShiftAlarm = defaults.bool(forKey: Key.nightShiftAlarm)
         appearance = defaults.string(forKey: Key.appearance).flatMap(Appearance.init(rawValue:)) ?? .system
+        colorTheme = defaults.string(forKey: Key.colorTheme).flatMap(NBTheme.init(rawValue:)) ?? .standard
         onboardingComplete = defaults.bool(forKey: Key.onboardingComplete)
+        NBTheme.current = colorTheme
     }
 
-    /// Back to first-launch values, except appearance. Used by "Delete all data", which also
+    /// Back to first-launch values, except appearance and the color theme. Used by "Delete all data", which also
     /// resets them on the parent's other devices.
     func resetToDefaults() {
         for key in Key.resettable { remove(forKey: key) }
@@ -343,6 +357,10 @@ final class AppPreferences {
             let name = "NewbeeUITests"
             let defaults = UserDefaults(suiteName: name) ?? .standard
             defaults.removePersistentDomain(forName: name)
+            // `-uiTestColorTheme pink`: start in that theme (review screenshots).
+            if let theme = UserDefaults.standard.string(forKey: "uiTestColorTheme") {
+                defaults.set(theme, forKey: Key.colorTheme)
+            }
             return defaults
         }
         return UserDefaults(suiteName: AppConfiguration.appGroupID) ?? .standard

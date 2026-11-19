@@ -175,6 +175,17 @@ struct PreferencesTests {
         #expect(reloaded.appearance == .light)
     }
 
+    @Test func colorThemePersistsAndSurvivesDeleteAllData() {
+        let defaults = freshDefaults()
+        let preferences = AppPreferences(defaults: defaults, locale: Locale(identifier: "en_GB"))
+        #expect(preferences.colorTheme == .standard)
+        preferences.colorTheme = .pink
+        #expect(AppPreferences(defaults: defaults).colorTheme == .pink)
+        preferences.resetToDefaults()
+        #expect(preferences.colorTheme == .pink)
+        #expect(AppPreferences(defaults: defaults).colorTheme == .pink)
+    }
+
     @Test func pumpingUnitFollowsBottlesUntilSetThenPersistsOnItsOwn() {
         let defaults = freshDefaults()
         defaults.set(VolumeUnit.fluidOunces.rawValue, forKey: AppPreferences.Key.volumeUnit)

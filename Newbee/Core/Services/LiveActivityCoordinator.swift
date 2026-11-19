@@ -28,6 +28,9 @@ final class LiveActivityCoordinator {
     /// Settings' "Count from" (the since-last-feed count runs from the last feed's start or end),
     /// read at every sync. A change in Settings re-syncs (see `NewbeeApp`).
     @ObservationIgnored var countFrom: @MainActor () -> ReminderSettings.Basis = { .end }
+    /// Settings' color theme, read at every sync: the Lock Screen card is blush in the pink
+    /// theme. A change in Settings re-syncs (see `NewbeeApp`).
+    @ObservationIgnored var theme: @MainActor () -> NBTheme = { .standard }
 
     private let client: any LiveActivityClient
     private let clock: any AppClock
@@ -83,6 +86,7 @@ final class LiveActivityCoordinator {
             dismissedAtRevision: snapshot.flatMap { dismissedRevisions[$0.id] },
             babyName: babyName(),
             countFrom: countFrom(),
+            theme: theme(),
             mode: mode,
             now: clock.now
         )

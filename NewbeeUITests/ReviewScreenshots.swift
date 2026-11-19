@@ -60,7 +60,7 @@ final class ReviewScreenshots: ScreenshotTestCase {
     /// Dynamic Island shapes (`LiveActivityReviewGallery`).
     @MainActor
     func testSinceLastFeedLiveActivity() throws {
-        for page in ["lockScreen", "island"] {
+        for page in ["lockScreen", "lockScreenPink", "island"] {
             let app = launch(["-liveActivityReview", page])
             let plus = app.descendants(matching: .any)
                 .matching(NSPredicate(format: "label == %@", "Open Newbee to start a feed")).firstMatch
@@ -69,6 +69,33 @@ final class ReviewScreenshots: ScreenshotTestCase {
             capture("since-last-feed-\(page)")
             app.terminate()
         }
+    }
+
+    /// The pink theme: Settings → Appearance with the theme and icon pickers, then each tab in
+    /// pink. The simulator's appearance (light or dark) comes from the workflow input.
+    @MainActor
+    func testPinkTheme() throws {
+        let app = launch(["-uiTestColorTheme", "pink"])
+        XCTAssertTrue(app.tabBars.buttons["Home"].waitForExistence(timeout: 15))
+        settle()
+        capture("pink-home")
+        app.tabBars.buttons["History"].tap()
+        settle()
+        capture("pink-history")
+        app.tabBars.buttons["Insights"].tap()
+        settle()
+        capture("pink-insights")
+        app.tabBars.buttons["Settings"].tap()
+        let swatch = app.buttons["settings.theme.pink"].firstMatch
+        XCTAssertTrue(swatch.waitForExistence(timeout: 10))
+        reveal(swatch, in: app)
+        settle()
+        capture("pink-settings-appearance")
+        // Back to indigo from the picker, to check the switch redraws everything.
+        app.buttons["settings.theme.standard"].firstMatch.tap()
+        settle()
+        capture("pink-settings-switched-to-indigo")
+        app.terminate()
     }
 
     /// Scrolls the list until `element` can be tapped.

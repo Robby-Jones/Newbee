@@ -441,6 +441,25 @@ struct LiveActivityPlannerTests {
         #expect(active.sinceLastFeedStart == nil)
     }
 
+    // MARK: Theme
+
+    @Test func thePinkThemeIsCarriedInTheContentAndAChangeUpdatesTheActivity() throws {
+        let completed = completedSpecExample()
+        let counting = record("a", state: State(snapshot: completed))
+        // Standard is the default and leaves content as it was.
+        #expect(planner.plan(for: completed, existing: [counting], activitiesEnabled: true, theme: .standard, now: now).isEmpty)
+        let pink = try #require(idle(planner.plan(
+            for: completed, existing: [counting], activitiesEnabled: true, theme: .pink, now: now
+        )))
+        #expect(pink.theme == .pink)
+        // A running feed carries it too.
+        let running = activeOnRight()
+        let active = try #require(idle(planner.plan(
+            for: running, existing: [record("a", state: State(snapshot: running))], activitiesEnabled: true, theme: .pink, now: now
+        )))
+        #expect(active.theme == .pink)
+    }
+
     @Test func countFromStartUsesABottlesStart() throws {
         let shown = record("a", state: State(snapshot: completedSpecExample()))
         let state = try #require(idle(planner.plan(

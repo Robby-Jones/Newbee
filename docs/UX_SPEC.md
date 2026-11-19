@@ -77,6 +77,17 @@ Side, feed and pump colors are soft pastels for fills, chart marks and borders; 
 
 Side and feed colors are always paired with a letter or icon.
 
+### 2.1 Color themes
+Settings → Appearance has a **Color** picker (Indigo, Pink) and an **App icon** picker (blue bee, pink bee). Both are kept on this phone only: they are not synced to the parent's other devices or to a partner, and "Delete all data" keeps them. The theme (`NBTheme`) changes only the canvas, the card and the accent. Side, bottle and pump colors and their inks stay the same in every theme, so feed types read the same way.
+
+| Token | Indigo light | Indigo dark | Pink light | Pink dark |
+|---|---|---|---|---|
+| `bg.canvas` | `#FAF8F5` | `#0F0F12` | blush `#FDF4F7` | `#130E11` |
+| `bg.card` | `#FFFFFF` | `#1B1B20` | `#FFFFFF` | `#211A1E` |
+| `accent` | `#5054C2` | `#8E91F0` | deep rose `#A8336A` (5.8:1 on canvas) | soft rose `#E97DAE` (7:1 on canvas) |
+
+The Lock Screen Live Activity follows the theme too: black in Indigo, a soft blush card (`#FBE1EA`, dark plum text) in Pink (`ActivityPalette.blush`). The Dynamic Island stays black. The pink app icon is the same bee with the sky-blue background changed to pink (`AppIcon-Pink`).
+
 ### Typography
 - SF Pro **Rounded** for numerals and headings; SF Pro for body.
 - Timer: `.system(size: 64, weight: .semibold, design: .rounded).monospacedDigit()`, scales with Dynamic Type via `@ScaledMetric`.

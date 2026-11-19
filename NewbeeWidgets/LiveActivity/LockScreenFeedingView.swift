@@ -25,7 +25,8 @@ import WidgetKit
 ///    Millie         (🍼) 1 oz
 /// ```
 ///
-/// Always dark: a black card (`ActivityPalette`), whatever the phone's or the app's appearance.
+/// A black card, or blush in the pink theme (`ActivityPalette.lockScreen`), whatever the phone's
+/// or the app's appearance.
 struct LockScreenFeedingView: View {
     let attributes: FeedingActivityAttributes
     let state: FeedingState

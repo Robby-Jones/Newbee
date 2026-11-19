@@ -100,6 +100,7 @@ public struct LiveActivityPlanner: Sendable {
     ///   - babyName: Shown in the activity's header; `""` for a generic title.
     ///   - countFrom: Settings' "Count from": the since-last-feed count runs from the last feed's
     ///     start or end (`ContentState.countFrom`).
+    ///   - theme: The app's color theme (`ContentState.theme`), so a new theme redraws the activity.
     ///   - mode: `.update` only brings what's showing up to date (and requests for a running feed
     ///     that has no activity); `.show` also starts the since-last-feed count if nothing is
     ///     showing, even after a swipe; `.refresh` replaces whatever is showing with a fresh
@@ -113,6 +114,7 @@ public struct LiveActivityPlanner: Sendable {
         dismissedAtRevision: Int? = nil,
         babyName: String = "",
         countFrom: ReminderSettings.Basis = .end,
+        theme: NBTheme = .standard,
         mode: LiveActivitySyncMode = .update,
         now: Date
     ) -> [LiveActivityAction] {
@@ -120,6 +122,8 @@ public struct LiveActivityPlanner: Sendable {
         let ended = existing.filter { $0.phase == .ended }
         // `nil` is the end, and keeps content identical to older builds'.
         let countFrom: ReminderSettings.Basis? = countFrom == .end ? nil : countFrom
+        // Likewise `nil` is the standard theme.
+        let theme: NBTheme? = theme == .standard ? nil : theme
 
         guard let snapshot, snapshot.status != .completed else {
             guard let latest = LatestFinishedFeed.of(breast: snapshot, bottle: lastBottle) else {
@@ -128,6 +132,7 @@ public struct LiveActivityPlanner: Sendable {
             }
             var state = FeedingActivityAttributes.ContentState(latest: latest, lastBreastSide: snapshot?.lastSide)
             state.countFrom = countFrom
+            state.theme = theme
             return planSinceLastFeed(
                 feedID: latest.id, state: state, staleDate: state.staleDate(after: staleAfter),
                 live: live, ended: ended, babyName: babyName, mode: activitiesEnabled ? mode : .update
@@ -136,6 +141,7 @@ public struct LiveActivityPlanner: Sendable {
 
         var state = FeedingActivityAttributes.ContentState(snapshot: snapshot)
         state.countFrom = countFrom
+        state.theme = theme
         let staleDate = state.staleDate(after: staleAfter)
         let mine = live.filter { $0.sessionID == snapshot.id }
 

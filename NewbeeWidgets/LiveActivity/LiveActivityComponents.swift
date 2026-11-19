@@ -25,25 +25,6 @@ extension FeedingState {
     var suggestedNextSide: Side { currentSide.opposite }
 }
 
-/// Text and control colors for the Live Activity while a feed is open.
-///
-/// The activity is always dark (black card), so these are fixed dark-mode values, never the
-/// system's `.primary` / `.secondary`: on the Lock Screen those were drawn for a different
-/// appearance from the activity's background, which hid the big number. Values meet WCAG AA on
-/// black. The since-last-feed view uses `ActivityPalette`.
-enum ActivityColor {
-    static let primaryText = ActivityPalette.primaryText
-    static let secondaryText = ActivityPalette.secondaryText
-
-    /// A side's color for text and icons on a dark tint of it.
-    static func sideInk(_ side: Side) -> Color {
-        side == .left ? Color(red: 0xC3 / 255, green: 0xB8 / 255, blue: 0xF5 / 255) : Color(red: 0x7F / 255, green: 0xD8 / 255, blue: 0xCD / 255)
-    }
-
-    static let accentInk = Color(red: 0xA5 / 255, green: 0xA8 / 255, blue: 0xF5 / 255)
-    static let destructiveInk = Color(red: 0xF0 / 255, green: 0xA0 / 255, blue: 0xAE / 255)
-}
-
 /// "L" / "R" in a side-colored circle. Color is never the only signal.
 struct SideBadge: View {
     let side: Side
@@ -124,7 +105,9 @@ private let textOnSide = Color(light: 0x1B1B20, dark: 0x0F0F12)
 struct ActivityStatusLabel: View {
     let state: FeedingState
     let isStale: Bool
-    var textColor: Color = ActivityColor.secondaryText
+    /// `nil` uses the palette's secondary text color.
+    var textColor: Color?
+    @Environment(\.activityPalette) private var palette
 
     var body: some View {
         HStack(spacing: NBSpacing.xs) {
@@ -135,10 +118,12 @@ struct ActivityStatusLabel: View {
                 .foregroundStyle(symbolColor)
         }
         .font(.subheadline.weight(.medium))
-        .foregroundStyle(textColor)
+        .foregroundStyle(resolvedTextColor)
         .accessibilityElement(children: .ignore)
         .accessibilityLabel(state.statusLine(isStale: isStale))
     }
+
+    private var resolvedTextColor: Color { textColor ?? palette.secondaryText }
 
     private var showsStale: Bool { isStale && state.status != .ended }
 
@@ -161,7 +146,7 @@ struct ActivityStatusLabel: View {
     }
 
     private var symbolColor: Color {
-        state.status == .active && !showsStale ? NBColor.side(state.currentSide) : textColor
+        state.status == .active && !showsStale ? NBColor.side(state.currentSide) : resolvedTextColor
     }
 }
 
@@ -174,6 +159,7 @@ struct SidePill: View {
     let sessionID: UUID
     let state: FeedingState
     let side: Side
+    @Environment(\.activityPalette) private var palette
 
     var body: some View {
         Button(intent: SwitchFeedingSideIntent(sessionID: sessionID, side: side)) {
@@ -197,7 +183,7 @@ struct SidePill: View {
                 // Timer text otherwise claims all available width.
                 .frame(maxWidth: 72)
         }
-        .foregroundStyle(running ? textOnSide : ActivityColor.sideInk(side))
+        .foregroundStyle(running ? textOnSide : palette.sideInk(side))
         .padding(.horizontal, NBSpacing.m)
         .frame(maxWidth: .infinity, minHeight: 44)
         .background(Capsule().fill(running ? tint : tint.opacity(pausedHere ? 0.3 : 0.16)))
@@ -237,17 +223,18 @@ struct ActivityCircleLabel: View {
 struct PauseResumeButton: View {
     let sessionID: UUID
     let state: FeedingState
+    @Environment(\.activityPalette) private var palette
 
     var body: some View {
         if state.status == .paused {
             Button(intent: ResumeFeedingIntent(sessionID: sessionID)) {
-                ActivityCircleLabel(systemImage: "play.fill", tint: ActivityColor.sideInk(state.currentSide))
+                ActivityCircleLabel(systemImage: "play.fill", tint: palette.sideInk(state.currentSide))
             }
             .buttonStyle(.plain)
             .accessibilityLabel("Resume on \(state.currentSide.displayName.lowercased())")
         } else {
             Button(intent: PauseFeedingIntent(sessionID: sessionID)) {
-                ActivityCircleLabel(systemImage: "pause.fill", tint: ActivityColor.accentInk)
+                ActivityCircleLabel(systemImage: "pause.fill", tint: palette.accentInk)
             }
             .buttonStyle(.plain)
             .accessibilityLabel("Pause feeding")
@@ -259,10 +246,11 @@ struct PauseResumeButton: View {
 /// so it isn't hit by accident.
 struct EndButton: View {
     let sessionID: UUID
+    @Environment(\.activityPalette) private var palette
 
     var body: some View {
         Button(intent: EndFeedingIntent(sessionID: sessionID)) {
-            ActivityCircleLabel(systemImage: "stop.fill", tint: ActivityColor.destructiveInk)
+            ActivityCircleLabel(systemImage: "stop.fill", tint: palette.destructiveInk)
         }
         .buttonStyle(.plain)
         .accessibilityLabel("End feeding")
@@ -298,16 +286,14 @@ struct ActivitySidesAndControls: View {
 /// Sizes and text colors for the shared layouts below, so the Lock Screen and the expanded
 /// Dynamic Island draw the same content at their own scale.
 struct ActivityLayoutStyle {
-    var primaryText: Color
-    var secondaryText: Color
+    /// `nil` uses the palette's colors (`\.activityPalette`).
+    var primaryText: Color?
+    var secondaryText: Color?
     /// The feeding total while a feed is open.
     var totalSize: CGFloat
 
-    static let lockScreen = ActivityLayoutStyle(
-        primaryText: ActivityColor.primaryText,
-        secondaryText: ActivityColor.secondaryText,
-        totalSize: 30
-    )
+    /// Text in the Lock Screen card's palette: black or blush, per the theme.
+    static let lockScreen = ActivityLayoutStyle(primaryText: nil, secondaryText: nil, totalSize: 30)
 
     /// The island is always black, so its text is fixed white / gray (`IslandColor`).
     static let island = ActivityLayoutStyle(
@@ -334,17 +320,20 @@ struct ActivityFeedingContent: View {
     let state: FeedingState
     let isStale: Bool
     let style: ActivityLayoutStyle
+    @Environment(\.activityPalette) private var palette
 
     var body: some View {
+        let primaryText = style.primaryText ?? palette.primaryText
+        let secondaryText = style.secondaryText ?? palette.secondaryText
         VStack(spacing: NBSpacing.m) {
             HStack(alignment: .firstTextBaseline, spacing: NBSpacing.s) {
                 TotalTimerText(state: state)
                     .font(NBFont.timer(size: style.totalSize))
-                    .foregroundStyle(state.status == .paused ? style.secondaryText : style.primaryText)
+                    .foregroundStyle(state.status == .paused ? secondaryText : primaryText)
                     .multilineTextAlignment(.leading)
                     .frame(maxWidth: ActivityLayoutStyle.timerWidth(size: style.totalSize), alignment: .leading)
                 Spacer(minLength: NBSpacing.s)
-                ActivityStatusLabel(state: state, isStale: isStale, textColor: style.secondaryText)
+                ActivityStatusLabel(state: state, isStale: isStale, textColor: secondaryText)
                     .layoutPriority(1)
             }
             ActivitySidesAndControls(attributes: attributes, state: state)

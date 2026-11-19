@@ -88,6 +88,10 @@ struct NewbeeApp: App {
                 .onChange(of: dependencies.preferences.reminders.basis) {
                     Task { await dependencies.sessionManager.reload() }
                 }
+                // Re-draws the Lock Screen Live Activity in the newly chosen color theme.
+                .onChange(of: dependencies.preferences.colorTheme) {
+                    Task { await dependencies.sessionManager.reload() }
+                }
                 // Feeds from another device can change today's bottle and pumping totals.
                 .onChange(of: dependencies.cloudSync.importCount) {
                     bottleModel.refresh()
