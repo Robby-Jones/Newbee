@@ -143,6 +143,13 @@ struct DashboardSummaryTests {
         #expect(summary.suggestedNextSide == .left) // b ended on the right
     }
 
+    @Test func suggestionFollowsTheStartingSideSettingPastABottle() {
+        let b = breast(at(6), left: 600, right: 600) // left first, then right
+        let summary = DashboardSummary(entries: [b, bottle(at(8), ml: 120)], now: at(9), calendar: utc)
+        #expect(summary.suggestedNextSide(StartingSideSuggestion(mode: .alternate, switchFrom: .started)) == .right)
+        #expect(summary.suggestedNextSide(StartingSideSuggestion(mode: .alwaysLeft)) == .left)
+    }
+
     @Test func suggestsOppositeOfTheSideTheLastBreastfeedEndedOn() {
         let leftOnly = breast(at(6), left: 600, right: 0)
         #expect(DashboardSummary(entries: [leftOnly], now: at(7), calendar: utc).suggestedNextSide == .right)

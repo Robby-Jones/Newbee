@@ -16,6 +16,8 @@ final class ReviewScreenshots: ScreenshotTestCase {
             capture("sharing-\(state)")
 
             if state == "shared" || state == "joined" {
+                // Delete all is on the Your data page.
+                app.openYourData()
                 let deleteAll = app.buttons["settings.deleteAll"].firstMatch
                 reveal(deleteAll, in: app)
                 deleteAll.tap()
@@ -102,6 +104,107 @@ final class ReviewScreenshots: ScreenshotTestCase {
         swatch.tap()
         settle()
         capture("pink-settings-switched-to-indigo")
+        app.terminate()
+    }
+
+    /// Settings with help text behind (i) buttons in the section headers, and two of the popovers.
+    @MainActor
+    func testSettingsInfoButtons() throws {
+        let app = launch(["-sharingPreview", "shared"])
+        app.tabBars.buttons["Settings"].tap()
+        let sharingInfo = app.buttons["settings.info.sharing"].firstMatch
+        XCTAssertTrue(sharingInfo.waitForExistence(timeout: 10))
+        settle()
+        capture("settings-info-top")
+
+        sharingInfo.tap()
+        XCTAssertTrue(app.staticTexts["settings.infoText"].firstMatch.waitForExistence(timeout: 5))
+        settle()
+        capture("settings-info-sharing-popover")
+        // A tap outside the popover (on the title) closes it.
+        app.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.08)).tap()
+        settle()
+
+        let notificationsInfo = app.buttons["settings.info.notifications"].firstMatch
+        reveal(notificationsInfo, in: app)
+        settle()
+        capture("settings-info-middle")
+        notificationsInfo.tap()
+        XCTAssertTrue(app.staticTexts["settings.infoText"].firstMatch.waitForExistence(timeout: 5))
+        settle()
+        capture("settings-info-notifications-popover")
+        app.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.08)).tap()
+        settle()
+
+        // Your data and About open as their own pages.
+        let bottomRows = app.buttons["settings.about"].firstMatch
+        reveal(bottomRows, in: app)
+        app.swipeUp()
+        settle()
+        capture("settings-info-bottom")
+        app.openYourData()
+        settle()
+        capture("settings-your-data")
+        app.navigationBars.buttons.firstMatch.tap()
+        let about = app.buttons["settings.about"].firstMatch
+        XCTAssertTrue(about.waitForExistence(timeout: 5))
+        about.tap()
+        XCTAssertTrue(app.navigationBars["About"].waitForExistence(timeout: 5))
+        settle()
+        capture("settings-about")
+        app.terminate()
+    }
+
+    /// Settings → Breastfeeding: "Suggested starting side" with its "Switch from" choice, the
+    /// picker's options, and the section once a fixed side hides "Switch from".
+    @MainActor
+    func testStartingSideSetting() throws {
+        let app = launch()
+        app.tabBars.buttons["Settings"].tap()
+        let picker = app.descendants(matching: .any)["settings.startingSide"].firstMatch
+        let switchFrom = app.descendants(matching: .any)["settings.switchFrom"].firstMatch
+        XCTAssertTrue(picker.waitForExistence(timeout: 10))
+        reveal(switchFrom, in: app)
+        settle()
+        capture("starting-side-alternate")
+
+        switchFrom.tap()
+        XCTAssertTrue(app.buttons["Side you started on"].firstMatch.waitForExistence(timeout: 5))
+        settle()
+        capture("starting-side-switch-from-menu")
+        app.buttons["Side you started on"].firstMatch.tap()
+        settle()
+
+        // Room above the header so the popover isn't cut off by the navigation bar.
+        app.swipeDown()
+        settle()
+        app.buttons["settings.info.breastfeeding"].firstMatch.tap()
+        XCTAssertTrue(app.staticTexts["settings.infoText"].firstMatch.waitForExistence(timeout: 5))
+        settle()
+        capture("starting-side-info")
+        // A tap in the left margin, well below the popover, closes it.
+        app.coordinate(withNormalizedOffset: CGVector(dx: 0.02, dy: 0.75)).tap()
+        settle()
+        reveal(picker, in: app)
+
+        picker.tap()
+        XCTAssertTrue(app.buttons["Always right"].firstMatch.waitForExistence(timeout: 5))
+        settle()
+        capture("starting-side-menu")
+        app.buttons["Always right"].firstMatch.tap()
+        settle()
+        capture("starting-side-always-right")
+
+        // Home says "Next: Right" and the timer tags Right as Suggested.
+        app.tabBars.buttons["Home"].tap()
+        let breastfeed = app.buttons["breastfeedButton"].firstMatch
+        XCTAssertTrue(breastfeed.waitForExistence(timeout: 10))
+        settle()
+        capture("starting-side-home")
+        breastfeed.tap()
+        XCTAssertTrue(app.buttons["sideButton.right"].firstMatch.waitForExistence(timeout: 10))
+        settle()
+        capture("starting-side-timer")
         app.terminate()
     }
 

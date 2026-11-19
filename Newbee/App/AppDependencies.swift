@@ -182,10 +182,14 @@ final class AppDependencies {
         (activity as? LiveActivityCoordinator)?.theme = { [preferences] in
             preferences.colorTheme
         }
+        (activity as? LiveActivityCoordinator)?.startingSide = { [preferences] in
+            preferences.startingSide
+        }
         // Bottles too: the Live Activity counts from the latest feed of either kind.
         let manager = FeedingSessionManager(
             repository: repository, clock: clock, liveActivity: activity, reminders: reminders, bottles: bottleRepository
         )
+        manager.startingSide = preferences.startingSide
         recoveryPolicy = policy
         self.liveActivity = activity
         sessionManager = manager

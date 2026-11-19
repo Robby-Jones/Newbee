@@ -36,7 +36,7 @@ NIGHT SHIFT (NEEDS TWO DEVICES, TWO APPLE ACCOUNTS)
 Night Shift appears only after a partner has joined the shared log, and its card on Home is offered between 6:00 PM and the morning time (7:00 AM by default).
 1. Share the log between two iPhones as described above.
 2. After 6:00 PM, on phone A, tap "I'm on duty tonight" on Home.
-3. Phone A shows "You're on duty". Phone B shows "Your partner is on duty" with Take over. Feeding reminders (Settings > Reminders) now ring only on phone A.
+3. Phone A shows "You're on duty". Phone B shows "Your partner is on duty" with Take over. Feeding reminders (Settings > Notifications) now ring only on phone A.
 4. When the shift ends (End, Take over, or the morning time), phone B shows "While you slept" with the night's feeds.
 Because this needs two accounts and an evening clock, the attached video shows the whole flow.
 

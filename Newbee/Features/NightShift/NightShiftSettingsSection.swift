@@ -24,10 +24,13 @@ struct NightShiftSettingsSection: View {
                     .accessibilityIdentifier("settings.nightShiftAlarm")
                 }
             } header: {
-                Text("Night Shift")
+                SettingsSectionHeader(
+                    "Night Shift",
+                    info: Self.info(supportsAlarm: model.supportsAlarm),
+                    identifier: "nightShift"
+                )
             } footer: {
                 VStack(alignment: .leading, spacing: NBSpacing.xs) {
-                    Text(Self.footer(supportsAlarm: model.supportsAlarm))
                     if !model.remindersAreOn {
                         Text("Feed reminders are off, so nothing rings.")
                     }
@@ -40,7 +43,7 @@ struct NightShiftSettingsSection: View {
         }
     }
 
-    static func footer(supportsAlarm: Bool) -> String {
+    static func info(supportsAlarm: Bool) -> String {
         let about = String(localized: "Tap \u{201C}I'm on duty tonight\u{201D} on Home. Until this time, feed reminders ring only on your iPhone, and your partner gets a summary.")
         return supportsAlarm
             ? String(localized: "\(about) An alarm rings even in Silent mode.")

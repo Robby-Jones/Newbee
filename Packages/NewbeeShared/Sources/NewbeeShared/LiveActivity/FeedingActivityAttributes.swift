@@ -59,6 +59,9 @@ public struct FeedingActivityAttributes: Codable, Hashable, Sendable {
         /// The app's color theme: the Lock Screen card is blush in the pink theme. `nil` means
         /// the standard theme (and is what older builds sent).
         public var theme: NBTheme?
+        /// Settings' "Suggested starting side", while no feed is running. `nil` means the other
+        /// side from `currentSide` (the default, and what older builds sent).
+        public var suggestedSide: Side?
 
         public init(
             status: Status,
@@ -72,7 +75,8 @@ public struct FeedingActivityAttributes: Codable, Hashable, Sendable {
             sessionID: UUID? = nil,
             lastBottle: BottleAmount? = nil,
             countFrom: ReminderSettings.Basis? = nil,
-            theme: NBTheme? = nil
+            theme: NBTheme? = nil,
+            suggestedSide: Side? = nil
         ) {
             self.status = status
             self.currentSide = currentSide
@@ -86,6 +90,12 @@ public struct FeedingActivityAttributes: Codable, Hashable, Sendable {
             self.lastBottle = lastBottle
             self.countFrom = countFrom
             self.theme = theme
+            self.suggestedSide = suggestedSide
+        }
+
+        /// The side to offer for the next feed, as the app suggests it.
+        public var suggestedNextSide: Side {
+            suggestedSide ?? currentSide.opposite
         }
 
         public func accumulated(on side: Side) -> TimeInterval {

@@ -460,6 +460,38 @@ struct LiveActivityPlannerTests {
         #expect(active.theme == .pink)
     }
 
+    // MARK: Suggested starting side
+
+    @Test func suggestedStartingSideTintsTheCountAndADefaultSuggestionLeavesContentAsItWas() throws {
+        // Started on the left, ended on the right.
+        let completed = completedSpecExample()
+        let counting = record("a", state: State(snapshot: completed))
+        #expect(planner.plan(for: completed, existing: [counting], activitiesEnabled: true, now: now).isEmpty)
+        #expect(counting.state.suggestedNextSide == .left)
+
+        let fromStart = try #require(idle(planner.plan(
+            for: completed, existing: [counting], activitiesEnabled: true,
+            startingSide: StartingSideSuggestion(mode: .alternate, switchFrom: .started), now: now
+        )))
+        #expect(fromStart.suggestedSide == .right)
+        #expect(fromStart.suggestedNextSide == .right)
+
+        // "Always left" matches the default here, so nothing is sent.
+        #expect(planner.plan(
+            for: completed, existing: [counting], activitiesEnabled: true,
+            startingSide: StartingSideSuggestion(mode: .alwaysLeft), now: now
+        ).isEmpty)
+    }
+
+    @Test func suggestedStartingSideAppliesWhileCountingFromABottle() throws {
+        let shown = record("a", state: State(snapshot: completedSpecExample()))
+        let state = try #require(idle(planner.plan(
+            for: completedSpecExample(), lastBottle: bottle(at: 60), existing: [shown], activitiesEnabled: true,
+            startingSide: StartingSideSuggestion(mode: .alwaysRight), now: now
+        )))
+        #expect(state.suggestedNextSide == .right)
+    }
+
     @Test func countFromStartUsesABottlesStart() throws {
         let shown = record("a", state: State(snapshot: completedSpecExample()))
         let state = try #require(idle(planner.plan(
