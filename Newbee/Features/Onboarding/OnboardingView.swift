@@ -210,7 +210,7 @@ private struct FeedButtonsIllustration: View {
         HStack(spacing: NBSpacing.m) {
             bubble(fill: NBColor.left) { Text("L").font(.title.weight(.bold)) }
             bubble(fill: NBColor.right, size: 96) { Text("R").font(.largeTitle.weight(.bold)) }
-            bubble(fill: NBColor.bottleBreastMilk) { Image(systemName: "waterbottle.fill").font(.title) }
+            bubble(fill: NBColor.bottleBreastMilk) { FeedIcon(.bottle, size: 32, relativeTo: .title) }
         }
         .foregroundStyle(NBColor.onSide)
         .accessibilityHidden(true)

@@ -132,9 +132,8 @@ struct PumpRow: View {
 
             VStack(alignment: .leading, spacing: NBSpacing.xs) {
                 HStack(spacing: NBSpacing.s) {
-                    Image(systemName: PumpText.symbolName)
+                    FeedIcon(.pumping, size: 20)
                         .foregroundStyle(NBColor.pumpInk)
-                        .accessibilityHidden(true)
                     Text(PumpText.title(entry, unit: unit))
                         .font(.body.weight(.semibold))
                 }
@@ -166,8 +165,6 @@ struct PumpRow: View {
 }
 
 extension PumpText {
-    /// SF Symbol for pumping.
-    static let symbolName = "drop.halffull"
 }
 
 // MARK: - Previews

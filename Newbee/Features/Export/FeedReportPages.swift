@@ -148,7 +148,7 @@ struct SummaryPage: View {
 
     private var breastCard: some View {
         let breast = report.breast
-        return ReportCard(title: String(localized: "Breastfeeding"), symbol: "heart.fill", tint: NBColor.leftInk) {
+        return ReportCard(title: String(localized: "Breastfeeding"), glyph: .breastfeed, tint: NBColor.leftInk) {
             FactRow(label: String(localized: "Feeds"), value: "\(breast.count)")
             FactRow(label: String(localized: "Total time"), value: DurationText.short(breast.total))
             FactRow(label: String(localized: "Per day"), value: DurationText.short(report.breastDurationPerDay))
@@ -172,7 +172,7 @@ struct SummaryPage: View {
 
     private var bottleCard: some View {
         let bottle = report.bottle
-        return ReportCard(title: String(localized: "Bottles"), symbol: "waterbottle.fill", tint: NBColor.bottleBreastMilkInk) {
+        return ReportCard(title: String(localized: "Bottles"), glyph: .bottle, tint: NBColor.bottleBreastMilkInk) {
             FactRow(label: String(localized: "Bottles"), value: "\(bottle.count)")
             FactRow(label: String(localized: "Total"), value: ReportText.volume(bottle.totalML, unit: unit))
             FactRow(label: String(localized: "Average bottle"), value: bottle.averageML.map { ReportText.volume($0, unit: unit) } ?? "–")
@@ -186,7 +186,7 @@ struct SummaryPage: View {
 
     private var pumpCard: some View {
         let pump = report.pump
-        return ReportCard(title: String(localized: "Pumping"), symbol: "drop.fill", tint: NBColor.pumpInk) {
+        return ReportCard(title: String(localized: "Pumping"), glyph: .pumping, tint: NBColor.pumpInk) {
             FactRow(label: String(localized: "Sessions"), value: "\(pump.count)")
             FactRow(label: String(localized: "Total"), value: ReportText.volume(pump.totalML, unit: header.pumpVolumeUnit))
             FactRow(label: String(localized: "Per day"), value: ReportText.volume(report.pumpMLPerDay, unit: header.pumpVolumeUnit))
@@ -289,15 +289,15 @@ private struct StatTile: View {
 
 private struct ReportCard<Content: View>: View {
     let title: String
-    var symbol: String?
+    var glyph: FeedGlyph?
     var tint: Color = NBColor.accent
     @ViewBuilder let content: Content
 
     var body: some View {
         VStack(alignment: .leading, spacing: 6) {
             HStack(spacing: 5) {
-                if let symbol {
-                    Image(systemName: symbol).font(.system(size: 10)).foregroundStyle(tint)
+                if let glyph {
+                    FeedIcon(glyph, fixedSize: 12).foregroundStyle(tint)
                 }
                 Text(title).font(ReportFont.heading)
             }

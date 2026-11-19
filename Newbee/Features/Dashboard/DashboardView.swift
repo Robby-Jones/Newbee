@@ -259,7 +259,7 @@ private struct QuickActions: View {
         let side = active?.openSegment?.side ?? .left
         return QuickActionCircle(
             title: String(localized: "Breastfeed"),
-            systemImage: active == nil ? "heart.fill" : "timer",
+            icon: active == nil ? .feed(.breastfeed) : .system("timer"),
             tint: NBColor.side(side),
             ink: NBColor.sideInk(side),
             filled: running,
@@ -281,7 +281,7 @@ private struct QuickActions: View {
             ?? String(localized: "Not yet")
         return QuickActionCircle(
             title: String(localized: "Bottle"),
-            systemImage: "waterbottle.fill",
+            icon: .feed(.bottle),
             tint: NBColor.bottleBreastMilk,
             ink: NBColor.bottleBreastMilkInk,
             filled: false,
@@ -300,7 +300,7 @@ private struct QuickActions: View {
             ?? String(localized: "Not yet")
         return QuickActionCircle(
             title: String(localized: "Pumping"),
-            systemImage: PumpText.symbolName,
+            icon: .feed(.pumping),
             tint: NBColor.pump,
             ink: NBColor.pumpInk,
             filled: false,
@@ -314,10 +314,16 @@ private struct QuickActions: View {
     }
 }
 
+/// An SF Symbol (the running timer, stats) or one of Newbee's own feed icons.
+private enum DashboardIcon {
+    case system(String)
+    case feed(FeedGlyph)
+}
+
 /// A big round action with a caption underneath ("2 h ago").
 private struct QuickActionCircle: View {
     let title: String
-    let systemImage: String
+    let icon: DashboardIcon
     /// Fill and outline color.
     let tint: Color
     /// Icon color on the card (a darker `tint` in light mode, for contrast).
@@ -333,9 +339,15 @@ private struct QuickActionCircle: View {
         Button(action: action) {
             VStack(spacing: NBSpacing.s) {
                 VStack(spacing: NBSpacing.xs) {
-                    Image(systemName: systemImage)
-                        .font(.title2.weight(.semibold))
-                        .foregroundStyle(filled ? NBColor.onSide : ink)
+                    Group {
+                        switch icon {
+                        case .system(let name):
+                            Image(systemName: name).font(.title2.weight(.semibold))
+                        case .feed(let glyph):
+                            FeedIcon(glyph, size: 30, relativeTo: .title2)
+                        }
+                    }
+                    .foregroundStyle(filled ? NBColor.onSide : ink)
                     Text(title)
                         .font(.subheadline.weight(.semibold))
                         .foregroundStyle(filled ? NBColor.onSide : Color.primary)
@@ -390,10 +402,10 @@ private struct TodaySection: View {
                 .accessibilityAddTraits(.isHeader)
             Card(padding: NBSpacing.m) {
                 HStack(alignment: .top, spacing: NBSpacing.s) {
-                    stat(String(localized: "Feeds"), "drop.fill", NBColor.accent, "\(summary.today.feedCount)")
-                    stat(String(localized: "Breast"), "heart.fill", NBColor.leftInk, DurationText.short(summary.today.breastDuration))
-                    stat(String(localized: "Bottles"), "waterbottle.fill", NBColor.bottleBreastMilkInk, FeedText.volume(ml: summary.today.bottleML, unit: bottleModel?.unit ?? .milliliters))
-                    stat(String(localized: "Avg gap"), "clock.fill", NBColor.rightInk, summary.today.averageInterval.map(DurationText.short) ?? "–")
+                    stat(String(localized: "Feeds"), .system("drop.fill"), NBColor.accent, "\(summary.today.feedCount)")
+                    stat(String(localized: "Breast"), .feed(.breastfeed), NBColor.leftInk, DurationText.short(summary.today.breastDuration))
+                    stat(String(localized: "Bottles"), .feed(.bottle), NBColor.bottleBreastMilkInk, FeedText.volume(ml: summary.today.bottleML, unit: bottleModel?.unit ?? .milliliters))
+                    stat(String(localized: "Avg gap"), .system("clock.fill"), NBColor.rightInk, summary.today.averageInterval.map(DurationText.short) ?? "–")
                 }
             }
             Text(last24Line)
@@ -403,12 +415,16 @@ private struct TodaySection: View {
     }
 
     /// Tinted symbol, value, label. The tint is on the symbol only, so the text keeps full contrast.
-    private func stat(_ label: String, _ systemImage: String, _ tint: Color, _ value: String) -> some View {
+    private func stat(_ label: String, _ icon: DashboardIcon, _ tint: Color, _ value: String) -> some View {
         VStack(spacing: NBSpacing.xs) {
-            Image(systemName: systemImage)
-                .font(.subheadline)
-                .foregroundStyle(tint)
-                .accessibilityHidden(true)
+            Group {
+                switch icon {
+                case .system(let name): Image(systemName: name).font(.subheadline)
+                case .feed(let glyph): FeedIcon(glyph, size: 18, relativeTo: .subheadline)
+                }
+            }
+            .foregroundStyle(tint)
+            .accessibilityHidden(true)
             Text(value)
                 .font(.system(.headline, design: .rounded, weight: .bold))
                 .monospacedDigit()

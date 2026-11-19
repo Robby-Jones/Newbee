@@ -82,6 +82,11 @@ Side and feed colors are always paired with a letter or icon.
 - Timer: `.system(size: 64, weight: .semibold, design: .rounded).monospacedDigit()`, scales with Dynamic Type via `@ScaledMetric`.
 - Everything else uses semantic text styles (`.title2`, `.headline`, `.subheadline`, `.footnote`). No fixed sizes outside the timer.
 
+### Feed type icons
+- Breastfeed, Bottle and Pumping use Newbee's own **duotone** icons (`FeedIcon` in NewbeeShared): solid main shapes plus a lighter second tone at 45% (the baby, the empty part of a bottle), both in the feed's ink color. Parent cradling a baby / baby bottle with milk level / breast pump with bottle.
+- Use them wherever a feed type is shown: Home buttons, Today stats, History and Day rows, add-feed and filter menus (`Image(feedGlyph:)`), edit sheet header, Huckleberry import, PDF report, Lock Screen Live Activity.
+- Sources (24 × 24 SVG) and mockups: project files `feed-icons/`.
+
 ### Spacing, shape, motion
 - 4-pt grid; standard paddings 8/12/16/24.
 - Card radius 20 (continuous), 1-pt hairline border in dark mode, soft shadow `y:2 blur:8 opacity:0.06` in light mode only.
