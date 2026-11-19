@@ -86,13 +86,17 @@ final class ReviewScreenshots: ScreenshotTestCase {
         settle()
         capture("pink-insights")
         app.tabBars.buttons["Settings"].tap()
-        let swatch = app.buttons["settings.theme.pink"].firstMatch
-        XCTAssertTrue(swatch.waitForExistence(timeout: 10))
-        reveal(swatch, in: app)
+        XCTAssertTrue(app.buttons["settings.sharing"].firstMatch.waitForExistence(timeout: 10))
+        // A Form row can expose its buttons as any element type.
+        let swatch = app.descendants(matching: .any)["settings.theme.standard"].firstMatch
+        for _ in 0..<15 where !(swatch.exists && swatch.isHittable) {
+            app.swipeUp()
+        }
         settle()
         capture("pink-settings-appearance")
         // Back to indigo from the picker, to check the switch redraws everything.
-        app.buttons["settings.theme.standard"].firstMatch.tap()
+        XCTAssertTrue(swatch.isHittable)
+        swatch.tap()
         settle()
         capture("pink-settings-switched-to-indigo")
         app.terminate()
