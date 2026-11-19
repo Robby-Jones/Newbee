@@ -151,8 +151,7 @@ struct BreastFeedEditSheet: View {
         let session = candidate
         let end = session.endedAt ?? session.segments.compactMap(\.end).max() ?? session.startedAt
         return VStack(spacing: NBSpacing.s) {
-            Image(systemName: "heart.fill")
-                .font(.title)
+            FeedIcon(.breastfeed, size: 32, relativeTo: .title)
                 .foregroundStyle(NBColor.leftInk)
                 .frame(width: 64, height: 64)
                 .background(NBColor.left.opacity(0.18), in: .circle)

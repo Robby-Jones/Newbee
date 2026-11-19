@@ -255,9 +255,9 @@ private struct PreviewView: View {
                     Text("Nothing new to import. Everything in this file is already in Newbee or isn't something Newbee tracks.")
                         .accessibilityIdentifier("import.nothingNew")
                 } else {
-                    CountRow(title: "Breastfeeds", symbol: "heart.fill", tint: NBColor.leftInk, count: plan.breastCount)
-                    CountRow(title: "Bottles", symbol: "waterbottle.fill", tint: NBColor.bottleFormulaInk, count: plan.bottleCount)
-                    CountRow(title: "Pumping sessions", symbol: "drop.fill", tint: NBColor.pumpInk, count: plan.pumpCount)
+                    CountRow(title: "Breastfeeds", glyph: .breastfeed, tint: NBColor.leftInk, count: plan.breastCount)
+                    CountRow(title: "Bottles", glyph: .bottle, tint: NBColor.bottleFormulaInk, count: plan.bottleCount)
+                    CountRow(title: "Pumping sessions", glyph: .pumping, tint: NBColor.pumpInk, count: plan.pumpCount)
                 }
             } header: {
                 Text("Ready to import")
@@ -321,7 +321,7 @@ private struct PreviewView: View {
 
 private struct CountRow: View {
     let title: LocalizedStringKey
-    let symbol: String
+    let glyph: FeedGlyph
     let tint: Color
     let count: Int
 
@@ -333,7 +333,7 @@ private struct CountRow: View {
             Label {
                 Text(title)
             } icon: {
-                Image(systemName: symbol)
+                FeedIcon(glyph, size: 20)
                     .foregroundStyle(tint)
             }
         }

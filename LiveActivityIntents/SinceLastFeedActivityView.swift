@@ -260,7 +260,7 @@ struct BabyAvatarColumn: View {
 }
 
 /// The feed the count runs from, as an icon in a colored circle and an amount: a bottle and
-/// "90 mL", or a heart and each side's time, "L 12m · R 9m".
+/// "90 mL", or a breastfeeding icon and each side's time, "L 12m · R 9m".
 struct LastFeedDetail: View {
     let state: FeedingActivityAttributes.ContentState
     var size: CGFloat = 17
@@ -268,8 +268,7 @@ struct LastFeedDetail: View {
 
     var body: some View {
         HStack(spacing: 8) {
-            Image(systemName: state.lastBottle == nil ? "heart.fill" : "waterbottle.fill")
-                .font(.system(size: size * 0.75, weight: .semibold))
+            FeedIcon(state.lastBottle == nil ? .breastfeed : .bottle, fixedSize: size * 0.95)
                 .foregroundStyle(palette.onFill)
                 .frame(width: size * 1.6, height: size * 1.6)
                 .background(Circle().fill(iconFill))

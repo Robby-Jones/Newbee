@@ -75,10 +75,10 @@ extension FeedEntry {
         }
     }
 
-    var symbolName: String {
+    var glyph: FeedGlyph {
         switch details {
-        case .breast: "heart.fill"
-        case .bottle: "waterbottle.fill"
+        case .breast: .breastfeed
+        case .bottle: .bottle
         }
     }
 }
@@ -104,9 +104,8 @@ struct FeedRow: View {
 
             VStack(alignment: .leading, spacing: NBSpacing.xs) {
                 HStack(spacing: NBSpacing.s) {
-                    Image(systemName: entry.symbolName)
+                    FeedIcon(entry.glyph, size: 20)
                         .foregroundStyle(entry.ink)
-                        .accessibilityHidden(true)
                     Text(FeedText.title(entry, unit: bottleModel?.unit ?? .milliliters))
                         .font(.body.weight(.semibold))
                     if entry.needsReview {

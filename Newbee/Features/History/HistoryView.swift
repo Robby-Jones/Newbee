@@ -216,7 +216,11 @@ struct HistoryView: View {
                                 get: { filter.contains(kind) },
                                 set: { _ in filter.toggle(kind) }
                             )) {
-                                Label(Self.filterTitle(kind), systemImage: Self.filterSymbol(kind))
+                                Label {
+                                    Text(Self.filterTitle(kind))
+                                } icon: {
+                                    Image(feedGlyph: Self.filterGlyph(kind))
+                                }
                             }
                             // The last kind left can't be turned off.
                             .disabled(filter == kind)
@@ -236,13 +240,19 @@ struct HistoryView: View {
             ToolbarItem(placement: .topBarTrailing) {
                 Menu {
                     if model != nil {
-                        Button("Breastfeed", systemImage: "heart") { editing = .newBreast(endingAt: newEntryTime()) }
+                        Button { editing = .newBreast(endingAt: newEntryTime()) } label: {
+                            Label { Text("Breastfeed") } icon: { Image(feedGlyph: .breastfeed) }
+                        }
                     }
                     if let bottleModel {
-                        Button("Bottle", systemImage: "waterbottle") { bottleModel.presentNew(at: newEntryTime()) }
+                        Button { bottleModel.presentNew(at: newEntryTime()) } label: {
+                            Label { Text("Bottle") } icon: { Image(feedGlyph: .bottle) }
+                        }
                     }
                     if let pumpModel {
-                        Button("Pumping", systemImage: PumpText.symbolName) { pumpModel.presentNew(endingAt: newEntryTime()) }
+                        Button { pumpModel.presentNew(endingAt: newEntryTime()) } label: {
+                            Label { Text("Pumping") } icon: { Image(feedGlyph: .pumping) }
+                        }
                     }
                 } label: {
                     Label("Add feed", systemImage: "plus")
@@ -292,11 +302,11 @@ extension HistoryView {
         }
     }
 
-    fileprivate static func filterSymbol(_ kind: FeedFilter) -> String {
+    fileprivate static func filterGlyph(_ kind: FeedFilter) -> FeedGlyph {
         switch kind {
-        case .breast: "heart"
-        case .bottle: "waterbottle"
-        default: PumpText.symbolName
+        case .breast: .breastfeed
+        case .bottle: .bottle
+        default: .pumping
         }
     }
 }

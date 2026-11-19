@@ -894,7 +894,11 @@ private struct PumpTotalLine: View {
 
     var body: some View {
         HStack {
-            Label("Pumping", systemImage: PumpText.symbolName)
+            Label {
+                Text("Pumping")
+            } icon: {
+                FeedIcon(.pumping, size: 20)
+            }
                 .foregroundStyle(NBColor.pumpInk)
             Spacer()
             Text(summary.count == 1 ? String(localized: "1 session") : String(localized: "\(summary.count) sessions"))

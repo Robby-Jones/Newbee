@@ -81,7 +81,7 @@ side pills and controls are one shared view (`ActivitySidesAndControls`). Minima
   ```
   The baby's photo (or a rose circle with the name's initial; the bee alone with no name) with a
   tiny bee on its corner and the name underneath; a live relative line, the bold "Last fed" time
-  and the feed (a bottle and its amount, or a heart in the side's color and "L 12m · R 9m"); one
+  and the feed (a bottle and its amount, or the breastfeeding icon in the side's color and "L 12m · R 9m"); one
   round indigo **+** on the right that opens the app on Home (`Link` to `NewbeeLink.home`,
   `newbee://home`; the whole activity has the same `widgetURL`). `SinceLastFeedActivityContent`
   lives in `LiveActivityIntents/` so the app can draw it for review screenshots

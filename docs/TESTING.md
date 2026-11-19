@@ -62,7 +62,7 @@ Run each case on an **iPhone 14 Pro or later** (Dynamic Island). Where marked �
 | D5g | After D5: swipe the activity away, open the app (it stays away), then log a bottle with the current time | The count comes back, counting from the bottle. Swipe again and add a past breastfeed later than the bottle: it comes back. Swipe again and add a feed for earlier: it stays away |
 | D5h | Swipe the activity away (or during a feed), then Settings → Live Activities → Refresh Live Activity | A checkmark shows and the activity is back, showing the running feed or the count; only one activity |
 | D5i | Long-press the island during a feed and after D5, before and after the count passes an hour | Expanded: "Since last feed", the full clock ("1:00:00", not "1:00:…") and the line about the last feed all show without "…", with the "+" on the right; during a feed, the total and "Feeding" over the side pills. Compact: the full clock, not cut off |
-| D5j | With a baby photo and name set, end a feed, then log a bottle; check with the phone in light mode and dark mode, before and after an hour | Lock Screen (always black): the photo with a tiny bee, the name under it, "N min, N sec ago" ticking (then "1 hr, N min ago"), "Last fed: <time>", a heart and "L 12m · R 9m" (bottle and amount after the bottle), and an indigo "+" that opens Home. Nothing cut off. Remove the photo, Refresh Live Activity: the initial in a rose circle |
+| D5j | With a baby photo and name set, end a feed, then log a bottle; check with the phone in light mode and dark mode, before and after an hour | Lock Screen (always black): the photo with a tiny bee, the name under it, "N min, N sec ago" ticking (then "1 hr, N min ago"), "Last fed: <time>", the breastfeeding icon and "L 12m · R 9m" (bottle and amount after the bottle), and an indigo "+" that opens Home. Nothing cut off. Remove the photo, Refresh Live Activity: the initial in a rose circle |
 | D6 | Double-tap End | One completed session, no errors |
 | D7 | Background app, open 3 other apps, return | Timer accurate |
 | D8 | Force-quit during active feed | Record what iOS does with the activity; reopening restores the session; activity reconciled |
@@ -89,6 +89,7 @@ Run each case on an **iPhone 14 Pro or later** (Dynamic Island). Where marked �
 | D28 | Ring as alarm on (iOS 26), phone on Silent | The reminder rings as an alarm with a Stop button |
 | D29 | Tap Take over on the other phone, then End | Both phones follow each change; after End both are back to normal reminders |
 | D30 | Let a shift run to its morning time | The parent who slept gets "While you slept" and sees the card on Home until they close it; the parent on duty sees neither |
+| D31 | Look at Home, History (filter and + menus), a Day in Calendar, the edit sheet and the Lock Screen after a feed, in light and dark mode | Breastfeed, Bottle and Pumping show the new two-tone icons (parent with baby, bottle, pump), crisp and in each feed's color; menus show them too |
 
 ## 6. CI
 
