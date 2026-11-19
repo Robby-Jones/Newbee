@@ -246,16 +246,18 @@ today and week totals on Home and in Insights, gaps between feeds in History, ma
 History's **+**, and export in Settings.
 
 ### 3.10 Settings
-Baby profile · iCloud (**Sync with iCloud** switch, off on a fresh install; sync status once on) · Sharing (one row, see below) · Night Shift (shift end time, Ring as alarm on iOS 26; shared logs only) · Bottle and pumping (a unit for each, shown everywhere including past entries, and each one's presets in a dropdown) · Reminders (enable, interval, basis start/end, quiet hours, "still feeding?" threshold) · Live Activities status + dismissal policy · Interval definition · Appearance (system/light/dark) · Data (export, how backup works, **Import from Huckleberry**, **Remove imported data** (shown only when something was imported; simple alert), **Delete all data** with typed confirmation) · About / privacy / disclaimer.
+Baby profile · iCloud (**Sync with iCloud** switch, off on a fresh install; sync status once on) · Sharing (one row, see below) · Night Shift (shift end time, Ring as alarm on iOS 26; shared logs only) · Bottle and pumping (a unit for each, shown everywhere including past entries, and each one's presets in a dropdown) · Notifications (feeding reminder: enable, interval, basis start/end, quiet hours, "still feeding?" threshold) · Live Activities status + dismissal policy · Interval definition · Appearance (system/light/dark) · **Your data** row, opening its own page like iOS Settings (export, how backup works, **Import from Huckleberry**, **Remove imported data** (shown only when something was imported; simple alert), **Delete all data** with typed confirmation) · **About** row, opening its own page (version, privacy, disclaimer, links).
 
-**Sharing.** One row under the iCloud section, hidden when this iPhone has no iCloud account. With iCloud sync off it still shows: tapping it asks "Turn on iCloud sync?" and then opens the sharing sheet, and its footer says sharing turns on iCloud sync. It always opens Apple's own sharing sheet, which does the inviting, shows who is on the log, and stops sharing or leaves. Newbee adds no screens of its own.
+**Help text.** What a section does sits behind a subtle (i) after its header title, shown in a small popover when tapped (`SettingsSectionHeader`), so the list stays short. Footers are kept only for live status and warnings: the baby's age, the next reminder, why iCloud isn't syncing, a pending invitation, "Feed reminders are off, so nothing rings" and similar.
 
-| State | Row | Footer |
-|---|---|---|
-| Not shared | Share with your partner | Your partner sees and logs feeds on their own iPhone. They need Newbee and iCloud. |
-| Invited | Partner · Invited | Waiting for your partner to open the invitation. Tap to send it again or cancel it. |
-| Sharing (owner) | Partner · Sharing | You both see the same feeds and can add or change them. Tap to manage or stop sharing. |
-| Sharing (invited parent) | Partner · Sharing | Same first sentence. Tap to leave. |
+**Sharing.** One row under the iCloud section, hidden when this iPhone has no iCloud account. With iCloud sync off it still shows: tapping it asks "Turn on iCloud sync?" and then opens the sharing sheet, and its (i) text says sharing turns on iCloud sync. It always opens Apple's own sharing sheet, which does the inviting, shows who is on the log, and stops sharing or leaves. Newbee adds no screens of its own.
+
+| State | Row | (i) text | Footer |
+|---|---|---|---|
+| Not shared | Share with your partner | Your partner sees and logs feeds on their own iPhone. They need Newbee and iCloud. | none |
+| Invited | Partner · Invited | Same as Not shared. | Waiting for your partner to open the invitation. Tap to send it again or cancel it. |
+| Sharing (owner) | Partner · Sharing | You both see the same feeds and can add or change them. Tap to manage or stop sharing. | none |
+| Sharing (invited parent) | Partner · Sharing | Same first sentence. Tap to leave. | none |
 
 Three alerts, shown on whatever screen the parent is on: "You're sharing feeds" after accepting an invitation, "Sharing has ended" when the other parent stops or this one leaves (every feed so far stays on the phone), and "Sharing didn't work" with the reason.
 

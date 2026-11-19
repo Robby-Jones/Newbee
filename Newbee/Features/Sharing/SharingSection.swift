@@ -74,9 +74,15 @@ struct SharingSectionContent: View {
             .disabled(isWorking)
             .accessibilityIdentifier("settings.sharing")
         } header: {
-            Text("Sharing")
+            SettingsSectionHeader(
+                "Sharing",
+                info: needsSync ? Self.needsSyncInfo : Self.info(for: status),
+                identifier: "sharing"
+            )
         } footer: {
-            Text(needsSync ? Self.needsSyncFooter : Self.footer(for: status))
+            if status == .invited {
+                Text(Self.invitedFooter)
+            }
         }
     }
 
@@ -95,14 +101,16 @@ struct SharingSectionContent: View {
         }
     }
 
-    static let needsSyncFooter = String(localized: "Your partner sees and logs feeds on their own iPhone. Sharing turns on iCloud sync.")
+    static let needsSyncInfo = String(localized: "Your partner sees and logs feeds on their own iPhone. Sharing turns on iCloud sync.")
 
-    static func footer(for status: CloudSharing.Status) -> String {
+    /// Live status while an invitation is out, so it stays visible under the row.
+    static let invitedFooter = String(localized: "Waiting for your partner to open the invitation. Tap to send it again or cancel it.")
+
+    /// What sharing does, behind the header's info button.
+    static func info(for status: CloudSharing.Status) -> String {
         switch status {
-        case .notShared:
+        case .notShared, .invited:
             String(localized: "Your partner sees and logs feeds on their own iPhone. They need Newbee and iCloud.")
-        case .invited:
-            String(localized: "Waiting for your partner to open the invitation. Tap to send it again or cancel it.")
         case .shared:
             String(localized: "You both see the same feeds and can add or change them. Tap to manage or stop sharing.")
         case .joined:
