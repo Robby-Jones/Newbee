@@ -48,7 +48,7 @@ public struct NightShift: SyncPayload, Hashable {
 
     // MARK: - Changes
 
-    /// "Start your night shift": a new shift from now until the next `schedule.morningMinute`.
+    /// "Start on-call": a new shift from now until the next `schedule.morningMinute`.
     public static func starting(for me: String, at now: Date, schedule: NightShiftSchedule, calendar: Calendar = .current) -> NightShift {
         NightShift(onDuty: me, startedAt: now, endsAt: schedule.morning(after: now, calendar: calendar), changedAt: now)
     }
@@ -77,22 +77,28 @@ public enum NightDuty: Sendable, Hashable {
     case offDuty(until: Date)
 }
 
-/// When nights start and end for Night Shift.
+/// When on-call shifts start and end (shown as "On-Call Shift" in the app).
 public struct NightShiftSchedule: Codable, Sendable, Hashable {
+    /// Minutes after local midnight from when Home offers "Start on-call". 6:00 PM unless changed
+    /// in Settings.
+    public var eveningMinute: Int
     /// Minutes after local midnight when a shift ends by itself. 7:00 AM unless changed in Settings.
     public var morningMinute: Int
 
-    public init(morningMinute: Int = NightShiftSchedule.defaultMorningMinute) {
+    public init(
+        eveningMinute: Int = NightShiftSchedule.defaultEveningMinute,
+        morningMinute: Int = NightShiftSchedule.defaultMorningMinute
+    ) {
+        self.eveningMinute = min(max(eveningMinute, 0), 1439)
         self.morningMinute = min(max(morningMinute, 0), 1439)
     }
 
     public static let defaultMorningMinute = 7 * 60
-    /// "Start your night shift" is offered from 6:00 PM.
-    public static let eveningMinute = 18 * 60
+    public static let defaultEveningMinute = 18 * 60
 
-    /// The night: from 6:00 PM until the morning time.
+    /// The shift window: from the start time until the end time.
     private var night: QuietHours {
-        QuietHours(startMinute: Self.eveningMinute, endMinute: morningMinute)
+        QuietHours(startMinute: eveningMinute, endMinute: morningMinute)
     }
 
     /// Whether a shift can be started now: only in the evening and at night, so the offer isn't
@@ -111,7 +117,7 @@ public struct NightShiftSchedule: Codable, Sendable, Hashable {
 
 /// The one Night Shift card Home shows, if any. Pure, so the rules are tested on Linux.
 public enum NightShiftCard: Sendable, Hashable {
-    /// Evening, nobody on duty: "Start your night shift".
+    /// Evening, nobody on duty: "Start on-call".
     case offerStart
     /// This parent is on duty.
     case onDuty(until: Date)

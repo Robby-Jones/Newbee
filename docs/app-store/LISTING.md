@@ -25,7 +25,7 @@ the Home Screen stays "Newbee" either way (`CFBundleDisplayName`).
 
 ### Promotional text (170)
 
-> The feeding timer that lives on your Lock Screen. Share the log with your partner, and let Night Shift keep one phone quiet while the other parent is on duty.
+> The feeding timer that lives on your Lock Screen. Share the log with your partner, and let On-Call Shift keep one phone quiet while the other parent is on call.
 
 158 / 170.
 
@@ -43,8 +43,8 @@ the Home Screen stays "Newbee" either way (`CFBundleDisplayName`).
 >
 > NIGHT SHIFT, FOR TWO TIRED PARENTS
 > • Share the feeding log with your partner through iCloud. You both see and log the same feeds
-> • One tap in the evening: "Start your night shift"
-> • Feeding reminders ring only on the on-duty parent's iPhone, so the other parent can sleep
+> • One tap in the evening: "Start on-call"
+> • Feeding reminders ring only on the on-call parent's iPhone, so the other parent can sleep
 > • In the morning, the parent who slept sees "While you slept": how many feeds, and when
 >
 > EVERY KIND OF FEED
@@ -120,7 +120,7 @@ Dynamic Island and come from a real iPhone. The rest come from the **Screenshots
 1. Lock Screen with the timer running: "Your feeding timer, on the Lock Screen"
 2. Dynamic Island expanded: "Switch sides without opening the app"
 3. Lock Screen between feeds: "Always know when your baby last ate"
-4. Home with the Night Shift card: "Night Shift: one parent on duty, one asleep"
+4. Home with the On-Call Shift card: "On-Call Shift: one parent on call, one asleep"
 5. Home: "Breast, bottle and pumping in two taps"
 6. Insights: "See the pattern"
 7. History: "Every feed, ready for your pediatrician"

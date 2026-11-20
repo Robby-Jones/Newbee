@@ -62,6 +62,16 @@ struct NightShiftTests {
         #expect(schedule.offersStart(at: at(17.9), calendar: utc) == false)
     }
 
+    @Test func theStartTimeComesFromSettings() {
+        let early = NightShiftSchedule(eveningMinute: 16 * 60 + 30)
+        #expect(early.offersStart(at: at(16.5), calendar: utc))
+        #expect(early.offersStart(at: at(16.4), calendar: utc) == false)
+        let late = NightShiftSchedule(eveningMinute: 21 * 60)
+        #expect(late.offersStart(at: at(20), calendar: utc) == false)
+        #expect(late.offersStart(at: at(21), calendar: utc))
+        #expect(late.offersStart(at: at(6.9), calendar: utc))
+    }
+
     @Test func itTravelsAsOneRecord() throws {
         let night = shift().ended(at: at(29))
         #expect(night.key == SyncKey(kind: .nightShift, id: "current"))

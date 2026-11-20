@@ -12,13 +12,13 @@ The texts to paste are in [LISTING.md](LISTING.md) (product page) and
 ## A. Before you open App Store Connect
 
 - [ ] **Merge the pull request that carries this checklist.** It updates the privacy policy and
-      support page for sharing and Night Shift. Then check that both pages are live and mention
+      support page for sharing and On-Call Shift. Then check that both pages are live and mention
       sharing: <https://robby-jones.github.io/Newbee/privacy.html> and
       <https://robby-jones.github.io/Newbee/support.html>. The privacy page should say
       "Effective November 16, 2026".
 - [ ] **Wait for the new TestFlight build.** Every merge to main uploads one. The build to submit
       is the one with the **highest number** (60 or later) once it shows as ready in TestFlight.
-- [ ] **Confirm the CloudKit schema is in Production.** Sharing and Night Shift fail for everyone
+- [ ] **Confirm the CloudKit schema is in Production.** Sharing and On-Call Shift fail for everyone
       outside your family if it isn't. Actions → CloudKit schema → Run workflow on main; it
       should report nothing left to deploy. If it lists changes, deploy them in CloudKit Console →
       Deploy Schema Changes.
@@ -26,9 +26,9 @@ The texts to paste are in [LISTING.md](LISTING.md) (product page) and
   - [ ] Fresh state on one phone: Settings → iCloud shows Sync with iCloud **off**.
   - [ ] Turn sync on, Settings → Sharing → invite, accept on the other phone.
   - [ ] A feed logged on one phone appears on the other.
-  - [ ] After 6:00 PM: "Start your night shift" on one phone shows "Your partner is on duty" on the
+  - [ ] After 6:00 PM: "Start on-call" on one phone shows "Your partner is on call" on the
         other, and Take over works.
-  - [ ] A feeding reminder rings only on the on-duty phone.
+  - [ ] A feeding reminder rings only on the on-call phone.
   - [ ] Live Activity on the Lock Screen and Dynamic Island still works.
 - [ ] **The support inbox works.** Send a test email to newbee.app.help@gmail.com and confirm you
       receive it. Apple checks that the support contact is real.
@@ -93,16 +93,16 @@ editable from there. Do not create a version 1.0.1; the rejected 1.0 is the one 
 
 ## Risks to acceptance, most serious first
 
-1. **The reviewer can't see Night Shift on one phone.** It needs a partner on a second Apple
+1. **The reviewer can't see On-Call Shift on one phone.** It needs a partner on a second Apple
    Account and only appears after 6:00 PM. It is now the main argument against "spam", so if
    the reviewer can't find it, the argument fails. The two-phone video and the step-by-step notes
-   are the mitigation. A stronger fix is a way to try Night Shift alone at any hour, which is a
+   are the mitigation. A stronger fix is a way to try On-Call Shift alone at any hour, which is a
    small app change and a new build. Ask if you want it before submitting.
 2. **4.3(a) is a judgment call.** A better page and a real differentiator improve the odds a lot,
    but nobody can promise acceptance. If it comes back again, do not resubmit. File an appeal
    with the App Review Board (the rejection message has the link) and ask for a phone call.
 3. **CloudKit schema not in Production.** Sharing would fail for the reviewer. Step A covers it.
-4. **Page and build out of step.** The description promises sharing, Night Shift and optional
+4. **Page and build out of step.** The description promises sharing, On-Call Shift and optional
    iCloud sync. Submitting any build below 60 with this text is a rejection under 2.3.
 5. **Screenshots that don't match the app.** Use only the new set. The old ones show the old icon
    and screens that have since changed.

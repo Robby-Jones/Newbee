@@ -32,7 +32,7 @@ isn't synced, and Delete all data keeps it. `CloudSyncWiring` does the work.
 - **Sharing while off.** The Sharing row still shows (unless the iPhone has no iCloud account).
   Tapping it asks to turn on iCloud sync, then opens the sharing sheet.
 - **An invitation link opened while off** turns sync on: opening it is the opt-in.
-- **Night Shift** needs a partner on the log, so it is hidden while sync is off.
+- **On-Call Shift** needs a partner on the log, so it is hidden while sync is off.
 - **Delete all data while off** clears this iPhone only and says so. A later turn-on brings back
   what is still in iCloud.
 
@@ -120,7 +120,7 @@ its own:
   showing does update and end from the background.
 - **"Still feeding?" asks only on the phone the timer was started on.** A running feed that
   arrives through sync is noted in `FeedOrigins`, and `ReminderPlanner` skips it.
-- **Night Shift** (`docs/NIGHT_SHIFT.md`) syncs who is on duty as one `NightShift` record in the
+- **On-Call Shift** (`docs/NIGHT_SHIFT.md`) syncs who is on call as one `NightShift` record in the
   same zone.
 - **If sharing stops**, because the first parent stops it or the second leaves (both from the
   same Sharing row), the second parent keeps a copy of every feed so far. Their phone goes back

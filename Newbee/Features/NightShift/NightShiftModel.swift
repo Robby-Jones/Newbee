@@ -68,7 +68,10 @@ final class NightShiftModel {
     }
 
     var schedule: NightShiftSchedule {
-        NightShiftSchedule(morningMinute: preferences.nightShiftMorningMinute)
+        NightShiftSchedule(
+            eveningMinute: preferences.nightShiftEveningMinute,
+            morningMinute: preferences.nightShiftMorningMinute
+        )
     }
 
     /// The card for Home right now, if any.
@@ -117,7 +120,7 @@ final class NightShiftModel {
 
     // MARK: - Actions
 
-    /// "Start your night shift", and "Take over" when the other parent is on duty.
+    /// "Start on-call", and "Take over" when the other parent is on duty.
     func goOnDuty() async {
         guard !isWorking else { return }
         isWorking = true
