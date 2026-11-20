@@ -21,11 +21,9 @@ extension FeedingSession {
     static func firstCompleted(pumps: Bool) -> FetchDescriptor<FeedingSession> {
         let completed = SessionStatus.completed.rawValue
         let pump = FeedingKind.pump.rawValue
-        let predicate: Predicate<FeedingSession> = if pumps {
-            #Predicate<FeedingSession> { $0.statusRaw == completed && $0.kindRaw == pump }
-        } else {
-            #Predicate<FeedingSession> { $0.statusRaw == completed && $0.kindRaw != pump }
-        }
+        let pumpPredicate = #Predicate<FeedingSession> { $0.statusRaw == completed && $0.kindRaw == pump }
+        let feedPredicate = #Predicate<FeedingSession> { $0.statusRaw == completed && $0.kindRaw != pump }
+        let predicate = pumps ? pumpPredicate : feedPredicate
         var descriptor = FetchDescriptor<FeedingSession>(predicate: predicate, sortBy: [SortDescriptor(\.startedAt, order: .forward)])
         descriptor.fetchLimit = 1
         return descriptor
