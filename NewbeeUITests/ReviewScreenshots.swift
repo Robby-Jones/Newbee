@@ -259,6 +259,31 @@ final class ReviewScreenshots: ScreenshotTestCase {
         app.terminate()
     }
 
+    /// Insights on each range: the feeds chart's date labels, then the Bottles and Pumping cards.
+    @MainActor
+    func testInsightsPumping() throws {
+        let app = launch()
+        app.tabBars.buttons["Insights"].tap()
+        let feedsCard = app.staticTexts.matching(NSPredicate(format: "label BEGINSWITH 'Feeds '")).firstMatch
+        XCTAssertTrue(feedsCard.waitForExistence(timeout: 10))
+        for (range, name) in [("24 h", "24h"), ("7 d", "7d"), ("14 d", "14d"), ("30 d", "30d")] {
+            app.buttons[range].firstMatch.tap()
+            settle()
+            capture("insights-\(name)-feeds")
+            let pumping = app.staticTexts["Pumping"].firstMatch
+            for _ in 0..<8 where !(pumping.exists && pumping.isHittable && pumping.frame.minY < app.frame.height * 0.45) {
+                app.swipeUp(velocity: .slow)
+            }
+            settle()
+            capture("insights-\(name)-pumping")
+            // Back to the top for the next range.
+            for _ in 0..<8 where !feedsCard.isHittable {
+                app.swipeDown(velocity: .fast)
+            }
+        }
+        app.terminate()
+    }
+
     /// Scrolls the list until `element` can be tapped.
     @MainActor
     private func reveal(_ element: XCUIElement, in app: XCUIApplication) {
