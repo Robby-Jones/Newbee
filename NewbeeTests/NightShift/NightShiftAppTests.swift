@@ -239,6 +239,26 @@ struct NightShiftReminderSchedulingTests {
         #expect(dependencies.nightShift.store.shift?.endsAt == theirs.endsAt)
     }
 
+    @Test func thePickedEndTimeEndsTheShiftAndIsRememberedForNextTime() async throws {
+        let dependencies = try makeDependencies()
+        let endMinute = 5 * 60 + 30
+        await dependencies.nightShift.goOnDuty(endMinute: endMinute)
+        let started = try #require(dependencies.nightShift.store.shift)
+        let parts = Calendar.current.dateComponents([.hour, .minute], from: started.endsAt)
+        #expect(parts.hour == 5 && parts.minute == 30)
+        #expect(started.endsAt > clock.now)
+        #expect(started.endsAt <= clock.now.addingTimeInterval(24 * 3600))
+        #expect(dependencies.nightShift.schedule.morningMinute == endMinute)
+    }
+
+    @Test func theEndTimeSaysTodayOrTomorrow() {
+        var calendar = Calendar(identifier: .gregorian)
+        calendar.timeZone = TimeZone(identifier: "UTC")!
+        let ninePM = calendar.date(from: DateComponents(year: 2026, month: 11, day: 7, hour: 21))!
+        #expect(OnCallStartSheet.endsText(endMinute: 23 * 60, now: ninePM, calendar: calendar).hasPrefix("Ends today at "))
+        #expect(OnCallStartSheet.endsText(endMinute: 7 * 60, now: ninePM, calendar: calendar).hasPrefix("Ends tomorrow at "))
+    }
+
     @Test func deleteAllDataEndsTheShiftToo() async throws {
         let dependencies = try makeDependencies()
         dependencies.nightShift.store.set(shift(onDuty: "_me"))
@@ -281,7 +301,7 @@ struct NightShiftWordingTests {
         let until = shift.endsAt
         #expect(NightShiftCardView.onDutySubtitle(until: until, remindersOn: true).hasSuffix("Feed reminders ring only on this iPhone."))
         #expect(NightShiftCardView.onDutySubtitle(until: until, remindersOn: false).hasSuffix("Feed reminders are off."))
-        #expect(NightShiftCardView.offerSubtitle(until: until, remindersOn: true).hasPrefix("You get the feed reminders until "))
-        #expect(NightShiftCardView.offerSubtitle(until: until, remindersOn: false).hasSuffix("Your partner gets a summary of the night in the morning."))
+        #expect(NightShiftCardView.offerSubtitle(remindersOn: true) == "Feed reminders ring only on your iPhone, so your partner can sleep.")
+        #expect(NightShiftCardView.offerSubtitle(remindersOn: false) == "Your partner gets a summary when your shift ends.")
     }
 }

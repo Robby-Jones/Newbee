@@ -11,8 +11,8 @@ On-Call Shift doesn't appear anywhere.
 
 | Question | Decision |
 |---|---|
-| How a shift starts | One tap on Home, "Start on-call", offered from the start time (Settings → On-Call Shift → Shift starts at, 6:00 PM by default) until the morning time |
-| How it ends | By itself at the morning time (Settings → On-Call Shift → Shift ends at, 7:00 AM by default), when the parent on call taps End, or when the other parent taps Take over |
+| How a shift starts | Tap "Start on-call" on Home (offered any time nobody is on call), pick when the shift ends (the last picked time, 7:00 AM at first), then tap Start on-call |
+| How it ends | By itself at the picked end time, when the parent on call taps End, or when the other parent taps Take over |
 | Reminders on call | The normal feeding reminder (Settings → Notifications), on the on-call iPhone only. Quiet hours don't hold it back during the shift |
 | Ring as alarm | Optional switch, iOS 26 and later (AlarmKit): the reminder rings like an alarm, also in Silent mode. On older iOS it stays a notification and the switch isn't shown |
 | The other phone | No feeding reminder while the shift runs |
@@ -30,18 +30,17 @@ One card under Today (below the three big buttons, above Recent), and only when 
 
 | When | Card | Control |
 |---|---|---|
-| Evening or night, nobody on call | 🌙 **Start on-call** · "You get the feed reminders until 7:00 AM, so your partner can sleep." | Start (the whole card is the button) |
+| Nobody on call | 🌙 **Start on-call** · "Feed reminders ring only on your iPhone, so your partner can sleep." | Start (the whole card is the button). Opens a sheet: "When does your shift end?", a time wheel, "Ends tomorrow at 7:00 AM", and a Start on-call button |
 | This parent is on call | 🌙 **You're on call** · "Until 7:00 AM. Feed reminders ring only on this iPhone." | End |
 | The partner is on call | 💤 **Your partner is on call** · "Until 7:00 AM. This iPhone stays quiet." | Take over |
-| Morning, the partner was on call | ☀️ **While you slept** · "3 feeds, the last at 5:10 AM" · "32 min nursing · 4 oz by bottle" | ✕ (dismiss) |
+| The partner's shift is over | ☀️ **While you slept** · "3 feeds, the last at 5:10 AM" · "32 min nursing · 4 oz by bottle" | ✕ (dismiss) |
 
-The card sits below the buttons so they never move under a thumb at 3 a.m.
+The card sits below Today and above Recent, so the buttons never move under a thumb at 3 a.m.
 
 ## Settings → On-Call Shift
 
-Shown once a partner is on the log, under Sharing: **Shift starts at** (when Home starts offering
-"Start on-call", 6:00 PM by default), **Shift ends at** (time) and **Ring as alarm**
-(iOS 26 and later). The footer explains the feature in one sentence.
+Shown once a partner is on the log, under Sharing, on iOS 26 and later: **Ring as alarm**. There
+are no start or end times in Settings: the end time is picked each time a shift starts. The footer explains the feature in one sentence.
 
 ## How it works
 

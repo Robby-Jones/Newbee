@@ -67,11 +67,9 @@ final class NightShiftModel {
         }
     }
 
+    /// The end time "Start on-call" suggests: the one picked last time, 7:00 AM at first.
     var schedule: NightShiftSchedule {
-        NightShiftSchedule(
-            eveningMinute: preferences.nightShiftEveningMinute,
-            morningMinute: preferences.nightShiftMorningMinute
-        )
+        NightShiftSchedule(morningMinute: preferences.nightShiftMorningMinute)
     }
 
     /// The card for Home right now, if any.
@@ -79,7 +77,7 @@ final class NightShiftModel {
         if let preview = NightShiftPreview.card(at: now) { return preview }
         guard hasPartner else { return nil }
         return NightShiftCard.current(
-            shift: store.shift, me: store.me, now: now, schedule: schedule, dismissedShiftStart: store.dismissedSummaryStart
+            shift: store.shift, me: store.me, now: now, dismissedShiftStart: store.dismissedSummaryStart
         )
     }
 
@@ -121,7 +119,9 @@ final class NightShiftModel {
     // MARK: - Actions
 
     /// "Start on-call", and "Take over" when the other parent is on duty.
-    func goOnDuty() async {
+    /// - Parameter endMinute: The end time picked after tapping "Start on-call", in minutes after
+    ///   midnight. Remembered for next time. A take-over keeps the running shift's end.
+    func goOnDuty(endMinute: Int? = nil) async {
         guard !isWorking else { return }
         isWorking = true
         defer { isWorking = false }
@@ -130,6 +130,7 @@ final class NightShiftModel {
             return
         }
         let now = clock.now
+        if let endMinute { preferences.nightShiftMorningMinute = min(max(endMinute, 0), 1439) }
         if let running = store.shift, running.isRunning(at: now) {
             store.set(running.takenOver(by: me, at: now))
         } else {

@@ -53,25 +53,6 @@ struct NightShiftTests {
         #expect(taken.duty(for: me, at: at(27)) == .offDuty(until: at(31)))
     }
 
-    @Test func startIsOfferedOnlyInTheEveningAndAtNight() {
-        #expect(schedule.offersStart(at: at(18), calendar: utc))
-        #expect(schedule.offersStart(at: at(23), calendar: utc))
-        #expect(schedule.offersStart(at: at(3), calendar: utc))
-        #expect(schedule.offersStart(at: at(7), calendar: utc) == false)
-        #expect(schedule.offersStart(at: at(12), calendar: utc) == false)
-        #expect(schedule.offersStart(at: at(17.9), calendar: utc) == false)
-    }
-
-    @Test func theStartTimeComesFromSettings() {
-        let early = NightShiftSchedule(eveningMinute: 16 * 60 + 30)
-        #expect(early.offersStart(at: at(16.5), calendar: utc))
-        #expect(early.offersStart(at: at(16.4), calendar: utc) == false)
-        let late = NightShiftSchedule(eveningMinute: 21 * 60)
-        #expect(late.offersStart(at: at(20), calendar: utc) == false)
-        #expect(late.offersStart(at: at(21), calendar: utc))
-        #expect(late.offersStart(at: at(6.9), calendar: utc))
-    }
-
     @Test func itTravelsAsOneRecord() throws {
         let night = shift().ended(at: at(29))
         #expect(night.key == SyncKey(kind: .nightShift, id: "current"))
@@ -85,11 +66,11 @@ struct NightShiftTests {
 @Suite("Night shift card on Home")
 struct NightShiftCardTests {
     private func card(_ shift: NightShift?, me id: String? = me, at hour: Double, dismissed: Date? = nil) -> NightShiftCard? {
-        NightShiftCard.current(shift: shift, me: id, now: at(hour), schedule: schedule, dismissedShiftStart: dismissed, calendar: utc)
+        NightShiftCard.current(shift: shift, me: id, now: at(hour), dismissedShiftStart: dismissed)
     }
 
-    @Test func nothingByDayAndAnOfferInTheEvening() {
-        #expect(card(nil, at: 12) == nil)
+    @Test func theOfferIsThereWheneverNobodyIsOnCall() {
+        #expect(card(nil, at: 12) == .offerStart)
         #expect(card(nil, at: 20) == .offerStart)
         // The offer doesn't need to know who this parent is; tapping it finds out.
         #expect(card(nil, me: nil, at: 20) == .offerStart)
@@ -106,20 +87,20 @@ struct NightShiftCardTests {
         let theirs = shift(onDuty: partner)
         #expect(card(theirs, at: 31) == .summary(theirs))
         #expect(card(theirs, at: 40) == .summary(theirs))
-        #expect(card(theirs, at: 31, dismissed: theirs.startedAt) == nil)
-        // Twelve hours on it has gone by itself, and the evening offer is back.
+        #expect(card(theirs, at: 31, dismissed: theirs.startedAt) == .offerStart)
+        // Twelve hours on it has gone by itself, and the offer is back.
         #expect(card(theirs, at: 43.5) == .offerStart)
     }
 
     @Test func theParentWhoWasOnDutyGetsNoSummary() {
-        #expect(card(shift(), at: 31) == nil)
+        #expect(card(shift(), at: 31) == .offerStart)
         #expect(card(shift(), at: 44) == .offerStart)
     }
 
     @Test func aShiftEndedEarlyShowsItsSummaryRightAway() {
         let ended = shift(onDuty: partner).ended(at: at(29))
         #expect(card(ended, at: 29.5) == .summary(ended))
-        // Once dismissed it is still night, so the other parent can take the rest.
+        // Once dismissed, either parent can start a new shift.
         #expect(card(ended, at: 29.5, dismissed: ended.startedAt) == .offerStart)
     }
 }

@@ -33,7 +33,6 @@ final class AppPreferences {
         static let colorTheme = "colorTheme"
         static let onboardingComplete = "onboardingComplete"
         static let nightShiftMorningMinute = "nightShift.morningMinute"
-        static let nightShiftEveningMinute = "nightShift.eveningMinute"
         static let nightShiftAlarm = "nightShift.alarm"
         static let startingSideMode = "breast.startingSide"
         static let startingSideSwitchFrom = "breast.switchFrom"
@@ -45,7 +44,7 @@ final class AppPreferences {
             reminderIntervalMinutes,
             reminderBasis, quietStart, quietEnd, stillFeedingEnabled, stillFeedingMinutes, appearance,
             // Not `nightShiftAlarm`: alarms need iOS 26 and a permission, both per device.
-            nightShiftMorningMinute, nightShiftEveningMinute, startingSideMode, startingSideSwitchFrom,
+            nightShiftMorningMinute, startingSideMode, startingSideSwitchFrom,
         ]
 
         /// Everything "Delete all data" resets. Appearance and `onboardingComplete` are kept
@@ -53,8 +52,8 @@ final class AppPreferences {
         static let resettable = [
             volumeUnit, bottlePresets, pumpVolumeUnit, pumpPresets, pumpTotalOnly, pumpTotalPresets, lastBottleContents, reminderEnabled,
             reminderIntervalMinutes, reminderBasis,
-            quietStart, quietEnd, stillFeedingEnabled, stillFeedingMinutes, nightShiftMorningMinute, nightShiftEveningMinute,
-            nightShiftAlarm, startingSideMode, startingSideSwitchFrom,
+            quietStart, quietEnd, stillFeedingEnabled, stillFeedingMinutes, nightShiftMorningMinute, nightShiftAlarm,
+            startingSideMode, startingSideSwitchFrom,
         ]
     }
 
@@ -166,14 +165,10 @@ final class AppPreferences {
         }
     }
 
-    /// When an on-call shift ends by itself, in minutes after midnight (docs/NIGHT_SHIFT.md).
+    /// The end time last picked for an on-call shift, in minutes after midnight: the default
+    /// the next time "Start on-call" asks (docs/NIGHT_SHIFT.md).
     var nightShiftMorningMinute: Int {
         didSet { store(nightShiftMorningMinute, forKey: Key.nightShiftMorningMinute) }
-    }
-
-    /// From when Home offers "Start on-call", in minutes after midnight.
-    var nightShiftEveningMinute: Int {
-        didSet { store(nightShiftEveningMinute, forKey: Key.nightShiftEveningMinute) }
     }
 
     /// The feed reminder rings as an alarm while this parent is on duty (iOS 26 and later).
@@ -223,7 +218,6 @@ final class AppPreferences {
         reminders = Self.loadReminders(defaults)
         startingSide = Self.loadStartingSide(defaults)
         nightShiftMorningMinute = Self.loadMorningMinute(defaults)
-        nightShiftEveningMinute = Self.loadEveningMinute(defaults)
         nightShiftAlarm = defaults.bool(forKey: Key.nightShiftAlarm)
         appearance = defaults.string(forKey: Key.appearance).flatMap(Appearance.init(rawValue:)) ?? .system
         colorTheme = defaults.string(forKey: Key.colorTheme).flatMap(NBTheme.init(rawValue:)) ?? .standard
@@ -245,7 +239,6 @@ final class AppPreferences {
         reminders = Self.loadReminders(defaults)
         startingSide = Self.loadStartingSide(defaults)
         nightShiftMorningMinute = Self.loadMorningMinute(defaults)
-        nightShiftEveningMinute = Self.loadEveningMinute(defaults)
         nightShiftAlarm = false
     }
 
@@ -260,10 +253,6 @@ final class AppPreferences {
 
     private static func loadMorningMinute(_ defaults: UserDefaults) -> Int {
         defaults.object(forKey: Key.nightShiftMorningMinute) as? Int ?? NightShiftSchedule.defaultMorningMinute
-    }
-
-    private static func loadEveningMinute(_ defaults: UserDefaults) -> Int {
-        defaults.object(forKey: Key.nightShiftEveningMinute) as? Int ?? NightShiftSchedule.defaultEveningMinute
     }
 
     private static func loadUnit(_ defaults: UserDefaults, locale: Locale) -> VolumeUnit {
@@ -410,7 +399,6 @@ final class AppPreferences {
         reminders = Self.loadReminders(defaults)
         startingSide = Self.loadStartingSide(defaults)
         nightShiftMorningMinute = Self.loadMorningMinute(defaults)
-        nightShiftEveningMinute = Self.loadEveningMinute(defaults)
         appearance = defaults.string(forKey: Key.appearance).flatMap(Appearance.init(rawValue:)) ?? .system
     }
 

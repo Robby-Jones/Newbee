@@ -33,11 +33,11 @@ ICLOUD SYNC AND PARTNER SHARING (OPTIONAL, NEEDS ICLOUD)
 - Sharing is private between the two invited parents. There is no public or user-generated content, so there is nothing to report or block. Either parent can stop sharing in Settings > Sharing.
 
 NIGHT SHIFT (NEEDS TWO DEVICES, TWO APPLE ACCOUNTS)
-On-Call Shift appears only after a partner has joined the shared log, and its card on Home is offered between the shift start time (6:00 PM by default) and the end time (7:00 AM by default), both set in Settings > On-Call Shift.
+On-Call Shift appears only after a partner has joined the shared log, and its card on Home is offered whenever nobody is on call. Tapping it asks when the shift ends.
 1. Share the log between two iPhones as described above.
-2. After 6:00 PM, on phone A, tap "Start on-call" on Home.
+2. On phone A, tap "Start on-call" on Home, pick an end time, and tap Start on-call.
 3. Phone A shows "You're on call". Phone B shows "Your partner is on call" with Take over. Feeding reminders (Settings > Notifications) now ring only on phone A.
-4. When the shift ends (End, Take over, or the morning time), phone B shows "While you slept" with the night's feeds.
+4. When the shift ends (End, Take over, or the picked end time), phone B shows "While you slept" with the night's feeds.
 Because this needs two accounts and an evening clock, the attached video shows the whole flow.
 
 PERMISSIONS
@@ -95,8 +95,7 @@ Before sending:
 
 Apple asked for a recording on a physical device that starts with launching the app. On-Call Shift
 can't be shown on one phone, so film both phones side by side with a third device, or record
-each screen and put the recordings next to each other. Film in the evening (after 6:00 PM), or
-the On-Call Shift card won't be offered.
+each screen and put the recordings next to each other.
 
 Before recording: both phones on the latest iOS and the latest TestFlight build, Do Not Disturb
 on, Newbee closed in the app switcher, sharing already accepted on the second phone.

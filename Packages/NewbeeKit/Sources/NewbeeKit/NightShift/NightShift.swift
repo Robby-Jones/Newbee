@@ -77,35 +77,18 @@ public enum NightDuty: Sendable, Hashable {
     case offDuty(until: Date)
 }
 
-/// When on-call shifts start and end (shown as "On-Call Shift" in the app).
+/// When an on-call shift ends (shown as "On-Call Shift" in the app). The parent picks the time
+/// when they tap "Start on-call"; the app remembers it as the next shift's default.
 public struct NightShiftSchedule: Codable, Sendable, Hashable {
-    /// Minutes after local midnight from when Home offers "Start on-call". 6:00 PM unless changed
-    /// in Settings.
-    public var eveningMinute: Int
-    /// Minutes after local midnight when a shift ends by itself. 7:00 AM unless changed in Settings.
+    /// Minutes after local midnight when a shift ends by itself. 7:00 AM until a parent picks
+    /// another time.
     public var morningMinute: Int
 
-    public init(
-        eveningMinute: Int = NightShiftSchedule.defaultEveningMinute,
-        morningMinute: Int = NightShiftSchedule.defaultMorningMinute
-    ) {
-        self.eveningMinute = min(max(eveningMinute, 0), 1439)
+    public init(morningMinute: Int = NightShiftSchedule.defaultMorningMinute) {
         self.morningMinute = min(max(morningMinute, 0), 1439)
     }
 
     public static let defaultMorningMinute = 7 * 60
-    public static let defaultEveningMinute = 18 * 60
-
-    /// The shift window: from the start time until the end time.
-    private var night: QuietHours {
-        QuietHours(startMinute: eveningMinute, endMinute: morningMinute)
-    }
-
-    /// Whether a shift can be started now: only in the evening and at night, so the offer isn't
-    /// on Home all day.
-    public func offersStart(at now: Date, calendar: Calendar = .current) -> Bool {
-        night.contains(now, calendar: calendar)
-    }
 
     /// The next time the clock shows the morning time.
     public func morning(after now: Date, calendar: Calendar = .current) -> Date {
@@ -117,7 +100,7 @@ public struct NightShiftSchedule: Codable, Sendable, Hashable {
 
 /// The one Night Shift card Home shows, if any. Pure, so the rules are tested on Linux.
 public enum NightShiftCard: Sendable, Hashable {
-    /// Evening, nobody on duty: "Start on-call".
+    /// Nobody is on call: "Start on-call", at any time of day.
     case offerStart
     /// This parent is on duty.
     case onDuty(until: Date)
@@ -136,9 +119,7 @@ public enum NightShiftCard: Sendable, Hashable {
         shift: NightShift?,
         me: String?,
         now: Date,
-        schedule: NightShiftSchedule,
-        dismissedShiftStart: Date? = nil,
-        calendar: Calendar = .current
+        dismissedShiftStart: Date? = nil
     ) -> NightShiftCard? {
         if let shift, let me {
             switch shift.duty(for: me, at: now) {
@@ -156,7 +137,7 @@ public enum NightShiftCard: Sendable, Hashable {
             // Someone is on duty, but this phone can't tell who yet. Say nothing rather than guess.
             return nil
         }
-        return schedule.offersStart(at: now, calendar: calendar) ? .offerStart : nil
+        return .offerStart
     }
 }
 

@@ -26,7 +26,7 @@ The texts to paste are in [LISTING.md](LISTING.md) (product page) and
   - [ ] Fresh state on one phone: Settings → iCloud shows Sync with iCloud **off**.
   - [ ] Turn sync on, Settings → Sharing → invite, accept on the other phone.
   - [ ] A feed logged on one phone appears on the other.
-  - [ ] After 6:00 PM: "Start on-call" on one phone shows "Your partner is on call" on the
+  - [ ] "Start on-call" (with an end time) on one phone shows "Your partner is on call" on the
         other, and Take over works.
   - [ ] A feeding reminder rings only on the on-call phone.
   - [ ] Live Activity on the Lock Screen and Dynamic Island still works.
@@ -94,7 +94,7 @@ editable from there. Do not create a version 1.0.1; the rejected 1.0 is the one 
 ## Risks to acceptance, most serious first
 
 1. **The reviewer can't see On-Call Shift on one phone.** It needs a partner on a second Apple
-   Account and only appears after 6:00 PM. It is now the main argument against "spam", so if
+   Account. It is now the main argument against "spam", so if
    the reviewer can't find it, the argument fails. The two-phone video and the step-by-step notes
    are the mitigation. A stronger fix is a way to try On-Call Shift alone at any hour, which is a
    small app change and a new build. Ask if you want it before submitting.
