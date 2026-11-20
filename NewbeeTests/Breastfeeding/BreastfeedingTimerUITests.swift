@@ -247,7 +247,9 @@ struct DurationTextTests {
     @MainActor
     @Test func quickActionCaptionsAddDaysPastADay() {
         #expect(DashboardView.compactAgo(14 * 60) == "14 min ago")
-        #expect(DashboardView.compactAgo(23 * 3_600 + 59 * 60) == "23 h ago")
+        #expect(DashboardView.compactAgo(2 * 3_600) == "2 h ago")
+        #expect(DashboardView.compactAgo(2 * 3_600 + 15 * 60 + 40) == "2 h 15 min ago")
+        #expect(DashboardView.compactAgo(23 * 3_600 + 59 * 60) == "23 h 59 min ago")
         #expect(DashboardView.compactAgo(26 * 3_600 + 5 * 60) == "1 d 2 h 5 min ago")
         #expect(FeedText.ago(26 * 3_600 + 5 * 60) == "1 d 2 h 5 min ago")
     }
