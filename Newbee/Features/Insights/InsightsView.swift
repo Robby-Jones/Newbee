@@ -202,7 +202,7 @@ private struct FeedsCard: View {
             .chartForegroundStyleScale([String(localized: "Breast"): NBColor.chartBreast, String(localized: "Bottle"): NBColor.bottleBreastMilk])
             .chartYScale(domain: 0...BarLabels.axisTop(tallest: tallest))
             .chartYAxis { AxisMarks(position: .leading, values: .automatic(desiredCount: 4)) }
-            .chartXAxis { dateAxis(for: report) }
+            .dateAxis(for: report)
             .frame(height: 180)
             .accessibilityLabel(summary)
         }
@@ -410,7 +410,7 @@ private struct BottleCard: View {
             ])
             .chartYScale(domain: 0...BarLabels.axisTop(tallest: tallest))
             .chartYAxis { AxisMarks(position: .leading, values: .automatic(desiredCount: 4)) }
-            .chartXAxis { dateAxis(for: report) }
+            .dateAxis(for: report)
             .frame(height: 160)
             .accessibilityLabel(summary)
         }
@@ -490,7 +490,7 @@ private struct PumpingCard: View {
             .chartForegroundStyleScale(domain: legend.map { $0.name }, range: legend.map { $0.color })
             .chartYScale(domain: 0...BarLabels.axisTop(tallest: tallest))
             .chartYAxis { AxisMarks(position: .leading, values: .automatic(desiredCount: 4)) }
-            .chartXAxis { dateAxis(starts: pumping.buckets.map(\.start), range: pumping.range) }
+            .dateAxis(starts: pumping.buckets.map(\.start), range: pumping.range)
             .frame(height: 160)
             .accessibilityLabel(summary)
             if let bottled {
@@ -697,26 +697,77 @@ private struct SegmentValueLabel: View {
 
 /// Day labels for day ranges, hour labels for 24 h, under the middle of their bars. The outer
 /// labels are pulled in so the chart's edge doesn't cut them off (`DateAxisLabels`).
-private func dateAxis(for report: InsightsReport) -> some AxisContent {
-    dateAxis(starts: report.buckets.map(\.start), range: report.range)
-}
+///
+/// Swift Charts places date axis labels next to their tick rather than under it, whatever anchor
+/// is passed, so labels drifted right of their bars and the last two overlapped. The axis keeps
+/// its grid lines and an invisible label to reserve the space; the visible labels are drawn in an
+/// overlay at the exact x of each mark.
+private struct DateAxis: ViewModifier {
+    let marks: [DateAxisLabels.Mark]
+    let format: Date.FormatStyle
 
-private func dateAxis(starts: [Date], range: InsightsRange) -> some AxisContent {
-    let marks = DateAxisLabels.marks(bucketStarts: starts, range: range)
-    let format: Date.FormatStyle = range == .day ? .dateTime.hour() : .dateTime.day().month(.defaultDigits)
-    return AxisMarks(values: marks.map(\.date)) { value in
-        AxisGridLine()
-        AxisValueLabel(format: format, anchor: labelAnchor(marks.indices.contains(value.index) ? marks[value.index].alignment : .center))
+    init(starts: [Date], range: InsightsRange) {
+        marks = DateAxisLabels.marks(bucketStarts: starts, range: range)
+        format = range == .day ? .dateTime.hour() : .dateTime.day().month(.defaultDigits)
+    }
+
+    /// Wide enough for any label; the text sits inside it by the mark's alignment.
+    private static let slot: CGFloat = 80
+
+    func body(content: Content) -> some View {
+        content
+            .chartXAxis {
+                AxisMarks(values: marks.map(\.date)) { _ in
+                    AxisGridLine()
+                    AxisValueLabel(format: format).foregroundStyle(.clear)
+                }
+            }
+            .chartOverlay { proxy in
+                GeometryReader { geometry in
+                    if let plotFrame = proxy.plotFrame {
+                        let plot = geometry[plotFrame]
+                        ForEach(marks, id: \.date) { mark in
+                            if let x = proxy.position(forX: mark.date) {
+                                Text(mark.date, format: format)
+                                    .font(.caption2)
+                                    .foregroundStyle(.secondary)
+                                    .lineLimit(1)
+                                    .fixedSize()
+                                    .frame(width: Self.slot, alignment: Self.alignment(mark.alignment))
+                                    .position(x: plot.minX + x + Self.shift(mark.alignment), y: plot.maxY + 11)
+                            }
+                        }
+                    }
+                }
+                .accessibilityHidden(true)
+            }
+    }
+
+    private static func alignment(_ alignment: DateAxisLabels.Alignment) -> Alignment {
+        switch alignment {
+        case .center: .center
+        case .trailing: .trailing
+        case .leading: .leading
+        }
+    }
+
+    /// Moves the slot so its text starts, centers or ends at the mark.
+    private static func shift(_ alignment: DateAxisLabels.Alignment) -> CGFloat {
+        switch alignment {
+        case .center: 0
+        case .trailing: -slot / 2
+        case .leading: slot / 2
+        }
     }
 }
 
-private func labelAnchor(_ alignment: DateAxisLabels.Alignment) -> UnitPoint {
-    switch alignment {
-    // Explicitly centered: Swift Charts' default puts a date label's leading edge at its tick,
-    // which pushed every label right of its bar and into the trailing newest label.
-    case .center: .top
-    case .trailing: .topTrailing
-    case .leading: .topLeading
+extension View {
+    fileprivate func dateAxis(for report: InsightsReport) -> some View {
+        modifier(DateAxis(starts: report.buckets.map(\.start), range: report.range))
+    }
+
+    fileprivate func dateAxis(starts: [Date], range: InsightsRange) -> some View {
+        modifier(DateAxis(starts: starts, range: range))
     }
 }
 
