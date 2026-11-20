@@ -315,11 +315,12 @@ struct DateAxisLabelsTests {
         #expect(marks.dropLast().allSatisfy { $0.alignment == .center })
     }
 
-    @Test func weekLabelsEveryDayWithBothEdgesPulledIn() {
+    @Test func weekLabelsEveryDayAllCentered() {
         let marks = DateAxisLabels.marks(bucketStarts: days(7), range: .week, calendar: utc)
         #expect(marks.count == 7)
-        #expect(marks.first?.alignment == .leading)
-        #expect(marks.last?.alignment == .trailing)
+        #expect(marks.allSatisfy { $0.alignment == .center })
+        let twoWeeks = DateAxisLabels.marks(bucketStarts: days(14), range: .twoWeeks, calendar: utc)
+        #expect(twoWeeks.allSatisfy { $0.alignment == .center })
     }
 
     @Test func dayLabelsEveryFourHours() {
