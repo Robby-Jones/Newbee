@@ -153,6 +153,7 @@ struct HuckleberryImportTests {
         #expect(abs(pump.leftML - 1.5 * ounce) < 0.001)
         #expect(abs(pump.rightML - 1.5 * ounce) < 0.001)
         #expect(abs(pump.totalML - 3 * ounce) < 0.001)
+        #expect(pump.isTotalOnly, "A pumping total with no side is imported as a total-only entry")
         #expect(pump.enteredUnit == .fluidOunces)
         #expect(abs(bottle.amountML - 2.2 * ounce) < 0.001)
         #expect(bottle.notes == "Drank it all")
@@ -168,7 +169,20 @@ struct HuckleberryImportTests {
             }
             #expect(pump.leftML == (side == .left ? 90 : 0))
             #expect(pump.rightML == (side == .right ? 90 : 0))
+            #expect(!pump.isTotalOnly)
         }
+    }
+
+    @Test func aPumpingTotalCanStillBeSplitEvenly() throws {
+        let csv = header + "\n" + #""Pump","2026-11-09 05:44",,,"90ml",,,"#
+        let export = try HuckleberryCSV.parse(csv, timeZone: utc, now: now, options: .init(unsidedPumpAmount: .splitEvenly))
+        guard case .pump(let pump) = export.records.first else {
+            Issue.record("expected a pumping session")
+            return
+        }
+        #expect(pump.leftML == 45)
+        #expect(pump.rightML == 45)
+        #expect(!pump.isTotalOnly)
     }
 
     @Test func timesAreReadInTheGivenTimeZone() throws {

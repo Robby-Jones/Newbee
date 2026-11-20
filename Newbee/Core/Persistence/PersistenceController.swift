@@ -17,7 +17,7 @@ enum PersistenceController {
     /// iCloud separately (docs/ARCHITECTURE.md, ADR-011), so the store itself never talks to
     /// CloudKit.
     static func makeContainer(_ storage: Storage) throws -> ModelContainer {
-        let schema = Schema(versionedSchema: NewbeeSchemaV3.self)
+        let schema = Schema(versionedSchema: NewbeeSchemaV4.self)
         switch storage {
         case .inMemory:
             return try makeContainer(schema, ModelConfiguration(schema: schema, isStoredInMemoryOnly: true, cloudKitDatabase: .none))

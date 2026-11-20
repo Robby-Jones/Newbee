@@ -317,24 +317,45 @@ private struct UnitsSection: View {
             .accessibilityIdentifier("settings.bottlePresets")
 
             UnitRow(title: "Pumping", unit: $preferences.pumpVolumeUnit, identifier: "settings.pumpUnit")
-            DisclosureGroup(isExpanded: $showsPumpPresets) {
-                PresetRows(
-                    storedML: $preferences.pumpPresetsML,
-                    presets: PumpPresets.editable(storedML: preferences.pumpPresetsML, unit: preferences.pumpVolumeUnit),
-                    next: { PumpPresets.nextAmount(after: $0, unit: preferences.pumpVolumeUnit) },
-                    identifier: "settings.pumpPreset"
-                )
-            } label: {
-                PresetsLabel(
-                    title: "Pumping presets",
-                    presets: PumpPresets.amounts(storedML: preferences.pumpPresetsML, unit: preferences.pumpVolumeUnit)
-                )
+            Toggle("Log pumping as total only", isOn: $preferences.pumpTotalOnly.animation())
+                .accessibilityIdentifier("settings.pumpTotalOnly")
+            if preferences.pumpTotalOnly {
+                DisclosureGroup(isExpanded: $showsPumpPresets) {
+                    PresetRows(
+                        storedML: $preferences.pumpTotalPresetsML,
+                        presets: PumpPresets.editableTotals(storedML: preferences.pumpTotalPresetsML, unit: preferences.pumpVolumeUnit),
+                        next: { PumpPresets.nextTotalAmount(after: $0, unit: preferences.pumpVolumeUnit) },
+                        maximumML: PumpRules().maximumTotalML,
+                        identifier: "settings.pumpTotalPreset"
+                    )
+                } label: {
+                    PresetsLabel(
+                        title: "Pumping presets",
+                        presets: PumpPresets.totalAmounts(storedML: preferences.pumpTotalPresetsML, unit: preferences.pumpVolumeUnit)
+                    )
+                }
+                .accessibilityIdentifier("settings.pumpTotalPresets")
+            } else {
+                DisclosureGroup(isExpanded: $showsPumpPresets) {
+                    PresetRows(
+                        storedML: $preferences.pumpPresetsML,
+                        presets: PumpPresets.editable(storedML: preferences.pumpPresetsML, unit: preferences.pumpVolumeUnit),
+                        next: { PumpPresets.nextAmount(after: $0, unit: preferences.pumpVolumeUnit) },
+                        maximumML: PumpRules().maximumPerSideML,
+                        identifier: "settings.pumpPreset"
+                    )
+                } label: {
+                    PresetsLabel(
+                        title: "Pumping presets",
+                        presets: PumpPresets.amounts(storedML: preferences.pumpPresetsML, unit: preferences.pumpVolumeUnit)
+                    )
+                }
+                .accessibilityIdentifier("settings.pumpPresets")
             }
-            .accessibilityIdentifier("settings.pumpPresets")
         } header: {
             SettingsSectionHeader(
                 "Bottle and pumping",
-                info: String(localized: "Every amount in Newbee, past entries included, is shown in these units. Presets are quick amounts on the Log Bottle sheet and, for each side, on the Log Pumping sheet. Up to \(BottlePresets.maximumCount) each."),
+                info: String(localized: "Every amount in Newbee, past entries included, is shown in these units. Presets are quick amounts on the Log Bottle sheet and, for each side, on the Log Pumping sheet. Up to \(BottlePresets.maximumCount) each. With \u{201C}Log pumping as total only\u{201D} on, Log Pumping asks for one total instead of left and right, and those sessions show as \u{201C}Total\u{201D}. Sessions you already logged keep their left and right amounts."),
                 identifier: "units"
             )
         }
@@ -387,6 +408,8 @@ private struct PresetRows: View {
     @Binding var storedML: [Double]?
     let presets: [BottleAmount]
     let next: ([BottleAmount]) -> BottleAmount
+    /// The largest preset the steppers go to.
+    var maximumML: Double = BottleRules().maximumML
     /// "settings.preset" gives "settings.preset.1", "settings.preset.add"…
     let identifier: String
 
@@ -406,8 +429,8 @@ private struct PresetRows: View {
                     .accessibilityIdentifier("\(identifier).\(index + 1).remove")
                 }
                 Stepper(
-                    onIncrement: { update(index: index, to: amount.stepped(by: 1)) },
-                    onDecrement: { update(index: index, to: amount.stepped(by: -1)) }
+                    onIncrement: { update(index: index, to: amount.stepped(by: 1, maximumML: maximumML)) },
+                    onDecrement: { update(index: index, to: amount.stepped(by: -1, maximumML: maximumML)) }
                 ) {
                     HStack {
                         Text("Preset \(index + 1)")

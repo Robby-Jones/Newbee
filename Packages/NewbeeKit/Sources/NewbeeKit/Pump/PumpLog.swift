@@ -31,18 +31,28 @@ public final class PumpLog {
 
     /// A new entry that just finished, pre-filled from the last session (same amounts and
     /// duration, shown in `unit`) so a routine session is one tap on Save. With no history:
-    /// 60 mL (2 oz) a side for 15 minutes.
+    /// 60 mL (2 oz) a side for 15 minutes. With `totalOnly`, the draft asks for one total,
+    /// pre-filled with the last session's total (120 mL / 4 oz with no history).
     ///
     /// The start is set back by the duration so the session ends now: people log pumping after
     /// they're done. Pass `time` to end it earlier instead (for example on a day picked in
     /// History's calendar); it's never later than now.
-    public func newDraft(unit: VolumeUnit, endingAt time: Date? = nil) -> PumpDraft {
+    public func newDraft(unit: VolumeUnit, totalOnly: Bool = false, endingAt time: Date? = nil) -> PumpDraft {
         let now = min(time ?? clock.now, clock.now)
         let last = try? repository.recentPumps(limit: 1).first
+        let duration = last.map { $0.durationSeconds ?? Self.defaultDuration } ?? Self.defaultDuration
+        if totalOnly {
+            let total = last.map { $0.totalAmount(in: unit) } ?? PumpPresets.totalDefaults(for: unit)[1]
+            return PumpDraft(
+                total: total,
+                startedAt: now.addingTimeInterval(-duration),
+                durationSeconds: duration,
+                timeZoneID: TimeZone.current.identifier
+            )
+        }
         let fallback = PumpPresets.defaults(for: unit)[1]
         let left = last.map { BottleAmount(milliliters: $0.leftML).converted(to: unit) } ?? fallback
         let right = last.map { BottleAmount(milliliters: $0.rightML).converted(to: unit) } ?? fallback
-        let duration = last.map { $0.durationSeconds ?? Self.defaultDuration } ?? Self.defaultDuration
         return PumpDraft(
             left: left,
             right: right,
@@ -116,19 +126,22 @@ public final class PumpLog {
 /// Totals for a set of pumping sessions, such as one day's.
 public struct PumpSummary: Sendable, Hashable {
     public var count: Int
+    /// Per-side sums over the sessions logged with sides; total-only sessions have no sides.
     public var leftML: Double
     public var rightML: Double
+    /// Everything pumped, total-only sessions included.
+    public var totalML: Double
     /// Pumping time for sessions that recorded a duration.
     public var duration: TimeInterval
 
     public init(entries: [PumpEntry]) {
+        let sided = entries.filter { !$0.isTotalOnly }
         count = entries.count
-        leftML = entries.reduce(0) { $0 + $1.leftML }
-        rightML = entries.reduce(0) { $0 + $1.rightML }
+        leftML = sided.reduce(0) { $0 + $1.leftML }
+        rightML = sided.reduce(0) { $0 + $1.rightML }
+        totalML = entries.reduce(0) { $0 + $1.totalML }
         duration = entries.reduce(0) { $0 + ($1.durationSeconds ?? 0) }
     }
-
-    public var totalML: Double { leftML + rightML }
 
     public var isEmpty: Bool { count == 0 }
 }

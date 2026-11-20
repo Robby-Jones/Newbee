@@ -127,7 +127,8 @@ extension FeedingSession {
             enteredUnit: pump.enteredUnit,
             durationSeconds: pump.durationSeconds,
             notes: notes,
-            timeZoneID: timeZoneID
+            timeZoneID: timeZoneID,
+            isTotalOnly: pump.isTotalOnly
         )
     }
 
@@ -145,12 +146,14 @@ extension FeedingSession {
             pump.rightML = entry.rightML
             pump.enteredUnit = entry.enteredUnit
             pump.durationSeconds = entry.durationSeconds
+            pump.isTotalOnly = entry.isTotalOnly
         } else {
             let details = PumpDetails(
                 leftML: entry.leftML,
                 rightML: entry.rightML,
                 enteredUnit: entry.enteredUnit,
-                durationSeconds: entry.durationSeconds
+                durationSeconds: entry.durationSeconds,
+                isTotalOnly: entry.isTotalOnly
             )
             context.insert(details)
             pump = details

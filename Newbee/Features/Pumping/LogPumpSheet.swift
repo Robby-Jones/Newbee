@@ -91,6 +91,64 @@ struct LogPumpSheet: View {
     private var amountCard: some View {
         Card {
             VStack(spacing: NBSpacing.m) {
+                if draft.isTotalOnly {
+                    totalOnlyRows
+                } else {
+                    sidedRows
+                }
+
+                Picker("Unit", selection: unitBinding) {
+                    ForEach(VolumeUnit.allCases, id: \.self) { unit in
+                        Text(unit.symbol).tag(unit)
+                    }
+                }
+                .pickerStyle(.segmented)
+                .accessibilityIdentifier("pump.unit")
+            }
+        }
+    }
+
+    /// Settings › "Log pumping as total only": one amount, no sides. The total lives in the
+    /// draft's left amount, so it shares the left text field and parsing.
+    @ViewBuilder
+    private var totalOnlyRows: some View {
+        let amount = draft.total
+        HStack(spacing: NBSpacing.m) {
+            Text("Total")
+                .font(.headline)
+                .frame(minWidth: 72, alignment: .leading)
+            Spacer(minLength: 0)
+            totalStepButton(-1, systemImage: "minus", label: "Less")
+            HStack(alignment: .firstTextBaseline, spacing: NBSpacing.xs) {
+                TextField("0", text: $leftText)
+                    .keyboardType(.decimalPad)
+                    .multilineTextAlignment(.trailing)
+                    .font(NBFont.timer(size: 32))
+                    .focused($focusedSide, equals: .left)
+                    .fixedSize()
+                    .accessibilityLabel("Total amount")
+                    .accessibilityValue(amount.formatted)
+                    .accessibilityIdentifier("pump.amount.total")
+                Text(amount.unit.symbol)
+                    .font(.subheadline.weight(.semibold))
+                    .foregroundStyle(NBColor.secondaryText)
+            }
+            .frame(minWidth: 84)
+            totalStepButton(1, systemImage: "plus", label: "More")
+        }
+        HStack(spacing: NBSpacing.s) {
+            ForEach(model.totalPresets, id: \.self) { preset in
+                PresetChip(title: preset.formatted, isSelected: amount.matches(preset)) {
+                    setAmount(preset, on: .left)
+                }
+                .accessibilityLabel("Total \(preset.formatted)")
+                .accessibilityIdentifier("pump.preset.total.\(preset.formattedValue)")
+            }
+        }
+    }
+
+    @ViewBuilder
+    private var sidedRows: some View {
                 sideRow(.left)
                 presetRow(.left)
                 Divider()
@@ -108,16 +166,6 @@ struct LogPumpSheet: View {
                         .accessibilityIdentifier("pump.total")
                 }
                 .accessibilityElement(children: .combine)
-
-                Picker("Unit", selection: unitBinding) {
-                    ForEach(VolumeUnit.allCases, id: \.self) { unit in
-                        Text(unit.symbol).tag(unit)
-                    }
-                }
-                .pickerStyle(.segmented)
-                .accessibilityIdentifier("pump.unit")
-            }
-        }
     }
 
     /// "L Left   (−)  60 mL  (+)".
@@ -259,6 +307,22 @@ struct LogPumpSheet: View {
     }
 
     // MARK: - Helpers
+
+    private func totalStepButton(_ steps: Int, systemImage: String, label: String) -> some View {
+        Button {
+            let stepped = draft.total.stepped(by: steps, maximumML: model.log.rules.maximumTotalML)
+            setAmount(stepped, on: .left)
+        } label: {
+            Image(systemName: systemImage)
+                .font(.headline.weight(.semibold))
+                .frame(width: NBLayout.minHitTarget, height: NBLayout.minHitTarget)
+                .background(NBColor.pump.opacity(0.16), in: .circle)
+        }
+        .buttonStyle(PressableButtonStyle())
+        .foregroundStyle(NBColor.accent)
+        .accessibilityLabel(label)
+        .accessibilityIdentifier("pump.\(steps > 0 ? "more" : "less").total")
+    }
 
     private func stepButton(_ steps: Int, side: Side, systemImage: String, label: String) -> some View {
         Button {

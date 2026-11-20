@@ -237,7 +237,8 @@ extension FeedingSession {
             },
             pump: pump.map {
                 FeedPayload.Pump(
-                    leftML: $0.leftML, rightML: $0.rightML, enteredUnit: $0.enteredUnitRaw, durationSeconds: $0.durationSeconds
+                    leftML: $0.leftML, rightML: $0.rightML, enteredUnit: $0.enteredUnitRaw, durationSeconds: $0.durationSeconds,
+                    totalOnly: $0.isTotalOnly
                 )
             }
         )
@@ -311,6 +312,7 @@ extension FeedingSession {
             model.rightML = details.rightML
             model.enteredUnitRaw = details.enteredUnit
             model.durationSeconds = details.durationSeconds
+            model.isTotalOnly = details.isTotalOnly
         } else if let pump {
             context.delete(pump)
             self.pump = nil

@@ -190,8 +190,11 @@ struct SummaryPage: View {
             FactRow(label: String(localized: "Sessions"), value: "\(pump.count)")
             FactRow(label: String(localized: "Total"), value: ReportText.volume(pump.totalML, unit: header.pumpVolumeUnit))
             FactRow(label: String(localized: "Per day"), value: ReportText.volume(report.pumpMLPerDay, unit: header.pumpVolumeUnit))
-            FactRow(label: String(localized: "Left"), value: ReportText.volume(pump.leftML, unit: header.pumpVolumeUnit))
-            FactRow(label: String(localized: "Right"), value: ReportText.volume(pump.rightML, unit: header.pumpVolumeUnit))
+            // Sides only add up sessions logged with sides; hidden when every session was a total.
+            if pump.sidedCount > 0 {
+                FactRow(label: String(localized: "Left"), value: ReportText.volume(pump.leftML, unit: header.pumpVolumeUnit))
+                FactRow(label: String(localized: "Right"), value: ReportText.volume(pump.rightML, unit: header.pumpVolumeUnit))
+            }
         }
     }
 }

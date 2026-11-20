@@ -103,6 +103,41 @@ struct SyncStoreTests {
         #expect(copiedPump.pump?.rightML == 45.5)
     }
 
+    /// A pumping session logged as a total stays a total on the other phone, and editing it there
+    /// into one with sides clears the mark.
+    @Test func aTotalOnlyPumpCrossesWithItsMark() throws {
+        let here = try makeInMemoryContainer()
+        let there = try makeInMemoryContainer()
+        let context = here.mainContext
+        let session = pump(in: context)
+        session.pump?.isTotalOnly = true
+        try context.save()
+
+        let source = SwiftDataSyncStore(container: here)
+        let target = SwiftDataSyncStore(container: there)
+        var contents: [SyncKey: SyncContent] = [:]
+        for key in try source.items().keys {
+            guard let content = try source.content(for: key) else {
+                Issue.record("No content for \(key)")
+                return
+            }
+            contents[key] = content
+        }
+        _ = try target.apply(contents)
+        let copy = try #require(try there.mainContext.fetch(FetchDescriptor<FeedingSession>()).first)
+        #expect(copy.pump?.isTotalOnly == true)
+        #expect(copy.pumpEntry?.isTotalOnly == true)
+
+        session.pump?.isTotalOnly = false
+        try context.save()
+        for key in contents.keys {
+            guard let content = try source.content(for: key) else { continue }
+            contents[key] = content
+        }
+        _ = try target.apply(contents)
+        #expect(copy.pump?.isTotalOnly == false)
+    }
+
     /// A later version of a feed replaces the stored one, segments included, without duplicates.
     @Test func applyingAnEditUpdatesInPlace() throws {
         let container = try makeInMemoryContainer()

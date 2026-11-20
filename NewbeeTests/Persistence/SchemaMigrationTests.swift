@@ -8,9 +8,8 @@ import Testing
 /// update locks parents out of their history, so:
 /// - every older schema must still migrate, including a feed that was running when the app
 ///   was updated, and
-/// - the shipped schemas must never change silently. Editing a `NewbeeSchemaV3` model without
-///   adding `NewbeeSchemaV4` and a migration stage makes SwiftData refuse the existing store, and
-///   V3 is also the CloudKit schema (`cloudkit/schema.ckdb`, see `CloudKitSchemaTests`).
+/// - the shipped schemas must never change silently. Editing a `NewbeeSchemaV4` model without
+///   adding `NewbeeSchemaV5` and a migration stage makes SwiftData refuse the existing store.
 @MainActor
 @Suite("Schema migration")
 struct SchemaMigrationTests {
@@ -130,7 +129,7 @@ struct SchemaMigrationTests {
 
     @Test func theAppOpensTheNewestSchemaInThePlan() {
         let schemas = NewbeeMigrationPlan.schemas
-        #expect(ObjectIdentifier(schemas.last!) == ObjectIdentifier(NewbeeSchemaV3.self))
+        #expect(ObjectIdentifier(schemas.last!) == ObjectIdentifier(NewbeeSchemaV4.self))
         #expect(NewbeeMigrationPlan.stages.count == schemas.count - 1)
         // Each version is new, so SwiftData can tell the stored version from the current one.
         let versions = schemas.map { "\($0.versionIdentifier)" }
@@ -198,13 +197,45 @@ struct SchemaMigrationTests {
         #expect(Self.shape(of: NewbeeSchemaV2.self) == Self.versionTwoShape)
     }
 
-    /// The shape of the current schema, which is also the CloudKit schema in production, where
-    /// fields can never be removed. If this fails, don't update the list: copy V3 to a new
-    /// `NewbeeSchemaV4`, make the change there, point the aliases and `PersistenceController` at
-    /// V4, add a V3 → V4 stage to `NewbeeMigrationPlan`, and update `cloudkit/schema.ckdb`
-    /// (docs/DATA_MODEL.md, docs/ICLOUD_SYNC.md).
+    /// V3 shipped and was first mirrored to CloudKit. It must never change.
     @Test func versionThreeIsFrozen() {
         #expect(Self.shape(of: NewbeeSchemaV3.self) == (Self.versionTwoShape + ["Baby.photoData?"]).sorted())
+    }
+
+    /// The current schema. If this fails, don't update the list: copy V4 to a new
+    /// `NewbeeSchemaV5`, make the change there, point the aliases and `PersistenceController` at
+    /// V5, and add a V4 → V5 stage to `NewbeeMigrationPlan` (docs/DATA_MODEL.md). New properties
+    /// also go into `FeedPayload` so they sync.
+    @Test func versionFourIsFrozen() {
+        #expect(Self.shape(of: NewbeeSchemaV4.self) == (Self.versionTwoShape + ["Baby.photoData?", "PumpDetails.isTotalOnly"]).sorted())
+    }
+
+    /// The V3 → V4 update keeps every pumping session as it was logged, with sides.
+    @Test func versionThreeStoresMigrateToVersionFour() throws {
+        let url = try temporaryStoreURL()
+        defer { try? FileManager.default.removeItem(at: url.deletingLastPathComponent()) }
+        let sessionID = UUID()
+        do {
+            let schema = Schema(versionedSchema: NewbeeSchemaV3.self)
+            let container = try ModelContainer(for: schema, configurations: ModelConfiguration(schema: schema, url: url, cloudKitDatabase: .none))
+            let context = container.mainContext
+            let session = NewbeeSchemaV3.FeedingSession(id: sessionID, kind: .pump, status: .completed, startedAt: now, source: .manual)
+            session.endedAt = now.addingTimeInterval(900)
+            context.insert(session)
+            let details = NewbeeSchemaV3.PumpDetails(leftML: 70, rightML: 50, enteredUnit: .fluidOunces)
+            context.insert(details)
+            session.pump = details
+            try context.save()
+        }
+
+        let container = try PersistenceController.makeContainer(.file(url))
+        let session = try #require(try container.mainContext.fetch(FetchDescriptor<FeedingSession>()).first)
+        #expect(session.id == sessionID)
+        #expect(session.pump?.leftML == 70)
+        #expect(session.pump?.rightML == 50)
+        #expect(session.pump?.enteredUnit == .fluidOunces)
+        #expect(session.pump?.isTotalOnly == false)
+        #expect(session.pumpEntry?.isTotalOnly == false)
     }
 
     /// The V2 → V3 update (the photo moves into the store) keeps every feed and the baby.
