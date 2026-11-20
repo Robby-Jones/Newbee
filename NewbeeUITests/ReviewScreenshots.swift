@@ -44,13 +44,21 @@ final class ReviewScreenshots: ScreenshotTestCase {
             settle()
             capture("night-shift-\(state)")
 
+            if state == "offerStart" {
+                // Tapping Start asks for the end time.
+                control.tap()
+                let confirm = app.buttons["nightShift.confirmStart"].firstMatch
+                XCTAssertTrue(confirm.waitForExistence(timeout: 10))
+                settle()
+                capture("night-shift-pick-end")
+            }
+
             if state == "onDuty" {
                 app.tabBars.buttons["Settings"].tap()
                 XCTAssertTrue(app.navigationBars["Settings"].waitForExistence(timeout: 10))
-                // Bring the whole Night Shift section, footer included, above the tab bar.
-                let shiftEnd = app.descendants(matching: .any)["settings.nightShiftEnd"].firstMatch
-                reveal(shiftEnd, in: app)
-                app.swipeUp()
+                // Bring the whole On-Call Shift section, footer included, above the tab bar.
+                let alarm = app.descendants(matching: .any)["settings.nightShiftAlarm"].firstMatch
+                reveal(alarm, in: app)
                 settle()
                 capture("night-shift-settings")
             }

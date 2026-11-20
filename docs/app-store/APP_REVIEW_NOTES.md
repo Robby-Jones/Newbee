@@ -1,7 +1,7 @@
 # App Review notes, reply and demo video (resubmission of 1.0)
 
 History: Apple asked for information under Guideline 2.1 (2026-11-10), then rejected 1.0 under
-Guideline 4.3(a) Spam (2026-11-13). Since then the app gained partner sharing and Night Shift,
+Guideline 4.3(a) Spam (2026-11-13). Since then the app gained partner sharing and On-Call Shift,
 and iCloud sync became optional. This file holds the three texts for the resubmission. The
 steps are in [SUBMISSION_CHECKLIST.md](SUBMISSION_CHECKLIST.md).
 
@@ -12,7 +12,7 @@ All of it describes TestFlight **build 60 or later**.
 Replace everything in the field with this. It is about 3,500 of the 4,000 characters allowed.
 
 ```
-Thank you for reviewing Newbee again. Since the last review I added two features (partner sharing and Night Shift) and rewrote the product page. A demo video recorded on two physical iPhones is attached.
+Thank you for reviewing Newbee again. Since the last review I added two features (partner sharing and On-Call Shift) and rewrote the product page. A demo video recorded on two physical iPhones is attached.
 
 PURPOSE AND AUDIENCE
 Newbee is a feeding log for parents of newborns. It times breastfeeds per side, logs bottles and pumping, and shows the time since the last feed. It is for adults and is not directed at children.
@@ -33,15 +33,15 @@ ICLOUD SYNC AND PARTNER SHARING (OPTIONAL, NEEDS ICLOUD)
 - Sharing is private between the two invited parents. There is no public or user-generated content, so there is nothing to report or block. Either parent can stop sharing in Settings > Sharing.
 
 NIGHT SHIFT (NEEDS TWO DEVICES, TWO APPLE ACCOUNTS)
-Night Shift appears only after a partner has joined the shared log, and its card on Home is offered between 6:00 PM and the morning time (7:00 AM by default).
+On-Call Shift appears only after a partner has joined the shared log, and its card on Home is offered whenever nobody is on call. Tapping it asks when the shift ends.
 1. Share the log between two iPhones as described above.
-2. After 6:00 PM, on phone A, tap "I'm on duty tonight" on Home.
-3. Phone A shows "You're on duty". Phone B shows "Your partner is on duty" with Take over. Feeding reminders (Settings > Notifications) now ring only on phone A.
-4. When the shift ends (End, Take over, or the morning time), phone B shows "While you slept" with the night's feeds.
+2. On phone A, tap "Start on-call" on Home, pick an end time, and tap Start on-call.
+3. Phone A shows "You're on call". Phone B shows "Your partner is on call" with Take over. Feeding reminders (Settings > Notifications) now ring only on phone A.
+4. When the shift ends (End, Take over, or the picked end time), phone B shows "While you slept" with the night's feeds.
 Because this needs two accounts and an evening clock, the attached video shows the whole flow.
 
 PERMISSIONS
-Notifications are requested only when the parent turns on a feeding reminder. Alarms (AlarmKit, iOS 26) are requested only if the parent turns on Settings > Night Shift > Ring as alarm. The baby photo uses the system photo picker, so there is no photo library permission.
+Notifications are requested only when the parent turns on a feeding reminder. Alarms (AlarmKit, iOS 26) are requested only if the parent turns on Settings > On-Call Shift > Ring as alarm. The baby photo uses the system photo picker, so there is no photo library permission.
 
 EXTERNAL SERVICES
 Only Apple's iCloud (CloudKit and iCloud key-value storage), and only when the user turns on sync or sharing. There is no server of ours, no analytics, no advertising, no third-party SDK, no payment processing and no AI service. The developer cannot see any user data. The privacy label is "Data Not Collected".
@@ -70,7 +70,7 @@ I'm a new dad. [ONE OR TWO SENTENCES IN YOUR OWN WORDS: what the nights were lik
 
 Here is what I believe no other feeding tracker does:
 
-Night Shift. My wife and I share one feeding log, and in the evening one of us taps "I'm on duty tonight". From then until morning, feeding reminders ring only on that parent's iPhone, and the other phone stays quiet so that parent can actually sleep. In the morning, the parent who slept gets a "While you slept" summary of the night. I looked for an app that does this before building it and couldn't find one.
+On-Call Shift. My wife and I share one feeding log, and in the evening one of us taps "Start on-call". From then until morning, feeding reminders ring only on that parent's iPhone, and the other phone stays quiet so that parent can actually sleep. In the morning, the parent who slept gets a "While you slept" summary of the night. I looked for an app that does this before building it and couldn't find one.
 
 The whole timer runs from the Lock Screen. With one free thumb and a sleeping baby, you can switch sides, pause and end a feed from the Lock Screen or Dynamic Island without opening the app. Between feeds it keeps counting the time since the baby last ate.
 
@@ -78,7 +78,7 @@ A timer that doesn't lose time. It stays exact if the app closes, the phone rest
 
 It asks for nothing. No account, no ads, no subscription, no purchases, no analytics. Sharing and sync go through the parents' own iCloud, and I can't see any of it.
 
-I've also rewritten the product page. The name, subtitle, description and screenshots now show these things instead of generic category words, and the review notes include a video of Night Shift running on two iPhones.
+I've also rewritten the product page. The name, subtitle, description and screenshots now show these things instead of generic category words, and the review notes include a video of On-Call Shift running on two iPhones.
 
 I'd be glad to answer questions or get on a call. Thank you for reading, and for the work you do.
 
@@ -93,10 +93,9 @@ Before sending:
 
 ## 3. Demo video shot list (two iPhones, 2 to 3 minutes)
 
-Apple asked for a recording on a physical device that starts with launching the app. Night Shift
+Apple asked for a recording on a physical device that starts with launching the app. On-Call Shift
 can't be shown on one phone, so film both phones side by side with a third device, or record
-each screen and put the recordings next to each other. Film in the evening (after 6:00 PM), or
-the Night Shift card won't be offered.
+each screen and put the recordings next to each other.
 
 Before recording: both phones on the latest iOS and the latest TestFlight build, Do Not Disturb
 on, Newbee closed in the app switcher, sharing already accepted on the second phone.
@@ -107,10 +106,10 @@ on, Newbee closed in the app switcher, sharing already accepted on the second ph
    Screen, touch and hold the Dynamic Island.
 4. **End the feed.** Show that the feed appears on phone B too.
 5. **Bottle** on phone B. Show it appear on phone A.
-6. **Night Shift.** On phone A tap "I'm on duty tonight". Show "You're on duty" on A and "Your
-   partner is on duty" on B.
+6. **On-Call Shift.** On phone A tap "Start on-call". Show "You're on call" on A and "Your
+   partner is on call" on B.
 7. **Take over** on phone B, or End on phone A. Show "While you slept" on the other phone.
-8. **Settings** on phone A: scroll through iCloud, Sharing, Night Shift, Reminders and Your data.
+8. **Settings** on phone A: scroll through iCloud, Sharing, On-Call Shift, Reminders and Your data.
    Open Export feeding report (PDF), close it. Tap Delete all data to show the confirmation, then
    **Cancel**.
 

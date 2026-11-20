@@ -165,7 +165,8 @@ final class AppPreferences {
         }
     }
 
-    /// When a night shift ends by itself, in minutes after midnight (docs/NIGHT_SHIFT.md).
+    /// The end time last picked for an on-call shift, in minutes after midnight: the default
+    /// the next time "Start on-call" asks (docs/NIGHT_SHIFT.md).
     var nightShiftMorningMinute: Int {
         didSet { store(nightShiftMorningMinute, forKey: Key.nightShiftMorningMinute) }
     }

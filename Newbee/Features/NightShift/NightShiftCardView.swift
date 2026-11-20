@@ -2,21 +2,26 @@ import NewbeeKit
 import NewbeeShared
 import SwiftUI
 
-/// Night Shift on Home (docs/NIGHT_SHIFT.md, docs/UX_SPEC.md §3.2): one card, and only when there
-/// is something to say. In the evening it offers "I'm on duty tonight"; during a shift it shows
-/// who is on duty on both phones; in the morning the parent who slept gets "While you slept".
+/// The On-Call Shift on Home (docs/NIGHT_SHIFT.md, docs/UX_SPEC.md §3.2): one card, and only when there
+/// is something to say. With nobody on call it offers "Start on-call", which asks for the end
+/// time (`OnCallStartSheet`); during a shift it shows who is on call on both phones; afterwards the
+/// parent who slept gets "While you slept".
 struct NightShiftCardView: View {
     let model: NightShiftModel
     let now: Date
     /// Recent finished feeds, newest first, for the morning summary.
     let entries: [FeedEntry]
     let volumeUnit: VolumeUnit
+    @State private var pickingEnd = false
 
     var body: some View {
         if let card = model.card(at: now) {
             content(card)
+                .sheet(isPresented: $pickingEnd) {
+                    OnCallStartSheet(model: model, now: now)
+                }
                 .alert(
-                    "Night Shift",
+                    "On-Call Shift",
                     isPresented: Binding(get: { model.errorMessage != nil }, set: { if !$0 { model.errorMessage = nil } })
                 ) {
                     Button("OK", role: .cancel) {}
@@ -32,27 +37,38 @@ struct NightShiftCardView: View {
         case .offerStart:
             // The whole card is the button: one tap, as big as the card.
             Button {
-                Task { await model.goOnDuty() }
+                pickingEnd = true
             } label: {
                 Card(padding: NBSpacing.m) {
                     row(
                         symbol: "moon.stars.fill",
-                        title: String(localized: "I'm on duty tonight"),
-                        titleColor: NBColor.accent,
-                        subtitle: Self.offerSubtitle(until: model.schedule.morning(after: now), remindersOn: model.remindersAreOn)
+                        title: String(localized: "Start on-call"),
+                        subtitle: Self.offerSubtitle(remindersOn: model.remindersAreOn)
                     ) {
-                        if model.isWorking { ProgressView() }
+                        // Looks like the End and Take over buttons on the other cards, so the
+                        // card reads as something to tap, not as a status.
+                        if model.isWorking {
+                            ProgressView()
+                        } else {
+                            Text("Start")
+                                .font(.subheadline.weight(.semibold))
+                                .foregroundStyle(.white)
+                                .padding(.horizontal, NBSpacing.m)
+                                .padding(.vertical, NBSpacing.s)
+                                .background(NBColor.accent, in: Capsule())
+                        }
                     }
                 }
             }
             .buttonStyle(.plain)
             .disabled(model.isWorking)
+            .accessibilityLabel("Start on-call")
             .accessibilityIdentifier("nightShift.start")
         case .onDuty(let until):
             Card(padding: NBSpacing.m) {
                 row(
                     symbol: "moon.stars.fill",
-                    title: String(localized: "You're on duty"),
+                    title: String(localized: "You're on call"),
                     subtitle: Self.onDutySubtitle(until: until, remindersOn: model.remindersAreOn)
                 ) {
                     Button("End") { model.endShift() }
@@ -65,7 +81,7 @@ struct NightShiftCardView: View {
             Card(padding: NBSpacing.m) {
                 row(
                     symbol: "moon.zzz.fill",
-                    title: String(localized: "Your partner is on duty"),
+                    title: String(localized: "Your partner is on call"),
                     subtitle: String(localized: "Until \(Self.time(until)). This iPhone stays quiet.")
                 ) {
                     Button("Take over") {
@@ -142,10 +158,10 @@ struct NightShiftCardView: View {
         date.formatted(date: .omitted, time: .shortened)
     }
 
-    static func offerSubtitle(until: Date, remindersOn: Bool) -> String {
+    static func offerSubtitle(remindersOn: Bool) -> String {
         remindersOn
-            ? String(localized: "Feed reminders ring only on your iPhone until \(time(until)).")
-            : String(localized: "Your partner gets a summary of the night at \(time(until)).")
+            ? String(localized: "Feed reminders ring only on your iPhone, so your partner can sleep.")
+            : String(localized: "Your partner gets a summary when your shift ends.")
     }
 
     static func onDutySubtitle(until: Date, remindersOn: Bool) -> String {

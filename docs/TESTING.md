@@ -36,7 +36,7 @@ Target: **≥ 95 % line coverage** on `SessionEngine` and `Analytics`.
 - Schema migration: V1 fixture store opens with the current plan (once V2 exists).
 - Export: CSV file written and readable; PDF renders non-empty with expected page count.
 - Sync (docs/ICLOUD_SYNC.md): the merge rules live in NewbeeKit (`SyncTests`: two or three fake phones and a fake iCloud zone, covering edits, deletes, conflicts in both orders, joining a shared log, leaving it, and relaunch). The app target checks the SwiftData side (`SyncStoreTests`: every field survives a round trip, incoming records update feeds in place, CloudKit record coding, the saved sync state) and that `cloudkit/schema.ckdb` declares everything the app writes (`CloudKitSchemaTests`). CloudKit itself is only exercised on real phones (D20 to D30).
-- Night Shift (docs/NIGHT_SHIFT.md): who is on duty, the Home card, the summary and on-duty reminders in NewbeeKit (`NightShiftTests`); the store, its sync, the scheduler with a fake AlarmKit client and the wording in the app target (`NightShiftAppTests`).
+- On-Call Shift (docs/NIGHT_SHIFT.md): who is on call, the Home card, the summary and on-call reminders in NewbeeKit (`NightShiftTests`); the store, its sync, the scheduler with a fake AlarmKit client and the wording in the app target (`NightShiftAppTests`).
 
 ## 4. UI tests (XCUITest, launch argument `-uiTesting` → in-memory store + fixed clock)
 
@@ -85,10 +85,10 @@ Run each case on an **iPhone 14 Pro or later** (Dynamic Island). Where marked �
 | D24 | Both phones in airplane mode: edit the same feed on both, then go back online | The later edit wins on both phones; nothing is duplicated |
 | D25 | Owner taps Partner → Stop Sharing (or the partner leaves) | Partner sees "Sharing has ended" and keeps every feed so far; new feeds no longer cross |
 | D26 | Start a feed on one phone while sharing and leave it running past the "Still feeding?" time | The other phone's app shows the running timer once opened (its Lock Screen activity appears only then). "Still feeding?" arrives only on the phone that started the feed |
-| D27 | Night Shift: in the evening, tap "I'm on duty tonight" on one phone | Both phones show who is on duty within a minute; the feeding reminder arrives only on the on-duty phone, even in quiet hours |
+| D27 | On-Call Shift: tap "Start on-call" on one phone and pick an end time | Both phones show who is on call within a minute; the feeding reminder arrives only on the on-call phone, even in quiet hours |
 | D28 | Ring as alarm on (iOS 26), phone on Silent | The reminder rings as an alarm with a Stop button |
 | D29 | Tap Take over on the other phone, then End | Both phones follow each change; after End both are back to normal reminders |
-| D30 | Let a shift run to its morning time | The parent who slept gets "While you slept" and sees the card on Home until they close it; the parent on duty sees neither |
+| D30 | Let a shift run to its end time | The parent who slept gets "While you slept" and sees the card on Home until they close it; the parent on call sees neither |
 | D31 | Look at Home, History (filter and + menus), a Day in Calendar, the edit sheet and the Lock Screen after a feed, in light and dark mode | Breastfeed, Bottle and Pumping show the new two-tone icons (parent with baby, bottle, pump), crisp and in each feed's color; menus show them too |
 
 ## 6. CI

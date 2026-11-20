@@ -34,11 +34,12 @@ struct DashboardView: View {
                         LastFeedCard(summary: summary, now: now)
                     }
                     QuickActions(now: now)
-                    // Below the buttons, so they never move under a thumb at 3 a.m.
+                    TodaySection(summary: summary)
+                    // Below the buttons, so they never move under a thumb at 3 a.m., and below
+                    // Today so the day's numbers stay in the same place.
                     if let nightShift {
                         NightShiftCardView(model: nightShift, now: now, entries: entries, volumeUnit: bottleModel?.unit ?? .milliliters)
                     }
-                    TodaySection(summary: summary)
                     RecentSection(
                         entries: Array(entries.filter { $0.start <= now }.prefix(3)),
                         canEdit: canEdit,
