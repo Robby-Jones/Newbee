@@ -239,6 +239,19 @@ struct NightShiftReminderSchedulingTests {
         #expect(dependencies.nightShift.store.shift?.endsAt == theirs.endsAt)
     }
 
+    @Test func endingTheShiftChangesTheCardRightAway() async throws {
+        let dependencies = try makeDependencies()
+        await dependencies.nightShift.goOnDuty()
+        // Home's minute tick, taken before End was tapped.
+        let tick = clock.now
+        clock.advance(by: 30)
+        let started = try #require(dependencies.nightShift.store.shift)
+        #expect(dependencies.nightShift.card(at: tick) == .onDuty(until: started.endsAt))
+        dependencies.nightShift.endShift()
+        #expect(dependencies.nightShift.card(at: tick) == .offerStart)
+        #expect(dependencies.nightShift.duty(at: clock.now) == .none)
+    }
+
     @Test func thePickedEndTimeEndsTheShiftAndIsRememberedForNextTime() async throws {
         let dependencies = try makeDependencies()
         let endMinute = 5 * 60 + 30

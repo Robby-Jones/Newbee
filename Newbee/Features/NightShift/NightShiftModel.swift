@@ -73,7 +73,13 @@ final class NightShiftModel {
     }
 
     /// The card for Home right now, if any.
+    ///
+    /// `now` comes from Home's once-a-minute tick, so it can be up to a minute old when the card is
+    /// redrawn because the shift changed. End stamps the shift with the real time, and the stale
+    /// tick would still see it running, so "You're on call" and End stayed on screen until the
+    /// next minute. The later of the two times is the one that counts.
     func card(at now: Date) -> NightShiftCard? {
+        let now = max(now, clock.now)
         if let preview = NightShiftPreview.card(at: now) { return preview }
         guard hasPartner else { return nil }
         return NightShiftCard.current(
