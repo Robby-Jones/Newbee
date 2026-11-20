@@ -18,6 +18,8 @@ final class AppPreferences {
         static let bottlePresets = "bottlePresets"
         static let pumpVolumeUnit = "pump.volumeUnit"
         static let pumpPresets = "pump.presets"
+        static let pumpTotalOnly = "pump.totalOnly"
+        static let pumpTotalPresets = "pump.totalPresets"
         static let lastBottleContents = "bottle.lastContents"
         static let reminderEnabled = "reminder.enabled"
         static let reminderIntervalMinutes = "reminder.intervalMinutes"
@@ -38,7 +40,8 @@ final class AppPreferences {
         /// Mirrored to iCloud key-value storage. Not `onboardingComplete`: each device walks
         /// through setup on its own first launch, unless it already has synced data.
         static let synced: Set<String> = [
-            volumeUnit, bottlePresets, pumpVolumeUnit, pumpPresets, lastBottleContents, reminderEnabled, reminderIntervalMinutes,
+            volumeUnit, bottlePresets, pumpVolumeUnit, pumpPresets, pumpTotalOnly, pumpTotalPresets, lastBottleContents, reminderEnabled,
+            reminderIntervalMinutes,
             reminderBasis, quietStart, quietEnd, stillFeedingEnabled, stillFeedingMinutes, appearance,
             // Not `nightShiftAlarm`: alarms need iOS 26 and a permission, both per device.
             nightShiftMorningMinute, startingSideMode, startingSideSwitchFrom,
@@ -47,7 +50,8 @@ final class AppPreferences {
         /// Everything "Delete all data" resets. Appearance and `onboardingComplete` are kept
         /// (docs/DATA_MODEL.md), so deleting data doesn't throw the parent back into onboarding.
         static let resettable = [
-            volumeUnit, bottlePresets, pumpVolumeUnit, pumpPresets, lastBottleContents, reminderEnabled, reminderIntervalMinutes, reminderBasis,
+            volumeUnit, bottlePresets, pumpVolumeUnit, pumpPresets, pumpTotalOnly, pumpTotalPresets, lastBottleContents, reminderEnabled,
+            reminderIntervalMinutes, reminderBasis,
             quietStart, quietEnd, stillFeedingEnabled, stillFeedingMinutes, nightShiftMorningMinute, nightShiftAlarm,
             startingSideMode, startingSideSwitchFrom,
         ]
@@ -131,6 +135,23 @@ final class AppPreferences {
         }
     }
 
+    /// Log Pumping asks for one total instead of left and right (Settings › Bottle and pumping).
+    /// Only changes new entries: each saved entry keeps the way it was logged.
+    var pumpTotalOnly: Bool {
+        didSet { store(pumpTotalOnly, forKey: Key.pumpTotalOnly) }
+    }
+
+    /// The parent's own total-only pumping presets in mL, or `nil` for the defaults.
+    var pumpTotalPresetsML: [Double]? {
+        didSet {
+            if let pumpTotalPresetsML {
+                store(pumpTotalPresetsML, forKey: Key.pumpTotalPresets)
+            } else {
+                remove(forKey: Key.pumpTotalPresets)
+            }
+        }
+    }
+
     /// Feed-due reminders, quiet hours and the "Still feeding?" notice.
     var reminders: ReminderSettings {
         didSet { save(reminders) }
@@ -190,6 +211,8 @@ final class AppPreferences {
         pumpVolumeUnit = Self.loadPumpUnit(defaults, locale: locale)
         bottlePresetsML = defaults.array(forKey: Key.bottlePresets) as? [Double]
         pumpPresetsML = defaults.array(forKey: Key.pumpPresets) as? [Double]
+        pumpTotalOnly = defaults.bool(forKey: Key.pumpTotalOnly)
+        pumpTotalPresetsML = defaults.array(forKey: Key.pumpTotalPresets) as? [Double]
         lastBottleContents = defaults.string(forKey: Key.lastBottleContents).flatMap(BottleContents.init(rawValue:))
         reminders = Self.loadReminders(defaults)
         startingSide = Self.loadStartingSide(defaults)
@@ -209,6 +232,8 @@ final class AppPreferences {
         pumpVolumeUnit = Self.loadPumpUnit(defaults, locale: locale)
         bottlePresetsML = nil
         pumpPresetsML = nil
+        pumpTotalOnly = false
+        pumpTotalPresetsML = nil
         lastBottleContents = nil
         reminders = Self.loadReminders(defaults)
         startingSide = Self.loadStartingSide(defaults)
@@ -367,6 +392,8 @@ final class AppPreferences {
         pumpVolumeUnit = Self.loadPumpUnit(defaults, locale: locale)
         bottlePresetsML = defaults.array(forKey: Key.bottlePresets) as? [Double]
         pumpPresetsML = defaults.array(forKey: Key.pumpPresets) as? [Double]
+        pumpTotalOnly = defaults.bool(forKey: Key.pumpTotalOnly)
+        pumpTotalPresetsML = defaults.array(forKey: Key.pumpTotalPresets) as? [Double]
         lastBottleContents = defaults.string(forKey: Key.lastBottleContents).flatMap(BottleContents.init(rawValue:))
         reminders = Self.loadReminders(defaults)
         startingSide = Self.loadStartingSide(defaults)

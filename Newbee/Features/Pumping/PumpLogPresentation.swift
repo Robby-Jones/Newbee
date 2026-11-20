@@ -101,9 +101,11 @@ enum PumpText {
         String(localized: "Pumping · \(entry.totalAmount(in: unit).formatted)")
     }
 
-    /// "L 70 mL · R 50 mL · 15 min".
+    /// "L 70 mL · R 50 mL · 15 min", or "Total 120 mL · 15 min" for an entry logged as a total.
     static func detail(_ entry: PumpEntry, unit: VolumeUnit) -> String {
-        var parts = ["L \(entry.amount(on: .left, in: unit).formatted)", "R \(entry.amount(on: .right, in: unit).formatted)"]
+        var parts = entry.isTotalOnly
+            ? [String(localized: "Total \(entry.totalAmount(in: unit).formatted)")]
+            : ["L \(entry.amount(on: .left, in: unit).formatted)", "R \(entry.amount(on: .right, in: unit).formatted)"]
         if let duration = entry.durationSeconds {
             parts.append(DurationText.short(duration))
         }
@@ -162,9 +164,6 @@ struct PumpRow: View {
         .contentShape(Rectangle())
         .accessibilityElement(children: .combine)
     }
-}
-
-extension PumpText {
 }
 
 // MARK: - Previews

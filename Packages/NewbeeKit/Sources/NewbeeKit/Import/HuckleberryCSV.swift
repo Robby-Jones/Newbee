@@ -16,7 +16,7 @@ import Foundation
 ///   which side came first.
 /// - Pumping (`Type` Pump): `Start Condition` the left amount, `End Condition` the right amount.
 ///   Parents who log a total instead get one amount in `Start Condition` and a blank
-///   `End Condition` ("3oz"); see `Options.unsidedPumpAmount`.
+///   `End Condition` ("3oz"), saved as a total-only entry; see `Options.unsidedPumpAmount`.
 /// - Everything else (Sleep, Diaper, Growth, Solids, Meds, Tummy time, Bath, Potty…) has no place
 ///   in Newbee yet and is counted, not imported.
 public enum HuckleberryCSV {
@@ -33,6 +33,8 @@ public enum HuckleberryCSV {
     public struct Options: Sendable, Hashable {
         /// Where a pumping amount logged without a side goes.
         public enum UnsidedPump: Sendable, Hashable {
+            /// A total-only entry (`PumpEntry.isTotalOnly`): shown as "Total …", like Huckleberry.
+            case totalOnly
             /// Half on each side, so the total stays exact.
             case splitEvenly
             case allOn(Side)
@@ -43,7 +45,7 @@ public enum HuckleberryCSV {
         /// A pumping row with only one amount (`Start Condition`) is a total, not a left side.
         public var unsidedPumpAmount: UnsidedPump
 
-        public init(firstSideWhenBoth: Side = .left, unsidedPumpAmount: UnsidedPump = .splitEvenly) {
+        public init(firstSideWhenBoth: Side = .left, unsidedPumpAmount: UnsidedPump = .totalOnly) {
             self.firstSideWhenBoth = firstSideWhenBoth
             self.unsidedPumpAmount = unsidedPumpAmount
         }
@@ -219,9 +221,20 @@ public enum HuckleberryCSV {
             } else {
                 return .problem(.unreadableAmount(rightText))
             }
+            let duration = HuckleberryCSV.duration(row["Duration"]).flatMap { $0 > 0 ? $0 : nil }
+            let notes = HuckleberryCSV.joinNotes([row["Notes"]])
             if !leftText.isEmpty, rightText.isEmpty {
                 // One amount and no side: a total.
                 switch options.unsidedPumpAmount {
+                case .totalOnly:
+                    let draft = PumpDraft(
+                        total: left, startedAt: start, durationSeconds: duration, notes: notes, timeZoneID: timeZone.identifier
+                    )
+                    do {
+                        return .record(.pump(try pumpRules.entry(from: draft, now: now)))
+                    } catch {
+                        return .problem(.pump(error))
+                    }
                 case .splitEvenly:
                     left = BottleAmount(left.value / 2, left.unit)
                     right = left
@@ -234,13 +247,12 @@ public enum HuckleberryCSV {
             }
             // Both sides in the unit that was actually typed (a blank side has no unit).
             let unit = leftText.isEmpty ? right.unit : left.unit
-            let duration = HuckleberryCSV.duration(row["Duration"]).flatMap { $0 > 0 ? $0 : nil }
             var draft = PumpDraft(
                 left: BottleAmount(0, unit),
                 right: BottleAmount(0, unit),
                 startedAt: start,
                 durationSeconds: duration,
-                notes: HuckleberryCSV.joinNotes([row["Notes"]]),
+                notes: notes,
                 timeZoneID: timeZone.identifier
             )
             draft.setAmount(left, on: .left)

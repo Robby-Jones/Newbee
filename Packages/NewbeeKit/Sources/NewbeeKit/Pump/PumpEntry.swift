@@ -18,6 +18,10 @@ public struct PumpEntry: Codable, Sendable, Hashable, Identifiable {
     public var notes: String
     /// IANA time zone identifier where the session was logged.
     public var timeZoneID: String
+    /// Logged as one total, without a left/right split (Settings › "Log pumping as total only").
+    /// The total is stored split evenly across `leftML` and `rightML`, so sums and older builds
+    /// still work, but it's shown as "Total …" and the sides are never shown.
+    public var isTotalOnly: Bool
 
     public init(
         id: UUID = UUID(),
@@ -27,7 +31,8 @@ public struct PumpEntry: Codable, Sendable, Hashable, Identifiable {
         enteredUnit: VolumeUnit = .milliliters,
         durationSeconds: TimeInterval? = nil,
         notes: String = "",
-        timeZoneID: String = TimeZone.current.identifier
+        timeZoneID: String = TimeZone.current.identifier,
+        isTotalOnly: Bool = false
     ) {
         self.id = id
         self.startedAt = startedAt
@@ -37,6 +42,23 @@ public struct PumpEntry: Codable, Sendable, Hashable, Identifiable {
         self.durationSeconds = durationSeconds
         self.notes = notes
         self.timeZoneID = timeZoneID
+        self.isTotalOnly = isTotalOnly
+    }
+
+    /// A total-only entry for `totalML`, stored half on each side.
+    public init(
+        id: UUID = UUID(),
+        startedAt: Date,
+        totalML: Double,
+        enteredUnit: VolumeUnit = .milliliters,
+        durationSeconds: TimeInterval? = nil,
+        notes: String = "",
+        timeZoneID: String = TimeZone.current.identifier
+    ) {
+        self.init(
+            id: id, startedAt: startedAt, leftML: totalML / 2, rightML: totalML / 2, enteredUnit: enteredUnit,
+            durationSeconds: durationSeconds, notes: notes, timeZoneID: timeZoneID, isTotalOnly: true
+        )
     }
 
     public var totalML: Double { leftML + rightML }
@@ -62,7 +84,8 @@ public struct PumpEntry: Codable, Sendable, Hashable, Identifiable {
 }
 
 /// What the Log Pumping sheet edits. Becomes a `PumpEntry` once it passes `PumpRules`.
-/// Both sides are always in the same unit.
+/// Both sides are always in the same unit. A total-only draft keeps its total in `left` and
+/// leaves `right` at zero; use `total` and `setTotal(_:)` for it.
 public struct PumpDraft: Sendable, Hashable {
     /// Set when editing an existing entry; `nil` for a new one.
     public var id: UUID?
@@ -76,6 +99,8 @@ public struct PumpDraft: Sendable, Hashable {
     /// keeps the exact milliliters.
     public var originalLeftML: Double?
     public var originalRightML: Double?
+    /// Asks for one total instead of left and right (see `PumpEntry.isTotalOnly`).
+    public private(set) var isTotalOnly: Bool
 
     public init(
         id: UUID? = nil,
@@ -87,6 +112,7 @@ public struct PumpDraft: Sendable, Hashable {
         timeZoneID: String = TimeZone.current.identifier
     ) {
         self.id = id
+        self.isTotalOnly = false
         self.left = left
         self.right = right.unit == left.unit ? right : right.converted(to: left.unit)
         self.startedAt = startedAt
@@ -95,8 +121,37 @@ public struct PumpDraft: Sendable, Hashable {
         self.timeZoneID = timeZoneID
     }
 
+    /// A total-only draft for `total`.
+    public init(
+        id: UUID? = nil,
+        total: BottleAmount,
+        startedAt: Date,
+        durationSeconds: TimeInterval? = nil,
+        notes: String = "",
+        timeZoneID: String = TimeZone.current.identifier
+    ) {
+        self.init(
+            id: id, left: total, right: BottleAmount(0, total.unit), startedAt: startedAt,
+            durationSeconds: durationSeconds, notes: notes, timeZoneID: timeZoneID
+        )
+        isTotalOnly = true
+    }
+
     /// A draft for editing `entry`, shown in `unit` (default: the unit it was entered in).
+    /// A total-only entry stays total-only and an entry with sides keeps its sides.
     public init(editing entry: PumpEntry, unit: VolumeUnit? = nil) {
+        if entry.isTotalOnly {
+            self.init(
+                id: entry.id,
+                total: entry.totalAmount(in: unit ?? entry.enteredUnit),
+                startedAt: entry.startedAt,
+                durationSeconds: entry.durationSeconds,
+                notes: entry.notes,
+                timeZoneID: entry.timeZoneID
+            )
+            originalLeftML = entry.totalML
+            return
+        }
         self.init(
             id: entry.id,
             left: entry.amount(on: .left, in: unit),
@@ -140,9 +195,19 @@ public struct PumpDraft: Sendable, Hashable {
         right = right.value > 0 ? BottleAmount(milliliters: rightML).converted(to: target) : BottleAmount(0, target)
     }
 
-    /// Left plus right, in the draft's unit.
+    /// Left plus right, in the draft's unit (the entered total for a total-only draft).
     public var total: BottleAmount {
-        BottleAmount(unit.rounded(left.value + right.value), unit)
+        isTotalOnly ? left : BottleAmount(unit.rounded(left.value + right.value), unit)
+    }
+
+    /// Sets a total-only draft's total.
+    public mutating func setTotal(_ amount: BottleAmount) {
+        setAmount(amount, on: .left)
+    }
+
+    /// The milliliters a total-only draft would save, or left plus right.
+    public var totalMilliliters: Double {
+        milliliters(on: .left) + (isTotalOnly ? 0 : milliliters(on: .right))
     }
 }
 
@@ -150,13 +215,16 @@ public struct PumpDraft: Sendable, Hashable {
 public enum PumpValidationError: Error, Sendable, Hashable {
     case amountNotPositive
     case sideTooLarge(Side, maximumML: Double)
+    /// A total-only entry over twice the per-side limit.
+    case totalTooLarge(maximumML: Double)
     case startInFuture
     case durationNotPositive
     case durationTooLong(maximumSeconds: TimeInterval)
     case endInFuture
 }
 
-/// Validation rules for pumping sessions: something was pumped, each side at most 500 mL,
+/// Validation rules for pumping sessions: something was pumped, each side at most 500 mL (a
+/// total-only entry at most 1,000 mL),
 /// no times in the future, and an optional duration of 1 minute to 2 hours.
 public struct PumpRules: Sendable, Hashable {
     /// Largest amount accepted on one side, in milliliters.
@@ -172,6 +240,9 @@ public struct PumpRules: Sendable, Hashable {
         self.futureTolerance = futureTolerance
     }
 
+    /// Largest total accepted for a total-only entry: both sides at their limit.
+    public var maximumTotalML: Double { maximumPerSideML * 2 }
+
     /// Every problem with `draft`, most important first. Empty means it can be saved.
     public func problems(with draft: PumpDraft, now: Date) -> [PumpValidationError] {
         var problems: [PumpValidationError] = []
@@ -180,8 +251,14 @@ public struct PumpRules: Sendable, Hashable {
         if !(left >= 0 && right >= 0 && left + right > 0) {
             problems.append(.amountNotPositive)
         }
-        for side in Side.allCases where draft.milliliters(on: side) > maximumPerSideML + 0.001 {
-            problems.append(.sideTooLarge(side, maximumML: maximumPerSideML))
+        if draft.isTotalOnly {
+            if draft.totalMilliliters > maximumTotalML + 0.001 {
+                problems.append(.totalTooLarge(maximumML: maximumTotalML))
+            }
+        } else {
+            for side in Side.allCases where draft.milliliters(on: side) > maximumPerSideML + 0.001 {
+                problems.append(.sideTooLarge(side, maximumML: maximumPerSideML))
+            }
         }
         let latest = now.addingTimeInterval(futureTolerance)
         if draft.startedAt > latest {
@@ -204,6 +281,18 @@ public struct PumpRules: Sendable, Hashable {
         if let problem = problems(with: draft, now: now).first {
             throw problem
         }
+        let notes = draft.notes.trimmingCharacters(in: .whitespacesAndNewlines)
+        if draft.isTotalOnly {
+            return PumpEntry(
+                id: draft.id ?? UUID(),
+                startedAt: draft.startedAt,
+                totalML: draft.totalMilliliters,
+                enteredUnit: draft.unit,
+                durationSeconds: draft.durationSeconds,
+                notes: notes,
+                timeZoneID: draft.timeZoneID
+            )
+        }
         return PumpEntry(
             id: draft.id ?? UUID(),
             startedAt: draft.startedAt,
@@ -211,7 +300,7 @@ public struct PumpRules: Sendable, Hashable {
             rightML: draft.milliliters(on: .right),
             enteredUnit: draft.unit,
             durationSeconds: draft.durationSeconds,
-            notes: draft.notes.trimmingCharacters(in: .whitespacesAndNewlines),
+            notes: notes,
             timeZoneID: draft.timeZoneID
         )
     }

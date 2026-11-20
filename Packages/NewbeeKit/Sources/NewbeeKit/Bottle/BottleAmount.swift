@@ -124,8 +124,27 @@ public enum PumpPresets {
         }
     }
 
+    /// Total-only defaults: 60 / 120 / 180 mL or 2 / 4 / 6 oz, a typical session's total.
+    public static func totalDefaults(for unit: VolumeUnit) -> [BottleAmount] {
+        defaults(for: unit).map { BottleAmount($0.value * 2, unit) }
+    }
+
     public static let minimumCount = VolumePresets.minimumCount
     public static let maximumCount = VolumePresets.maximumCount
+
+    /// Total-only chips on the Log Pumping sheet: sorted, without duplicates, within the total limit.
+    public static func totalAmounts(storedML: [Double]?, unit: VolumeUnit, rules: PumpRules = PumpRules()) -> [BottleAmount] {
+        VolumePresets.amounts(storedML: storedML, unit: unit, defaults: totalDefaults(for: unit), maximumML: rules.maximumTotalML)
+    }
+
+    /// Total presets as Settings edits them, in stored order with duplicates kept.
+    public static func editableTotals(storedML: [Double]?, unit: VolumeUnit, rules: PumpRules = PumpRules()) -> [BottleAmount] {
+        VolumePresets.editable(storedML: storedML, unit: unit, defaults: totalDefaults(for: unit), maximumML: rules.maximumTotalML)
+    }
+
+    public static func nextTotalAmount(after presets: [BottleAmount], unit: VolumeUnit, rules: PumpRules = PumpRules()) -> BottleAmount {
+        VolumePresets.nextAmount(after: presets, unit: unit, maximumML: rules.maximumTotalML)
+    }
 
     /// Chips on the Log Pumping sheet: sorted, without duplicates, within the per-side limit.
     public static func amounts(storedML: [Double]?, unit: VolumeUnit, rules: PumpRules = PumpRules()) -> [BottleAmount] {

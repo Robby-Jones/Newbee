@@ -53,11 +53,16 @@ final class PumpLogUIModel {
         PumpPresets.amounts(storedML: preferences.pumpPresetsML, unit: unit, rules: log.rules)
     }
 
+    /// Quick amounts for a total-only entry.
+    var totalPresets: [BottleAmount] {
+        PumpPresets.totalAmounts(storedML: preferences.pumpTotalPresetsML, unit: unit, rules: log.rules)
+    }
+
     // MARK: - Presentation
 
     /// Opens the sheet on a new session ending at `time` (default: now).
     func presentNew(endingAt time: Date? = nil) {
-        editor = EditorRequest(draft: log.newDraft(unit: unit, endingAt: time))
+        editor = EditorRequest(draft: log.newDraft(unit: unit, totalOnly: preferences.pumpTotalOnly, endingAt: time))
     }
 
     /// Opens the sheet on an existing session (for example from a History row).
@@ -180,6 +185,8 @@ extension PumpValidationError {
             String(localized: "Enter how much you pumped.")
         case .sideTooLarge(let side, let maximumML):
             String(localized: "\(side.title) is more than \(Int(maximumML)) mL. Check the amount and unit.")
+        case .totalTooLarge(let maximumML):
+            String(localized: "The total is more than \(Int(maximumML)) mL. Check the amount and unit.")
         case .startInFuture:
             String(localized: "The start can't be in the future.")
         case .durationNotPositive:

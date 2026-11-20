@@ -223,6 +223,42 @@ final class ReviewScreenshots: ScreenshotTestCase {
         app.terminate()
     }
 
+    /// Settings → Bottle and pumping with "Log pumping as total only" on, the Log Pumping sheet
+    /// asking for one total, and History with the new total next to older left/right sessions.
+    @MainActor
+    func testPumpingTotalOnly() throws {
+        let app = launch()
+        app.tabBars.buttons["Settings"].tap()
+        let toggle = app.switches["settings.pumpTotalOnly"].firstMatch
+        XCTAssertTrue(toggle.waitForExistence(timeout: 10))
+        reveal(toggle, in: app)
+        settle()
+        capture("pump-total-settings-off")
+        // The switch itself sits at the trailing edge of the row.
+        toggle.coordinate(withNormalizedOffset: CGVector(dx: 0.93, dy: 0.5)).tap()
+        settle()
+        let presets = app.descendants(matching: .any)["settings.pumpTotalPresets"].firstMatch
+        XCTAssertTrue(presets.waitForExistence(timeout: 5))
+        presets.tap()
+        settle()
+        capture("pump-total-settings-on")
+
+        app.tabBars.buttons["Home"].tap()
+        let logPump = app.buttons["logPumpButton"].firstMatch
+        XCTAssertTrue(logPump.waitForExistence(timeout: 10))
+        logPump.tap()
+        XCTAssertTrue(app.buttons["pump.more.total"].firstMatch.waitForExistence(timeout: 5))
+        settle()
+        capture("pump-total-sheet")
+        app.buttons["pump.save"].firstMatch.tap()
+        settle()
+
+        app.tabBars.buttons["History"].tap()
+        settle()
+        capture("pump-total-history")
+        app.terminate()
+    }
+
     /// Scrolls the list until `element` can be tapped.
     @MainActor
     private func reveal(_ element: XCUIElement, in app: XCUIApplication) {

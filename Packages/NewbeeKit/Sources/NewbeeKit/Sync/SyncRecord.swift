@@ -152,13 +152,19 @@ public struct FeedPayload: SyncPayload, Hashable {
         public var rightML: Double
         public var enteredUnit: String
         public var durationSeconds: Double?
+        /// `true` for an entry logged as one total (`PumpEntry.isTotalOnly`). `nil`, never
+        /// `false`, otherwise, so entries with sides keep the bytes they had before this existed.
+        public var totalOnly: Bool?
 
-        public init(leftML: Double, rightML: Double, enteredUnit: String, durationSeconds: Double?) {
+        public init(leftML: Double, rightML: Double, enteredUnit: String, durationSeconds: Double?, totalOnly: Bool? = nil) {
             self.leftML = leftML
             self.rightML = rightML
             self.enteredUnit = enteredUnit
             self.durationSeconds = durationSeconds
+            self.totalOnly = totalOnly == true ? true : nil
         }
+
+        public var isTotalOnly: Bool { totalOnly == true }
     }
 
     public var id: UUID

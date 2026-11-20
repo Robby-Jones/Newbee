@@ -75,10 +75,13 @@ public struct FeedReport: Sendable, Hashable {
 
     public struct PumpSummary: Sendable, Hashable {
         public var count: Int
+        /// Everything pumped, total-only sessions included.
+        public var totalML: Double
+        /// Per-side sums over sessions logged with sides; total-only sessions have none.
         public var leftML: Double
         public var rightML: Double
-
-        public var totalML: Double { leftML + rightML }
+        /// Sessions logged with a left/right split.
+        public var sidedCount: Int
     }
 
     /// Whole local days covered, midnight to midnight.
@@ -139,10 +142,13 @@ public struct FeedReport: Sendable, Hashable {
         }
         self.breast = breast
         self.bottle = bottle
+        let sidedPumps = pumps.filter { !$0.isTotalOnly }
         self.pump = PumpSummary(
             count: pumps.count,
-            leftML: pumps.reduce(0) { $0 + $1.leftML },
-            rightML: pumps.reduce(0) { $0 + $1.rightML }
+            totalML: pumps.reduce(0) { $0 + $1.totalML },
+            leftML: sidedPumps.reduce(0) { $0 + $1.leftML },
+            rightML: sidedPumps.reduce(0) { $0 + $1.rightML },
+            sidedCount: sidedPumps.count
         )
 
         let gaps = zip(feeds, feeds.dropFirst()).map { $1.start.timeIntervalSince($0.start) }
