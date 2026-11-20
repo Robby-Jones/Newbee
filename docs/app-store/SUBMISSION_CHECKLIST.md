@@ -16,7 +16,7 @@ The texts to paste are in [LISTING.md](LISTING.md) (product page) and
       sharing: <https://robby-jones.github.io/Newbee/privacy.html> and
       <https://robby-jones.github.io/Newbee/support.html>. The privacy page should say
       "Effective November 16, 2026".
-- [ ] **Wait for the new TestFlight build.** Every merge to main uploads one. The build to submit
+- [ ] **Wait for the new TestFlight build.** Start one from Actions → TestFlight → Run workflow on main. The build to submit
       is the one with the **highest number** (60 or later) once it shows as ready in TestFlight.
 - [ ] **Confirm the CloudKit schema is in Production.** Sharing and Night Shift fail for everyone
       outside your family if it isn't. Actions → CloudKit schema → Run workflow on main; it
