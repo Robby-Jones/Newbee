@@ -29,6 +29,7 @@ struct OnCallStartSheet: View {
                         .font(.subheadline)
                         .foregroundStyle(NBColor.secondaryText)
                         .multilineTextAlignment(.center)
+                        .fixedSize(horizontal: false, vertical: true)
                 }
                 .padding(.top, NBSpacing.l)
 
@@ -66,7 +67,8 @@ struct OnCallStartSheet: View {
                 }
             }
         }
-        .presentationDetents([.medium, .large])
+        // Tall enough for the wheel, the wording and the button, with nothing cut off.
+        .presentationDetents([.large])
     }
 
     // MARK: - Wording

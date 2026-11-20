@@ -59,7 +59,6 @@ final class ReviewScreenshots: ScreenshotTestCase {
                 // Bring the whole On-Call Shift section, footer included, above the tab bar.
                 let alarm = app.descendants(matching: .any)["settings.nightShiftAlarm"].firstMatch
                 reveal(alarm, in: app)
-                app.swipeUp()
                 settle()
                 capture("night-shift-settings")
             }
