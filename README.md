@@ -22,8 +22,8 @@ Planning docs: [docs/README.md](docs/README.md). Progress: [docs/CHECKLIST.md](d
 ## Getting it on an iPhone without a local Mac (TestFlight)
 
 Building needs Xcode 27 (the iOS 27 SDK), which App Store uploads require from April 2027. CI runs on the `xcode-27` GitHub runner image. Without a Mac that runs it, the **TestFlight** workflow
-(`.github/workflows/testflight.yml`) archives, signs and uploads the app from GitHub Actions on
-every push to `main` (or manually from **Actions → TestFlight → Run workflow**). Install builds
+(`.github/workflows/testflight.yml`) archives, signs and uploads the app from GitHub Actions when started
+manually from **Actions → TestFlight → Run workflow** (pick `main`). Install builds
 with the TestFlight app on the iPhone.
 
 One-time setup:

@@ -1,7 +1,7 @@
 name: TestFlight
 
 # Archives, signs and uploads the app to TestFlight, so it can be installed on an iPhone
-# without a local Mac. Runs on every push to main and on demand (Actions → TestFlight → Run).
+# without a local Mac. Runs only when started by hand (Actions → TestFlight → Run workflow).
 #
 # Needs these repository secrets (Settings → Secrets and variables → Actions):
 #   APPLE_TEAM_ID   Apple Developer Team ID
@@ -16,8 +16,6 @@ name: TestFlight
 #   SIGNING_CERT_PASSWORD     Password chosen when exporting that .p12
 
 on:
-  push:
-    branches: [main]
   workflow_dispatch:
 
 concurrency:
