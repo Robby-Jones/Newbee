@@ -575,9 +575,11 @@ private func dateAxis(for report: InsightsReport) -> some AxisContent {
     }
 }
 
-private func labelAnchor(_ alignment: DateAxisLabels.Alignment) -> UnitPoint? {
+private func labelAnchor(_ alignment: DateAxisLabels.Alignment) -> UnitPoint {
     switch alignment {
-    case .center: nil
+    // Explicitly centered: Swift Charts' default puts a date label's leading edge at its tick,
+    // which pushed every label right of its bar and into the trailing newest label.
+    case .center: .top
     case .trailing: .topTrailing
     case .leading: .topLeading
     }
