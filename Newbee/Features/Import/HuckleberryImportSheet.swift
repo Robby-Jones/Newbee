@@ -437,6 +437,7 @@ enum ImportText {
             side == .left
                 ? String(localized: "Left side is more than \(FeedText.volume(ml: maximum)), Newbee's limit.")
                 : String(localized: "Right side is more than \(FeedText.volume(ml: maximum)), Newbee's limit.")
+        case .totalTooLarge(let maximum): String(localized: "More than \(FeedText.volume(ml: maximum)), Newbee's limit for one session.")
         case .startInFuture, .endInFuture: String(localized: "It's in the future.")
         case .durationNotPositive: String(localized: "The duration is zero.")
         case .durationTooLong: String(localized: "Longer than 2 hours.")
