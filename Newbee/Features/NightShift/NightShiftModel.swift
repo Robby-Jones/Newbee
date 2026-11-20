@@ -117,7 +117,7 @@ final class NightShiftModel {
 
     // MARK: - Actions
 
-    /// "I'm on duty tonight", and "Take over" when the other parent is on duty.
+    /// "Start your night shift", and "Take over" when the other parent is on duty.
     func goOnDuty() async {
         guard !isWorking else { return }
         isWorking = true

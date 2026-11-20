@@ -1,6 +1,6 @@
 # Night Shift
 
-Two parents, one baby, one night. Night Shift lets one parent say "I'm on duty tonight" so only
+Two parents, one baby, one night. Night Shift lets one parent tap "Start your night shift" so only
 their iPhone reminds them about the next feed, and the other parent can sleep. In the morning the
 parent who slept sees what happened: "While you slept".
 
@@ -11,7 +11,7 @@ Night Shift doesn't appear anywhere.
 
 | Question | Decision |
 |---|---|
-| How a shift starts | One tap on Home, "I'm on duty tonight", offered from 6:00 PM until the morning time |
+| How a shift starts | One tap on Home, "Start your night shift", offered from 6:00 PM until the morning time |
 | How it ends | By itself at the morning time (Settings → Night Shift → Shift ends at, 7:00 AM by default), when the parent on duty taps End, or when the other parent taps Take over |
 | Reminders on duty | The normal feeding reminder (Settings → Notifications), on the on-duty iPhone only. Quiet hours don't hold it back during the shift |
 | Ring as alarm | Optional switch, iOS 26 and later (AlarmKit): the reminder rings like an alarm, also in Silent mode. On older iOS it stays a notification and the switch isn't shown |
@@ -26,11 +26,11 @@ says so.
 
 ## Home
 
-One card under the three big buttons, and only when there is something to say:
+One card under Today (below the three big buttons, above Recent), and only when there is something to say:
 
 | When | Card | Control |
 |---|---|---|
-| Evening or night, nobody on duty | 🌙 **I'm on duty tonight** · "Feed reminders ring only on your iPhone until 7:00 AM." | The whole card is the button |
+| Evening or night, nobody on duty | 🌙 **Start your night shift** · "You get the feed reminders until 7:00 AM, so your partner can sleep." | Start (the whole card is the button) |
 | This parent is on duty | 🌙 **You're on duty** · "Until 7:00 AM. Feed reminders ring only on this iPhone." | End |
 | The partner is on duty | 💤 **Your partner is on duty** · "Until 7:00 AM. This iPhone stays quiet." | Take over |
 | Morning, the partner was on duty | ☀️ **While you slept** · "3 feeds, the last at 5:10 AM" · "32 min nursing · 4 oz by bottle" | ✕ (dismiss) |

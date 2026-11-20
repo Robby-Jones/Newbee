@@ -281,6 +281,7 @@ struct NightShiftWordingTests {
         let until = shift.endsAt
         #expect(NightShiftCardView.onDutySubtitle(until: until, remindersOn: true).hasSuffix("Feed reminders ring only on this iPhone."))
         #expect(NightShiftCardView.onDutySubtitle(until: until, remindersOn: false).hasSuffix("Feed reminders are off."))
-        #expect(NightShiftCardView.offerSubtitle(until: until, remindersOn: true).hasPrefix("Feed reminders ring only on your iPhone until "))
+        #expect(NightShiftCardView.offerSubtitle(until: until, remindersOn: true).hasPrefix("You get the feed reminders until "))
+        #expect(NightShiftCardView.offerSubtitle(until: until, remindersOn: false).hasSuffix("Your partner gets a summary of the night in the morning."))
     }
 }

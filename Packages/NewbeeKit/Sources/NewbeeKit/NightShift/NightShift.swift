@@ -48,7 +48,7 @@ public struct NightShift: SyncPayload, Hashable {
 
     // MARK: - Changes
 
-    /// "I'm on duty tonight": a new shift from now until the next `schedule.morningMinute`.
+    /// "Start your night shift": a new shift from now until the next `schedule.morningMinute`.
     public static func starting(for me: String, at now: Date, schedule: NightShiftSchedule, calendar: Calendar = .current) -> NightShift {
         NightShift(onDuty: me, startedAt: now, endsAt: schedule.morning(after: now, calendar: calendar), changedAt: now)
     }
@@ -87,7 +87,7 @@ public struct NightShiftSchedule: Codable, Sendable, Hashable {
     }
 
     public static let defaultMorningMinute = 7 * 60
-    /// "I'm on duty tonight" is offered from 6:00 PM.
+    /// "Start your night shift" is offered from 6:00 PM.
     public static let eveningMinute = 18 * 60
 
     /// The night: from 6:00 PM until the morning time.
@@ -111,7 +111,7 @@ public struct NightShiftSchedule: Codable, Sendable, Hashable {
 
 /// The one Night Shift card Home shows, if any. Pure, so the rules are tested on Linux.
 public enum NightShiftCard: Sendable, Hashable {
-    /// Evening, nobody on duty: "I'm on duty tonight".
+    /// Evening, nobody on duty: "Start your night shift".
     case offerStart
     /// This parent is on duty.
     case onDuty(until: Date)

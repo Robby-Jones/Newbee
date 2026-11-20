@@ -26,7 +26,7 @@ The texts to paste are in [LISTING.md](LISTING.md) (product page) and
   - [ ] Fresh state on one phone: Settings → iCloud shows Sync with iCloud **off**.
   - [ ] Turn sync on, Settings → Sharing → invite, accept on the other phone.
   - [ ] A feed logged on one phone appears on the other.
-  - [ ] After 6:00 PM: "I'm on duty tonight" on one phone shows "Your partner is on duty" on the
+  - [ ] After 6:00 PM: "Start your night shift" on one phone shows "Your partner is on duty" on the
         other, and Take over works.
   - [ ] A feeding reminder rings only on the on-duty phone.
   - [ ] Live Activity on the Lock Screen and Dynamic Island still works.

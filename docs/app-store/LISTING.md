@@ -43,7 +43,7 @@ the Home Screen stays "Newbee" either way (`CFBundleDisplayName`).
 >
 > NIGHT SHIFT, FOR TWO TIRED PARENTS
 > • Share the feeding log with your partner through iCloud. You both see and log the same feeds
-> • One tap in the evening: "I'm on duty tonight"
+> • One tap in the evening: "Start your night shift"
 > • Feeding reminders ring only on the on-duty parent's iPhone, so the other parent can sleep
 > • In the morning, the parent who slept sees "While you slept": how many feeds, and when
 >

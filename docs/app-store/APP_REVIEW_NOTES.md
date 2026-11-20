@@ -35,7 +35,7 @@ ICLOUD SYNC AND PARTNER SHARING (OPTIONAL, NEEDS ICLOUD)
 NIGHT SHIFT (NEEDS TWO DEVICES, TWO APPLE ACCOUNTS)
 Night Shift appears only after a partner has joined the shared log, and its card on Home is offered between 6:00 PM and the morning time (7:00 AM by default).
 1. Share the log between two iPhones as described above.
-2. After 6:00 PM, on phone A, tap "I'm on duty tonight" on Home.
+2. After 6:00 PM, on phone A, tap "Start your night shift" on Home.
 3. Phone A shows "You're on duty". Phone B shows "Your partner is on duty" with Take over. Feeding reminders (Settings > Notifications) now ring only on phone A.
 4. When the shift ends (End, Take over, or the morning time), phone B shows "While you slept" with the night's feeds.
 Because this needs two accounts and an evening clock, the attached video shows the whole flow.
@@ -70,7 +70,7 @@ I'm a new dad. [ONE OR TWO SENTENCES IN YOUR OWN WORDS: what the nights were lik
 
 Here is what I believe no other feeding tracker does:
 
-Night Shift. My wife and I share one feeding log, and in the evening one of us taps "I'm on duty tonight". From then until morning, feeding reminders ring only on that parent's iPhone, and the other phone stays quiet so that parent can actually sleep. In the morning, the parent who slept gets a "While you slept" summary of the night. I looked for an app that does this before building it and couldn't find one.
+Night Shift. My wife and I share one feeding log, and in the evening one of us taps "Start your night shift". From then until morning, feeding reminders ring only on that parent's iPhone, and the other phone stays quiet so that parent can actually sleep. In the morning, the parent who slept gets a "While you slept" summary of the night. I looked for an app that does this before building it and couldn't find one.
 
 The whole timer runs from the Lock Screen. With one free thumb and a sleeping baby, you can switch sides, pause and end a feed from the Lock Screen or Dynamic Island without opening the app. Between feeds it keeps counting the time since the baby last ate.
 
@@ -107,7 +107,7 @@ on, Newbee closed in the app switcher, sharing already accepted on the second ph
    Screen, touch and hold the Dynamic Island.
 4. **End the feed.** Show that the feed appears on phone B too.
 5. **Bottle** on phone B. Show it appear on phone A.
-6. **Night Shift.** On phone A tap "I'm on duty tonight". Show "You're on duty" on A and "Your
+6. **Night Shift.** On phone A tap "Start your night shift". Show "You're on duty" on A and "Your
    partner is on duty" on B.
 7. **Take over** on phone B, or End on phone A. Show "While you slept" on the other phone.
 8. **Settings** on phone A: scroll through iCloud, Sharing, Night Shift, Reminders and Your data.

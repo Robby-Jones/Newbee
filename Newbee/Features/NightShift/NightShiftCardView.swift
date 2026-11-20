@@ -3,7 +3,7 @@ import NewbeeShared
 import SwiftUI
 
 /// Night Shift on Home (docs/NIGHT_SHIFT.md, docs/UX_SPEC.md §3.2): one card, and only when there
-/// is something to say. In the evening it offers "I'm on duty tonight"; during a shift it shows
+/// is something to say. In the evening it offers "Start your night shift"; during a shift it shows
 /// who is on duty on both phones; in the morning the parent who slept gets "While you slept".
 struct NightShiftCardView: View {
     let model: NightShiftModel
@@ -37,16 +37,27 @@ struct NightShiftCardView: View {
                 Card(padding: NBSpacing.m) {
                     row(
                         symbol: "moon.stars.fill",
-                        title: String(localized: "I'm on duty tonight"),
-                        titleColor: NBColor.accent,
+                        title: String(localized: "Start your night shift"),
                         subtitle: Self.offerSubtitle(until: model.schedule.morning(after: now), remindersOn: model.remindersAreOn)
                     ) {
-                        if model.isWorking { ProgressView() }
+                        // Looks like the End and Take over buttons on the other cards, so the
+                        // card reads as something to tap, not as a status.
+                        if model.isWorking {
+                            ProgressView()
+                        } else {
+                            Text("Start")
+                                .font(.subheadline.weight(.semibold))
+                                .foregroundStyle(.white)
+                                .padding(.horizontal, NBSpacing.m)
+                                .padding(.vertical, NBSpacing.s)
+                                .background(NBColor.accent, in: Capsule())
+                        }
                     }
                 }
             }
             .buttonStyle(.plain)
             .disabled(model.isWorking)
+            .accessibilityLabel("Start your night shift")
             .accessibilityIdentifier("nightShift.start")
         case .onDuty(let until):
             Card(padding: NBSpacing.m) {
@@ -144,8 +155,8 @@ struct NightShiftCardView: View {
 
     static func offerSubtitle(until: Date, remindersOn: Bool) -> String {
         remindersOn
-            ? String(localized: "Feed reminders ring only on your iPhone until \(time(until)).")
-            : String(localized: "Your partner gets a summary of the night at \(time(until)).")
+            ? String(localized: "You get the feed reminders until \(time(until)), so your partner can sleep.")
+            : String(localized: "Until \(time(until)). Your partner gets a summary of the night in the morning.")
     }
 
     static func onDutySubtitle(until: Date, remindersOn: Bool) -> String {

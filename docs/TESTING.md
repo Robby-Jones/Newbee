@@ -85,7 +85,7 @@ Run each case on an **iPhone 14 Pro or later** (Dynamic Island). Where marked â€
 | D24 | Both phones in airplane mode: edit the same feed on both, then go back online | The later edit wins on both phones; nothing is duplicated |
 | D25 | Owner taps Partner â†’ Stop Sharing (or the partner leaves) | Partner sees "Sharing has ended" and keeps every feed so far; new feeds no longer cross |
 | D26 | Start a feed on one phone while sharing and leave it running past the "Still feeding?" time | The other phone's app shows the running timer once opened (its Lock Screen activity appears only then). "Still feeding?" arrives only on the phone that started the feed |
-| D27 | Night Shift: in the evening, tap "I'm on duty tonight" on one phone | Both phones show who is on duty within a minute; the feeding reminder arrives only on the on-duty phone, even in quiet hours |
+| D27 | Night Shift: in the evening, tap "Start your night shift" on one phone | Both phones show who is on duty within a minute; the feeding reminder arrives only on the on-duty phone, even in quiet hours |
 | D28 | Ring as alarm on (iOS 26), phone on Silent | The reminder rings as an alarm with a Stop button |
 | D29 | Tap Take over on the other phone, then End | Both phones follow each change; after End both are back to normal reminders |
 | D30 | Let a shift run to its morning time | The parent who slept gets "While you slept" and sees the card on Home until they close it; the parent on duty sees neither |

@@ -158,8 +158,9 @@ Last 24 h: 9 feeds · avg interval 2 h 40 m  (rolling)
 - **Empty state:** "No feeds yet. Start your first one below." Start buttons remain.
 - **Error state:** store failed to load → full-screen message with Retry and "Export data" (never silently reset).
 
-**Night Shift card** (shared logs only, docs/NIGHT_SHIFT.md): below the three buttons, one card
-when there is something to say. Evening: "I'm on duty tonight" (the whole card is the button).
+**Night Shift card** (shared logs only, docs/NIGHT_SHIFT.md): below Today and above Recent, one
+card when there is something to say. Evening: "Start your night shift" with a Start button (the
+whole card is the button).
 During a shift: "You're on duty" with End, or "Your partner is on duty" with Take over. Morning,
 for the parent who slept: "While you slept", the night's feeds, closed with ✕.
 
