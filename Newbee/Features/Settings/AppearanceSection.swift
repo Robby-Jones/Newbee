@@ -2,8 +2,9 @@ import NewbeeShared
 import SwiftUI
 import UIKit
 
-/// Settings → Appearance (docs/UX_SPEC.md §2.1): light or dark, the color theme and the app icon.
-/// The color theme and the icon are this phone's only.
+/// Settings → Appearance (docs/UX_SPEC.md §2.1): light or dark, the color theme, the Live
+/// Activity's colors (a page of their own) and the app icon. The color theme, the Live Activity
+/// color and the icon are this phone's only.
 struct AppearanceSection: View {
     @Bindable var preferences: AppPreferences
 
@@ -15,6 +16,12 @@ struct AppearanceSection: View {
                 }
             }
             ThemeSwatchRow(selection: $preferences.colorTheme)
+            NavigationLink {
+                LiveActivityColorView(preferences: preferences)
+            } label: {
+                LabeledContent("Live Activity", value: preferences.liveActivityColor.shortTitle)
+            }
+            .accessibilityIdentifier("settings.liveActivityColor")
             AppIconRow()
         }
     }

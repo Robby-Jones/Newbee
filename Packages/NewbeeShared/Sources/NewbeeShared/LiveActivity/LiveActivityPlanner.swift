@@ -104,6 +104,8 @@ public struct LiveActivityPlanner: Sendable {
     ///   - countFrom: Settings' "Count from": the since-last-feed count runs from the last feed's
     ///     start or end (`ContentState.countFrom`).
     ///   - theme: The app's color theme (`ContentState.theme`), so a new theme redraws the activity.
+    ///   - cardColor: Settings' Live Activity color (`ContentState.cardColor`); `matchTheme`
+    ///     follows `theme`.
     ///   - startingSide: Settings' "Suggested starting side", for the since-last-feed tint
     ///     (`ContentState.suggestedSide`).
     ///   - mode: `.update` only brings what's showing up to date (and requests for a running feed
@@ -120,6 +122,7 @@ public struct LiveActivityPlanner: Sendable {
         babyName: String = "",
         countFrom: ReminderSettings.Basis = .end,
         theme: NBTheme = .standard,
+        cardColor: LiveActivityColor = .matchTheme,
         startingSide: StartingSideSuggestion = StartingSideSuggestion(),
         mode: LiveActivitySyncMode = .update,
         now: Date
@@ -130,6 +133,8 @@ public struct LiveActivityPlanner: Sendable {
         let countFrom: ReminderSettings.Basis? = countFrom == .end ? nil : countFrom
         // Likewise `nil` is the standard theme.
         let theme: NBTheme? = theme == .standard ? nil : theme
+        // And `nil` is "Match app theme".
+        let cardColor: LiveActivityColor? = cardColor == .matchTheme ? nil : cardColor
 
         guard let snapshot, snapshot.status != .completed else {
             guard let latest = LatestFinishedFeed.of(breast: snapshot, bottle: lastBottle) else {
@@ -139,6 +144,7 @@ public struct LiveActivityPlanner: Sendable {
             var state = FeedingActivityAttributes.ContentState(latest: latest, lastBreastSide: snapshot?.lastSide)
             state.countFrom = countFrom
             state.theme = theme
+            state.cardColor = cardColor
             // `nil` when it's the other side, keeping content identical to older builds'. With
             // only bottles so far, alternating keeps the other side from the placeholder too.
             if snapshot != nil || startingSide.mode != .alternate {
@@ -159,6 +165,7 @@ public struct LiveActivityPlanner: Sendable {
         var state = FeedingActivityAttributes.ContentState(snapshot: snapshot)
         state.countFrom = countFrom
         state.theme = theme
+        state.cardColor = cardColor
         let staleDate = state.staleDate(after: staleAfter)
         let mine = live.filter { $0.sessionID == snapshot.id }
 

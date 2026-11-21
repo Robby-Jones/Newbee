@@ -92,6 +92,10 @@ struct NewbeeApp: App {
                 .onChange(of: dependencies.preferences.colorTheme) {
                     Task { await dependencies.sessionManager.reload() }
                 }
+                // Settings → Appearance → Live Activity: re-draws it in the newly picked color.
+                .onChange(of: dependencies.preferences.liveActivityColor) {
+                    Task { await dependencies.sessionManager.reload() }
+                }
                 // Settings' "Suggested starting side", here or from another device: the Timer and
                 // Home follow it at once, and the reload re-tints the Live Activity.
                 .onChange(of: dependencies.preferences.startingSide) {

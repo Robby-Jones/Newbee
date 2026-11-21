@@ -130,6 +130,13 @@ struct ICloudSyncTests {
         #expect(cloud.values[AppPreferences.Key.colorTheme] == nil)
     }
 
+    @Test func theLiveActivityColorStaysOnThisPhone() {
+        let cloud = FakeCloudKeyValueStore()
+        let preferences = AppPreferences(defaults: makeDefaults(), locale: Locale(identifier: "en_US"), cloud: cloud)
+        preferences.liveActivityColor = .light(.peach)
+        #expect(cloud.values[AppPreferences.Key.liveActivityColor] == nil)
+    }
+
     /// A new device takes the settings already in iCloud, and sends up those only it has.
     @Test func atLaunchICloudWinsAndLocalOnlySettingsAreKept() {
         let cloud = FakeCloudKeyValueStore()

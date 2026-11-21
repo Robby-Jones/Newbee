@@ -460,6 +460,22 @@ struct LiveActivityPlannerTests {
         #expect(active.theme == .pink)
     }
 
+    @Test func aPickedLiveActivityColorIsCarriedInTheContentAndMatchLeavesContentAsItWas() throws {
+        let completed = completedSpecExample()
+        let counting = record("a", state: State(snapshot: completed))
+        #expect(planner.plan(for: completed, existing: [counting], activitiesEnabled: true, cardColor: .matchTheme, now: now).isEmpty)
+        let dark = try #require(idle(planner.plan(
+            for: completed, existing: [counting], activitiesEnabled: true, cardColor: .dark(.lavender), now: now
+        )))
+        #expect(dark.cardColor == .dark(.lavender))
+        // A running feed carries it too.
+        let running = activeOnRight()
+        let active = try #require(idle(planner.plan(
+            for: running, existing: [record("a", state: State(snapshot: running))], activitiesEnabled: true, cardColor: .black, now: now
+        )))
+        #expect(active.cardColor == .black)
+    }
+
     // MARK: Suggested starting side
 
     @Test func suggestedStartingSideTintsTheCountAndADefaultSuggestionLeavesContentAsItWas() throws {

@@ -200,6 +200,17 @@ struct PreferencesTests {
         #expect(AppPreferences(defaults: defaults).colorTheme == .pink)
     }
 
+    @Test func liveActivityColorPersistsAndSurvivesDeleteAllData() {
+        let defaults = freshDefaults()
+        let preferences = AppPreferences(defaults: defaults, locale: Locale(identifier: "en_GB"))
+        #expect(preferences.liveActivityColor == .matchTheme)
+        preferences.liveActivityColor = .dark(.sage)
+        #expect(AppPreferences(defaults: defaults).liveActivityColor == .dark(.sage))
+        preferences.resetToDefaults()
+        #expect(preferences.liveActivityColor == .dark(.sage))
+        #expect(AppPreferences(defaults: defaults).liveActivityColor == .dark(.sage))
+    }
+
     @Test func pumpingUnitFollowsBottlesUntilSetThenPersistsOnItsOwn() {
         let defaults = freshDefaults()
         defaults.set(VolumeUnit.fluidOunces.rawValue, forKey: AppPreferences.Key.volumeUnit)
