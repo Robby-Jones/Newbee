@@ -65,12 +65,12 @@ struct LogBottleSheet: View {
                 ToolbarItem(placement: .cancellationAction) {
                     Button("Cancel") { dismiss() }
                 }
+                ToolbarItem(placement: .confirmationAction) { saveButton }
                 ToolbarItemGroup(placement: .keyboard) {
                     Spacer()
                     Button("Done") { amountFocused = false }
                 }
             }
-            .safeAreaInset(edge: .bottom) { saveButton }
             .confirmationDialog("Delete this bottle feed?", isPresented: $confirmingDelete, titleVisibility: .visible) {
                 Button("Delete", role: .destructive) {
                     if let id = draft.id { model.delete(id: id) }
@@ -181,21 +181,14 @@ struct LogBottleSheet: View {
         }
     }
 
+    /// A small pill in the top-right corner, opposite Cancel.
     private var saveButton: some View {
-        Button {
+        Button("Save") {
             if model.save(finalDraft) { dismiss() }
-        } label: {
-            Text(draft.isEditing ? "Save changes" : "Save")
-                .font(.headline)
-                .frame(maxWidth: .infinity, minHeight: NBLayout.primaryControlHeight)
         }
-        .buttonStyle(.borderedProminent)
-        .buttonBorderShape(.roundedRectangle(radius: NBRadius.control))
+        .fontWeight(.semibold)
         .tint(NBColor.accent)
         .disabled(!problems.isEmpty)
-        .padding(.horizontal, NBSpacing.l)
-        .padding(.vertical, NBSpacing.s)
-        .background(.bar)
         .accessibilityIdentifier("bottle.save")
     }
 
