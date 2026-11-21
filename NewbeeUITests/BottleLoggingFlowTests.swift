@@ -41,9 +41,7 @@ final class BottleLoggingFlowTests: XCTestCase {
         XCTAssertTrue(logBottle.waitForExistence(timeout: 10))
         logBottle.tap()
 
-        let notes = app.textViews["bottle.notes"].exists
-            ? app.textViews["bottle.notes"].firstMatch
-            : app.textFields["bottle.notes"].firstMatch
+        let notes = app.descendants(matching: .any)["bottle.notes"].firstMatch
         XCTAssertTrue(notes.waitForExistence(timeout: 5))
         for _ in 0..<3 where !notes.isHittable { app.swipeUp() }
         notes.tap()
