@@ -318,6 +318,7 @@ final class ReviewScreenshots: ScreenshotTestCase {
 
         app.segmentedControls.buttons["Week"].firstMatch.tap()
         settle()
+        capture("week-range-header")
         let openDay = app.buttons["calendar.openDay"].firstMatch
         for _ in 0..<6 where !(openDay.exists && openDay.isHittable) {
             app.swipeUp()

@@ -90,34 +90,40 @@ struct CalendarView: View {
         Calendar.current.startOfDay(for: selectedDay ?? .now)
     }
 
-    /// ‹ Today › and the scope picker, above the day's totals.
+    /// The scope picker on its own row, then ‹ Today › (laid out like Month), above the day's totals.
     private func dayHeader(_ day: Date) -> some View {
         let isToday = Calendar.current.isDateInToday(day)
-        return HStack(spacing: NBSpacing.xs) {
-            Button {
-                changeDay(by: -1)
-            } label: {
-                Image(systemName: "chevron.left")
-                    .frame(width: NBLayout.minHitTarget, height: NBLayout.minHitTarget)
+        return VStack(spacing: NBSpacing.s) {
+            HStack {
+                Spacer()
+                ScopePicker(scope: $scope)
             }
-            .accessibilityLabel("Previous day")
-            Text(FeedText.dayTitle(day))
-                .font(.headline)
-                .lineLimit(1)
-                .minimumScaleFactor(0.8)
-                .accessibilityAddTraits(.isHeader)
-            Button {
-                changeDay(by: 1)
-            } label: {
-                Image(systemName: "chevron.right")
-                    .frame(width: NBLayout.minHitTarget, height: NBLayout.minHitTarget)
+            HStack {
+                Button {
+                    changeDay(by: -1)
+                } label: {
+                    Image(systemName: "chevron.left")
+                        .frame(width: NBLayout.minHitTarget, height: NBLayout.minHitTarget)
+                }
+                .accessibilityLabel("Previous day")
+                Spacer()
+                Text(FeedText.dayTitle(day))
+                    .font(.title3.weight(.semibold))
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.8)
+                    .accessibilityAddTraits(.isHeader)
+                Spacer()
+                Button {
+                    changeDay(by: 1)
+                } label: {
+                    Image(systemName: "chevron.right")
+                        .frame(width: NBLayout.minHitTarget, height: NBLayout.minHitTarget)
+                }
+                .disabled(isToday)
+                .accessibilityLabel("Next day")
             }
-            .disabled(isToday)
-            .accessibilityLabel("Next day")
-            Spacer(minLength: NBSpacing.s)
-            ScopePicker(scope: $scope)
+            .font(.body.weight(.semibold))
         }
-        .font(.body.weight(.semibold))
     }
 
     private func changeDay(by offset: Int) {
@@ -231,6 +237,10 @@ private struct CalendarWeekView: View {
 
         ScrollView {
             VStack(alignment: .leading, spacing: NBSpacing.l) {
+                HStack {
+                    Spacer()
+                    ScopePicker(scope: $scope)
+                }
                 Card(padding: NBSpacing.m) {
                     VStack(spacing: NBSpacing.m) {
                         header(days: days, isCurrentWeek: isCurrentWeek)
@@ -281,8 +291,9 @@ private struct CalendarWeekView: View {
         pumpModel?.presentEdit(sessionID: pump.id)
     }
 
+    /// ‹ Nov 15 – 21 ›, laid out like Month so the whole range fits (the scope picker sits above the card).
     private func header(days: [Date], isCurrentWeek: Bool) -> some View {
-        HStack(spacing: NBSpacing.xs) {
+        HStack {
             Button {
                 changeWeek(-1)
             } label: {
@@ -290,11 +301,13 @@ private struct CalendarWeekView: View {
                     .frame(width: NBLayout.minHitTarget, height: NBLayout.minHitTarget)
             }
             .accessibilityLabel("Previous week")
+            Spacer()
             Text(Self.title(days))
-                .font(.headline)
+                .font(.title3.weight(.semibold))
                 .lineLimit(1)
                 .minimumScaleFactor(0.8)
                 .accessibilityAddTraits(.isHeader)
+            Spacer()
             Button {
                 changeWeek(1)
             } label: {
@@ -303,8 +316,6 @@ private struct CalendarWeekView: View {
             }
             .disabled(isCurrentWeek)
             .accessibilityLabel("Next week")
-            Spacer(minLength: NBSpacing.s)
-            ScopePicker(scope: $scope)
         }
         .font(.body.weight(.semibold))
     }
