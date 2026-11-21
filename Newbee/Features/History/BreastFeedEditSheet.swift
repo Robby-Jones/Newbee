@@ -140,9 +140,9 @@ struct BreastFeedEditSheet: View {
                 ToolbarItem(placement: .cancellationAction) {
                     Button("Cancel") { dismiss() }
                 }
+                ToolbarItem(placement: .confirmationAction) { saveButton }
             }
             .scrollDismissesKeyboard(.interactively)
-            .safeAreaInset(edge: .bottom) { saveButton }
         }
     }
 
@@ -166,21 +166,13 @@ struct BreastFeedEditSheet: View {
         .accessibilityElement(children: .combine)
     }
 
-    /// Primary action at the bottom, in reach of a thumb (like Log Bottle).
+    /// A small pill in the top-right corner, opposite Cancel.
     private var saveButton: some View {
-        Button(action: save) {
-            Text(isNew ? "Add feed" : "Save")
-                .font(.headline)
-                .frame(maxWidth: .infinity, minHeight: NBLayout.primaryControlHeight)
-        }
-        .buttonStyle(.borderedProminent)
-        .buttonBorderShape(.roundedRectangle(radius: NBRadius.control))
-        .tint(NBColor.accent)
-        .disabled(!problems.isEmpty || !hasChanges)
-        .padding(.horizontal, NBSpacing.l)
-        .padding(.vertical, NBSpacing.s)
-        .background(.bar)
-        .accessibilityIdentifier("breastEdit.save")
+        Button("Save", action: save)
+            .fontWeight(.semibold)
+            .tint(NBColor.accent)
+            .disabled(!problems.isEmpty || !hasChanges)
+            .accessibilityIdentifier("breastEdit.save")
     }
 
     // MARK: - Simple mode

@@ -16,7 +16,7 @@ final class AppStoreScreenshots: ScreenshotTestCase {
         capture("01-home")
 
         app.tabBars.buttons["History"].tap()
-        XCTAssertTrue(app.navigationBars["History"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.segmentedControls.buttons["List"].firstMatch.waitForExistence(timeout: 5))
         settle()
         capture("03-history")
 

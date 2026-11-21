@@ -332,6 +332,44 @@ final class ReviewScreenshots: ScreenshotTestCase {
         app.terminate()
     }
 
+    /// History without its title, the Day totals on one row, and the Save pill on the edit sheets.
+    @MainActor
+    func testHistoryPolish() throws {
+        let app = launch()
+        app.tabBars.buttons["History"].tap()
+        let calendarMode = app.segmentedControls.buttons["Calendar"].firstMatch
+        XCTAssertTrue(calendarMode.waitForExistence(timeout: 10))
+        settle()
+        capture("polish-history-list")
+
+        calendarMode.tap()
+        let dayScope = app.segmentedControls.buttons["Day"].firstMatch
+        XCTAssertTrue(dayScope.waitForExistence(timeout: 5))
+        dayScope.tap()
+        app.buttons["Previous day"].firstMatch.tap()
+        settle()
+        capture("polish-day-totals")
+
+        app.tabBars.buttons["Home"].tap()
+        let bottle = app.buttons["logBottleButton"].firstMatch
+        if bottle.waitForExistence(timeout: 5) {
+            bottle.tap()
+            XCTAssertTrue(app.buttons["bottle.save"].firstMatch.waitForExistence(timeout: 5))
+            settle()
+            capture("polish-bottle-sheet")
+            app.buttons["Cancel"].firstMatch.tap()
+        }
+        let pump = app.buttons["logPumpButton"].firstMatch
+        if pump.waitForExistence(timeout: 5) {
+            pump.tap()
+            XCTAssertTrue(app.buttons["pump.save"].firstMatch.waitForExistence(timeout: 5))
+            settle()
+            capture("polish-pump-sheet")
+            app.buttons["Cancel"].firstMatch.tap()
+        }
+        app.terminate()
+    }
+
     /// Scrolls the list until `element` can be tapped.
     @MainActor
     private func reveal(_ element: XCUIElement, in app: XCUIApplication) {

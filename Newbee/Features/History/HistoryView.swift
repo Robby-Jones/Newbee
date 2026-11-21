@@ -29,8 +29,6 @@ struct HistoryView: View {
     @State private var calendarDay: Date? = Calendar.current.startOfDay(for: .now)
 
     var body: some View {
-        // A plain stack rather than a top safe-area inset: an inset over the scroll view
-        // covered the large navigation title.
         VStack(spacing: 0) {
             modePicker
             Group {
@@ -42,7 +40,8 @@ struct HistoryView: View {
             .frame(maxHeight: .infinity)
         }
         .background(NBColor.canvas)
-        .navigationTitle("History")
+        // No title: the List | Calendar tabs and the tab bar already say where you are.
+        .navigationBarTitleDisplayMode(.inline)
         .toolbar { toolbar }
         .onChange(of: mode) { _, mode in
             // The calendar opens on today, as before.

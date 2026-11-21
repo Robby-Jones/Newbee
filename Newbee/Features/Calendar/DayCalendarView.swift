@@ -55,8 +55,8 @@ struct DayCalendarPage<Header: View>: View {
         .breastFeedEditSheet($editing)
     }
 
-    /// Feeds · breast · bottle · avg gap and the L/R bar, then the pumping total. Pumped milk
-    /// isn't counted in the feed totals.
+    /// Feeds · breast · bottle · avg gap | pumping on one row, then the L/R bar. Pumped milk
+    /// isn't counted in the feed totals, so a divider keeps it apart.
     @ViewBuilder
     private func totals(entries: [FeedEntry], pumps: [PumpEntry]) -> some View {
         if entries.isEmpty && pumps.isEmpty {
@@ -64,16 +64,16 @@ struct DayCalendarPage<Header: View>: View {
                 .font(.subheadline)
                 .foregroundStyle(NBColor.secondaryText)
         } else {
-            if !entries.isEmpty {
-                DayTotalsRow(totals: FeedTotals(entries), unit: bottleModel?.unit ?? .milliliters)
-                let left = entries.reduce(0) { $0 + $1.duration(on: .left) }
-                let right = entries.reduce(0) { $0 + $1.duration(on: .right) }
-                if left + right > 0 {
-                    SegmentBar(left: left, right: right, height: 6)
-                }
-            }
-            if !pumps.isEmpty {
-                PumpTotalLine(summary: PumpSummary(entries: pumps), unit: pumpModel?.unit ?? bottleModel?.unit ?? .milliliters)
+            DayStatsRow(
+                totals: entries.isEmpty ? nil : FeedTotals(entries),
+                pumps: pumps.isEmpty ? nil : PumpSummary(entries: pumps),
+                unit: bottleModel?.unit ?? .milliliters,
+                pumpUnit: pumpModel?.unit ?? bottleModel?.unit ?? .milliliters
+            )
+            let left = entries.reduce(0) { $0 + $1.duration(on: .left) }
+            let right = entries.reduce(0) { $0 + $1.duration(on: .right) }
+            if left + right > 0 {
+                SegmentBar(left: left, right: right, height: 6)
             }
         }
     }
@@ -85,6 +85,71 @@ struct DayCalendarPage<Header: View>: View {
         } else if model != nil, let session = sessions.first(where: { $0.id == entry.id }) {
             editing = session.sessionSnapshot
         }
+    }
+}
+
+/// The Day page's totals on one row: the feed stats, a vertical divider after "avg gap", then
+/// the pumping total and session count. Falls back to tighter spacing, then to the feed row
+/// with the pumping line below it, when the text is too large for one row.
+private struct DayStatsRow: View {
+    let totals: FeedTotals?
+    let pumps: PumpSummary?
+    let unit: VolumeUnit
+    let pumpUnit: VolumeUnit
+
+    var body: some View {
+        ViewThatFits(in: .horizontal) {
+            oneRow(spacing: NBSpacing.l)
+            oneRow(spacing: NBSpacing.m)
+            VStack(alignment: .leading, spacing: NBSpacing.m) {
+                if let totals { DayTotalsRow(totals: totals, unit: unit) }
+                if let pumps { PumpTotalLine(summary: pumps, unit: pumpUnit) }
+            }
+        }
+    }
+
+    private func oneRow(spacing: CGFloat) -> some View {
+        HStack(alignment: .top, spacing: spacing) {
+            if let totals {
+                MiniStat(value: "\(totals.feedCount)", label: totals.feedCount == 1 ? String(localized: "feed") : String(localized: "feeds"))
+                MiniStat(value: DurationText.short(totals.breastDuration), label: String(localized: "breast"))
+                MiniStat(value: FeedText.volume(ml: totals.bottleML, unit: unit), label: String(localized: "bottle"))
+                MiniStat(value: totals.averageInterval.map(DurationText.short) ?? "–", label: String(localized: "avg gap"))
+            }
+            if totals != nil, pumps != nil {
+                Divider()
+            }
+            if let pumps {
+                PumpMiniStat(summary: pumps, unit: pumpUnit)
+            }
+        }
+        // Keeps the vertical divider as tall as the stats instead of the whole page.
+        .fixedSize(horizontal: false, vertical: true)
+    }
+}
+
+/// Pumped total with the session count beneath, in the pumping color like the grid's blocks.
+private struct PumpMiniStat: View {
+    let summary: PumpSummary
+    let unit: VolumeUnit
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 2) {
+            Text(FeedText.volume(ml: summary.totalML, unit: unit))
+                .font(.system(.headline, design: .rounded, weight: .bold))
+                .monospacedDigit()
+                .lineLimit(1)
+                .foregroundStyle(NBColor.pumpInk)
+            HStack(spacing: 3) {
+                FeedIcon(.pumping, size: 12)
+                Text(summary.count == 1 ? String(localized: "1 pump") : String(localized: "\(summary.count) pumps"))
+                    .foregroundStyle(NBColor.secondaryText)
+            }
+            .font(.caption)
+            .lineLimit(1)
+        }
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel(Text("Pumping, \(FeedText.volume(ml: summary.totalML, unit: unit)), \(summary.count == 1 ? String(localized: "1 session") : String(localized: "\(summary.count) sessions"))"))
     }
 }
 
