@@ -389,6 +389,7 @@ private struct TimerContent: View {
                     }
                 }
             }
+            .keyboardDoneButton()
         }
         .presentationDetents([.medium, .large])
     }

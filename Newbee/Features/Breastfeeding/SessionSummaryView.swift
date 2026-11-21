@@ -105,6 +105,7 @@ struct SessionSummaryView: View {
             }
         }
         .padding(NBSpacing.l)
+        .keyboardDoneButton()
     }
 
     private var trimmedNote: String {

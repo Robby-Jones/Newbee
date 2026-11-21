@@ -142,6 +142,7 @@ struct BreastFeedEditSheet: View {
                 }
                 ToolbarItem(placement: .confirmationAction) { saveButton }
             }
+            .keyboardDoneButton()
             .scrollDismissesKeyboard(.interactively)
         }
     }
