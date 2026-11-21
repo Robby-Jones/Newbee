@@ -131,7 +131,10 @@ struct LiveActivityColorPreview: View {
             SinceLastFeedActivityContent(
                 state: sampleState, babyName: babyName, since: lastFeedEnd, style: .lockScreen, photo: photo
             )
-            .padding(16)
+            // A little tighter than the Lock Screen's 16, so "Last fed: 9:25 PM" fits inside
+            // the Settings row's margins as it does on the full-width Lock Screen.
+            .padding(.horizontal, 10)
+            .padding(.vertical, 14)
             .background(RoundedRectangle(cornerRadius: 24, style: .continuous).fill(card.background))
             .environment(\.activityPalette, card)
             .environment(\.colorScheme, card.colorScheme)
@@ -144,7 +147,8 @@ struct LiveActivityColorPreview: View {
             .environment(\.activityPalette, island)
             .environment(\.colorScheme, .dark)
         }
-        .padding(NBSpacing.m)
+        .padding(.horizontal, NBSpacing.xs)
+        .padding(.vertical, NBSpacing.m)
         .background(
             LinearGradient(
                 colors: [Color(red: 0.62, green: 0.78, blue: 0.95), Color(red: 0.95, green: 0.80, blue: 0.70)],
