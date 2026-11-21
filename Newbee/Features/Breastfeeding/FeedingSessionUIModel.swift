@@ -277,5 +277,7 @@ struct UndoToast: Identifiable, Equatable {
     /// The state to write back if the user taps Undo.
     var snapshot: SessionSnapshot
 
-    static let lifetime: Duration = .seconds(6)
+    /// 6 s; 30 s under UI tests, where a slow simulator can take longer than 6 s between saving
+    /// and reaching the Undo button (PumpLoggingFlowTests failed on CI that way).
+    static var lifetime: Duration { AppConfiguration.isUITesting ? .seconds(30) : .seconds(6) }
 }

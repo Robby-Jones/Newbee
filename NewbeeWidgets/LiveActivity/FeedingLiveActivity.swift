@@ -22,6 +22,11 @@ struct FeedingLiveActivity: Widget {
             )
             .environment(\.colorScheme, palette.colorScheme)
             .environment(\.activityPalette, palette)
+            // The card's color drawn as content too: on device, iOS draws the background tint
+            // see-through over the wallpaper (a light blush turned hot pink), so the card didn't
+            // look like Settings' preview and the text lost contrast. Content colors are kept.
+            .frame(maxWidth: .infinity)
+            .background(palette.background)
             .activityBackgroundTint(palette.background)
             .activitySystemActionForegroundColor(palette.newFeed)
             // Tapping anywhere once a feed has ended opens Home, like the "+".
