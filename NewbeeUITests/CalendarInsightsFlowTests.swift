@@ -27,7 +27,7 @@ final class CalendarInsightsFlowTests: XCTestCase {
         let historyTab = app.tabBars.buttons["History"]
         XCTAssertTrue(historyTab.waitForExistence(timeout: 5), "History tab missing")
         historyTab.tap()
-        XCTAssertTrue(app.navigationBars["History"].waitForExistence(timeout: 5), "History didn't open: \(hierarchy(app))")
+        XCTAssertTrue(app.segmentedControls["history.mode"].waitForExistence(timeout: 5), "History didn't open: \(hierarchy(app))")
         XCTAssertTrue(element(in: app, containing: "Bottle · 120 mL").waitForExistence(timeout: 5), "List has no bottle row")
         let calendarMode = app.segmentedControls.buttons["Calendar"].firstMatch
         XCTAssertTrue(calendarMode.waitForExistence(timeout: 5), "Calendar mode missing")
