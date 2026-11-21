@@ -30,6 +30,32 @@ final class BottleLoggingFlowTests: XCTestCase {
         XCTAssertTrue(waitForLabel(of: logBottle, containing: "None today"), logBottle.label)
     }
 
+    /// The Done button above the keyboard dismisses it while a note is being typed.
+    @MainActor
+    func testKeyboardDoneDismissesNoteKeyboard() throws {
+        let app = XCUIApplication()
+        app.launchArguments = ["-uiTesting"]
+        app.launch()
+
+        let logBottle = app.buttons["logBottleButton"].firstMatch
+        XCTAssertTrue(logBottle.waitForExistence(timeout: 10))
+        logBottle.tap()
+
+        let notes = app.descendants(matching: .any)["bottle.notes"].firstMatch
+        XCTAssertTrue(notes.waitForExistence(timeout: 5))
+        for _ in 0..<3 where !notes.isHittable { app.swipeUp() }
+        notes.tap()
+        notes.typeText("Sleepy")
+        XCTAssertTrue(app.keyboards.firstMatch.waitForExistence(timeout: 5))
+
+        let done = app.buttons["keyboard.done"].firstMatch
+        XCTAssertTrue(done.waitForExistence(timeout: 5))
+        done.tap()
+
+        let gone = XCTNSPredicateExpectation(predicate: NSPredicate(format: "exists == false"), object: app.keyboards.firstMatch)
+        XCTAssertEqual(XCTWaiter().wait(for: [gone], timeout: 5), .completed)
+    }
+
     /// The card combines its texts into the button's label.
     private func waitForLabel(of element: XCUIElement, containing text: String) -> Bool {
         let predicate = NSPredicate(format: "label CONTAINS %@", text)

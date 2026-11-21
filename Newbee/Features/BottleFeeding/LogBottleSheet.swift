@@ -66,11 +66,8 @@ struct LogBottleSheet: View {
                     Button("Cancel") { dismiss() }
                 }
                 ToolbarItem(placement: .confirmationAction) { saveButton }
-                ToolbarItemGroup(placement: .keyboard) {
-                    Spacer()
-                    Button("Done") { amountFocused = false }
-                }
             }
+            .keyboardDoneButton()
             .confirmationDialog("Delete this bottle feed?", isPresented: $confirmingDelete, titleVisibility: .visible) {
                 Button("Delete", role: .destructive) {
                     if let id = draft.id { model.delete(id: id) }

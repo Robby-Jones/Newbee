@@ -69,11 +69,8 @@ struct LogPumpSheet: View {
                     Button("Cancel") { dismiss() }
                 }
                 ToolbarItem(placement: .confirmationAction) { saveButton }
-                ToolbarItemGroup(placement: .keyboard) {
-                    Spacer()
-                    Button("Done") { focusedSide = nil }
-                }
             }
+            .keyboardDoneButton()
             .confirmationDialog("Delete this pumping session?", isPresented: $confirmingDelete, titleVisibility: .visible) {
                 Button("Delete", role: .destructive) {
                     if let id = draft.id { model.delete(id: id) }
