@@ -171,8 +171,14 @@ public struct InsightsReport: Sendable, Hashable {
     public var bottle: BottleInsights
     public var heatmap: [HeatmapCell]
 
-    /// Feeds per elapsed day, this range against the one before it.
+    /// Feeds per elapsed day, this range against the one before it. Only days since tracking
+    /// began count, so a new user's empty days don't drag either average down.
     public var feedsPerDay: Comparison
+    /// The previous period had enough tracked time to compare with (`TrackedSpan`). When
+    /// `false`, `feedsPerDay.previous` is 0 and summaries leave the comparison out.
+    public var hasPreviousPeriod: Bool
+    /// Days of the range since tracking began (at least 1): the divisor for per-day averages.
+    public var trackedDays: Double
     /// Today so far against yesterday up to the same time.
     public var todayVsYesterday: FeedComparison
     /// The last 7 days against the 7 before them (each up to the current time of day).
@@ -190,7 +196,9 @@ public struct InsightsReport: Sendable, Hashable {
     public var longestInterval: TimeInterval? { intervals.map(\.length).max() }
     public var isEmpty: Bool { entries.isEmpty }
 
-    public init(entries all: [FeedEntry], range: InsightsRange, now: Date, calendar: Calendar = .current) {
+    /// `trackingStart` is the first feed ever logged (not only the ones in `all`); `nil` treats
+    /// every day as tracked.
+    public init(entries all: [FeedEntry], range: InsightsRange, now: Date, trackingStart: Date? = nil, calendar: Calendar = .current) {
         let past = all.filter { $0.start <= now }.sorted { $0.start < $1.start }
         let interval = range.interval(endingAt: now, calendar: calendar)
         let entries = past.filter { Self.contains(interval, $0.start) }
@@ -228,10 +236,16 @@ public struct InsightsReport: Sendable, Hashable {
 
         let previous = range.previousInterval(endingAt: now, calendar: calendar)
         let previousCount = past.count { Self.contains(previous, $0.start) }
-        // Per elapsed day, so a part-finished today doesn't drag the average down.
-        let days = max(1, interval.duration / 86_400)
-        let previousDays = max(1, previous.duration / 86_400)
-        feedsPerDay = Comparison(current: Double(entries.count) / days, previous: Double(previousCount) / previousDays)
+        // Per elapsed, tracked day, so a part-finished today or days before the first log don't
+        // drag the average down.
+        let span = TrackedSpan(trackingStart: trackingStart, calendar: calendar)
+        let days = span.days(in: interval)
+        trackedDays = days
+        hasPreviousPeriod = span.isComparable(previous)
+        feedsPerDay = Comparison(
+            current: Double(entries.count) / days,
+            previous: hasPreviousPeriod ? Double(previousCount) / span.days(in: previous) : 0
+        )
 
         let today = calendar.startOfDay(for: now)
         let yesterday = calendar.date(byAdding: .day, value: -1, to: today) ?? today
@@ -258,7 +272,8 @@ public struct InsightsReport: Sendable, Hashable {
         date >= interval.start && date <= interval.end
     }
 
-    private static func buckets(_ entries: [FeedEntry], range: InsightsRange, interval: DateInterval, calendar: Calendar) -> [InsightsBucket] {
+    /// Starts of the chart's bars, oldest first: whole clock hours for 24 h, days otherwise.
+    static func bucketStarts(range: InsightsRange, interval: DateInterval, calendar: Calendar) -> [Date] {
         var starts: [Date] = []
         if range == .day {
             // Whole clock hours, from the hour containing the range start up to now.
@@ -274,6 +289,11 @@ public struct InsightsReport: Sendable, Hashable {
                 cursor = calendar.date(byAdding: .day, value: 1, to: cursor) ?? cursor.addingTimeInterval(86_400)
             }
         }
+        return starts
+    }
+
+    private static func buckets(_ entries: [FeedEntry], range: InsightsRange, interval: DateInterval, calendar: Calendar) -> [InsightsBucket] {
+        let starts = bucketStarts(range: range, interval: interval, calendar: calendar)
         var buckets = starts.map {
             InsightsBucket(start: $0, breastCount: 0, bottleCount: 0, breastDuration: 0, breastMilkML: 0, formulaML: 0, otherML: 0)
         }

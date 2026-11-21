@@ -61,24 +61,34 @@ private struct InsightsContent: View {
     let range: InsightsRange
 
     @Query private var sessions: [FeedingSession]
+    @Query private var pumpSessions: [FeedingSession]
+    /// The first feed and pumping session ever logged, so averages skip days before tracking.
+    @Query(FeedingSession.firstCompleted(pumps: false)) private var firstFeed: [FeedingSession]
+    @Query(FeedingSession.firstCompleted(pumps: true)) private var firstPump: [FeedingSession]
     @Environment(BottleLogUIModel.self) private var bottleModel: BottleLogUIModel?
+    @Environment(PumpLogUIModel.self) private var pumpModel: PumpLogUIModel?
 
     init(range: InsightsRange) {
         self.range = range
         let now = Date.now
+        let earliest = range.earliestNeeded(endingAt: now)
         // Up to an hour ahead so a feed logged after the view appeared still shows.
-        _sessions = Query(FeedingSession.completedFeeds(from: range.earliestNeeded(endingAt: now), to: now.addingTimeInterval(3_600)))
+        _sessions = Query(FeedingSession.completedFeeds(from: earliest, to: now.addingTimeInterval(3_600)))
+        _pumpSessions = Query(FeedingSession.completedPumps(from: earliest, to: now.addingTimeInterval(3_600)))
     }
 
     var body: some View {
         let entries = sessions.compactMap(\.feedEntry)
+        let pumps = pumpSessions.compactMap(\.pumpEntry)
         TimelineView(.everyMinute) { context in
             // The tick's date is the start of the minute; use the real time so a feed logged
             // since then isn't treated as being in the future and left out.
-            let report = InsightsReport(entries: entries, range: range, now: max(context.date, .now))
+            let now = max(context.date, .now)
+            let report = InsightsReport(entries: entries, range: range, now: now, trackingStart: firstFeed.first?.startedAt)
+            let pumping = PumpInsights(pumps: pumps, range: range, now: now, trackingStart: firstPump.first?.startedAt)
             let unit = bottleModel?.unit ?? .milliliters
             VStack(alignment: .leading, spacing: NBSpacing.l) {
-                if entries.isEmpty {
+                if entries.isEmpty && pumps.isEmpty {
                     ContentUnavailableView(
                         "Insights appear after a couple of days of tracking",
                         systemImage: "chart.bar",
@@ -86,7 +96,9 @@ private struct InsightsContent: View {
                     )
                     .padding(.top, NBSpacing.xl)
                 } else {
-                    FeedsCard(report: report)
+                    if !report.isEmpty {
+                        FeedsCard(report: report)
+                    }
                     if !report.intervals.isEmpty {
                         IntervalsCard(report: report)
                     }
@@ -95,6 +107,9 @@ private struct InsightsContent: View {
                     }
                     if report.bottle.count > 0 {
                         BottleCard(report: report, unit: unit)
+                    }
+                    if pumping.sessionCount > 0 {
+                        PumpingCard(pumping: pumping, bottledBreastMilkML: report.bottle.breastMilkML, unit: pumpModel?.unit ?? unit)
                     }
                     if range != .day, !report.isEmpty {
                         HeatmapCard(report: report)
@@ -169,7 +184,8 @@ private struct FeedsCard: View {
 
     var body: some View {
         let unit: Calendar.Component = report.range == .day ? .hour : .day
-        let average = Double(report.entries.count) / Double(max(1, report.buckets.count))
+        // Per tracked day, matching the summary above the chart.
+        let average = report.feedsPerDay.current
         let density = BarLabels.density(barCount: report.buckets.count)
         let tallest = Double(report.buckets.map(\.feedCount).max() ?? 0)
         InsightCard(title: report.range == .day ? "Feeds by hour" : "Feeds per day", summary: summary) {
@@ -186,7 +202,7 @@ private struct FeedsCard: View {
             .chartForegroundStyleScale([String(localized: "Breast"): NBColor.chartBreast, String(localized: "Bottle"): NBColor.bottleBreastMilk])
             .chartYScale(domain: 0...BarLabels.axisTop(tallest: tallest))
             .chartYAxis { AxisMarks(position: .leading, values: .automatic(desiredCount: 4)) }
-            .chartXAxis { dateAxis(for: report) }
+            .dateAxis(for: report)
             .frame(height: 180)
             .accessibilityLabel(summary)
         }
@@ -218,11 +234,14 @@ private struct FeedsCard: View {
         let feeds = report.feedsPerDay
         if report.range == .day {
             let count = report.entries.count
+            guard report.hasPreviousPeriod else {
+                return String(localized: "\(count) feeds in the last 24 h.")
+            }
             let previous = Int(feeds.previous.rounded())
             return String(localized: "\(count) feeds in the last 24 h (\(previous) in the 24 h before).")
         }
         let average = feeds.current.formatted(.number.precision(.fractionLength(1)))
-        guard feeds.previous > 0 else {
+        guard report.hasPreviousPeriod, feeds.previous > 0 else {
             return String(localized: "Average \(average) feeds a day.")
         }
         let previous = feeds.previous.formatted(.number.precision(.fractionLength(1)))
@@ -391,7 +410,7 @@ private struct BottleCard: View {
             ])
             .chartYScale(domain: 0...BarLabels.axisTop(tallest: tallest))
             .chartYAxis { AxisMarks(position: .leading, values: .automatic(desiredCount: 4)) }
-            .chartXAxis { dateAxis(for: report) }
+            .dateAxis(for: report)
             .frame(height: 160)
             .accessibilityLabel(summary)
         }
@@ -434,11 +453,123 @@ private struct BottleCard: View {
 
     private var summary: String {
         let bottle = report.bottle
-        let perDay = bottle.totalML / max(1, report.interval.duration / 86_400)
+        let perDay = bottle.totalML / report.trackedDays
         if report.range == .day {
             return String(localized: "\(FeedText.volume(ml: bottle.totalML, unit: unit)) from bottles in the last 24 h.")
         }
         return String(localized: "About \(FeedText.volume(ml: perDay, unit: unit)) a day from bottles.")
+    }
+}
+
+/// 4b. Pumping: output per day (or hour) with Left and Right stacked and total-only entries as
+/// their own part, the headline numbers, and how much breast milk went out in bottles.
+private struct PumpingCard: View {
+    let pumping: PumpInsights
+    /// Breast milk given by bottle in the same range, for the pumped-vs-bottled line.
+    let bottledBreastMilkML: Double
+    let unit: VolumeUnit
+
+    var body: some View {
+        let timeUnit: Calendar.Component = pumping.range == .day ? .hour : .day
+        let density = BarLabels.density(barCount: pumping.buckets.count)
+        let tallest = unit.fromMilliliters(pumping.buckets.map(\.totalML).max() ?? 0)
+        InsightCard(title: "Pumping", summary: summary) {
+            HStack(alignment: .top, spacing: NBSpacing.l) {
+                MiniStat(value: FeedText.volume(ml: pumping.totalML, unit: unit), label: String(localized: "total"))
+                if pumping.range != .day {
+                    MiniStat(value: FeedText.volume(ml: pumping.perDay.current, unit: unit), label: String(localized: "a day"))
+                }
+                MiniStat(value: pumping.averageSessionML.map { FeedText.volume(ml: $0, unit: unit) } ?? "–", label: String(localized: "a session"))
+                MiniStat(value: "\(pumping.sessionCount)", label: pumping.sessionCount == 1 ? String(localized: "session") : String(localized: "sessions"))
+            }
+            Chart {
+                ForEach(pumping.buckets) { bucket in
+                    bars(bucket, timeUnit: timeUnit, density: density, tallest: tallest)
+                }
+            }
+            .chartForegroundStyleScale(domain: legend.map { $0.name }, range: legend.map { $0.color })
+            .chartYScale(domain: 0...BarLabels.axisTop(tallest: tallest))
+            .chartYAxis { AxisMarks(position: .leading, values: .automatic(desiredCount: 4)) }
+            .dateAxis(starts: pumping.buckets.map(\.start), range: pumping.range)
+            .frame(height: 160)
+            .accessibilityLabel(summary)
+            if let bottled {
+                Label(bottled, systemImage: "drop.fill")
+                    .font(.caption)
+                    .foregroundStyle(NBColor.secondaryText)
+            }
+        }
+    }
+
+    /// Left and Right when any entry has sides, plus Total when any is total-only.
+    private var legend: [(name: String, color: Color)] {
+        var parts: [(name: String, color: Color)] = []
+        if pumping.hasSided {
+            parts.append((String(localized: "Left"), NBColor.left))
+            parts.append((String(localized: "Right"), NBColor.right))
+        }
+        if pumping.hasTotalOnly {
+            parts.append((String(localized: "Total"), NBColor.pump))
+        }
+        return parts
+    }
+
+    @ChartContentBuilder
+    private func bars(_ bucket: PumpBucket, timeUnit: Calendar.Component, density: BarLabels.Density, tallest: Double) -> some ChartContent {
+        let parts = [bucket.leftML, bucket.rightML, bucket.totalOnlyML].map(unit.fromMilliliters)
+        if pumping.hasSided {
+            BarMark(x: .value("Time", bucket.start, unit: timeUnit), y: .value(unit.symbol, parts[0]))
+                .foregroundStyle(by: .value("Side", String(localized: "Left")))
+                .annotation(position: .overlay) { segmentLabel(parts[0], parts: parts, density: density, tallest: tallest) }
+            BarMark(x: .value("Time", bucket.start, unit: timeUnit), y: .value(unit.symbol, parts[1]))
+                .foregroundStyle(by: .value("Side", String(localized: "Right")))
+                .annotation(position: .overlay) { segmentLabel(parts[1], parts: parts, density: density, tallest: tallest) }
+        }
+        if pumping.hasTotalOnly {
+            BarMark(x: .value("Time", bucket.start, unit: timeUnit), y: .value(unit.symbol, parts[2]))
+                .foregroundStyle(by: .value("Side", String(localized: "Total")))
+                .annotation(position: .overlay) { segmentLabel(parts[2], parts: parts, density: density, tallest: tallest) }
+        }
+        if bucket.totalML > 0 {
+            BarTotalMark(
+                x: .value("Time", bucket.start, unit: timeUnit),
+                y: .value(unit.symbol, unit.fromMilliliters(bucket.totalML)),
+                text: BottleCard.amount(unit.fromMilliliters(bucket.totalML), unit: unit),
+                density: density
+            )
+        }
+    }
+
+    @ViewBuilder
+    private func segmentLabel(_ value: Double, parts: [Double], density: BarLabels.Density, tallest: Double) -> some View {
+        if BarLabels.showsSegmentLabel(value, in: parts, tallest: tallest, density: density) {
+            SegmentValueLabel(text: BottleCard.amount(value, unit: unit), density: density, color: NBColor.onSide)
+        }
+    }
+
+    private var summary: String {
+        let perDay = pumping.perDay
+        if pumping.range == .day {
+            let total = FeedText.volume(ml: perDay.current, unit: unit)
+            guard pumping.hasPreviousPeriod else {
+                return String(localized: "\(total) pumped in the last 24 h.")
+            }
+            return String(localized: "\(total) pumped in the last 24 h (\(FeedText.volume(ml: perDay.previous, unit: unit)) in the 24 h before).")
+        }
+        let average = FeedText.volume(ml: perDay.current, unit: unit)
+        guard pumping.hasPreviousPeriod, perDay.previous > 0 else {
+            return String(localized: "About \(average) a day.")
+        }
+        let previous = FeedText.volume(ml: perDay.previous, unit: unit)
+        return String(localized: "About \(average) a day, \(FeedsCard.trend(perDay)) \(previous) in \(pumping.range.previousPeriod).")
+    }
+
+    /// "Pumped 20 oz. 14 oz of breast milk went out in bottles." Only when some did.
+    private var bottled: String? {
+        guard bottledBreastMilkML > 0 else { return nil }
+        let pumped = FeedText.volume(ml: pumping.totalML, unit: unit)
+        let given = FeedText.volume(ml: bottledBreastMilkML, unit: unit)
+        return String(localized: "Pumped \(pumped). \(given) of breast milk went out in bottles.")
     }
 }
 
@@ -566,20 +697,77 @@ private struct SegmentValueLabel: View {
 
 /// Day labels for day ranges, hour labels for 24 h, under the middle of their bars. The outer
 /// labels are pulled in so the chart's edge doesn't cut them off (`DateAxisLabels`).
-private func dateAxis(for report: InsightsReport) -> some AxisContent {
-    let marks = DateAxisLabels.marks(bucketStarts: report.buckets.map(\.start), range: report.range)
-    let format: Date.FormatStyle = report.range == .day ? .dateTime.hour() : .dateTime.day().month(.defaultDigits)
-    return AxisMarks(values: marks.map(\.date)) { value in
-        AxisGridLine()
-        AxisValueLabel(format: format, anchor: labelAnchor(marks.indices.contains(value.index) ? marks[value.index].alignment : .center))
+///
+/// Swift Charts places date axis labels next to their tick rather than under it, whatever anchor
+/// is passed, so labels drifted right of their bars and the last two overlapped. The axis keeps
+/// its grid lines and an invisible label to reserve the space; the visible labels are drawn in an
+/// overlay at the exact x of each mark.
+private struct DateAxis: ViewModifier {
+    let marks: [DateAxisLabels.Mark]
+    let format: Date.FormatStyle
+
+    init(starts: [Date], range: InsightsRange) {
+        marks = DateAxisLabels.marks(bucketStarts: starts, range: range)
+        format = range == .day ? .dateTime.hour() : .dateTime.day().month(.defaultDigits)
+    }
+
+    /// Wide enough for any label; the text sits inside it by the mark's alignment.
+    private static let slot: CGFloat = 80
+
+    func body(content: Content) -> some View {
+        content
+            .chartXAxis {
+                AxisMarks(values: marks.map(\.date)) { _ in
+                    AxisGridLine()
+                    AxisValueLabel(format: format).foregroundStyle(.clear)
+                }
+            }
+            .chartOverlay { proxy in
+                GeometryReader { geometry in
+                    if let plotFrame = proxy.plotFrame {
+                        let plot = geometry[plotFrame]
+                        ForEach(marks, id: \.date) { mark in
+                            if let x = proxy.position(forX: mark.date) {
+                                Text(mark.date, format: format)
+                                    .font(.caption2)
+                                    .foregroundStyle(.secondary)
+                                    .lineLimit(1)
+                                    .fixedSize()
+                                    .frame(width: Self.slot, alignment: Self.alignment(mark.alignment))
+                                    .position(x: plot.minX + x + Self.shift(mark.alignment), y: plot.maxY + 11)
+                            }
+                        }
+                    }
+                }
+                .accessibilityHidden(true)
+            }
+    }
+
+    private static func alignment(_ alignment: DateAxisLabels.Alignment) -> Alignment {
+        switch alignment {
+        case .center: .center
+        case .trailing: .trailing
+        case .leading: .leading
+        }
+    }
+
+    /// Moves the slot so its text starts, centers or ends at the mark.
+    private static func shift(_ alignment: DateAxisLabels.Alignment) -> CGFloat {
+        switch alignment {
+        case .center: 0
+        case .trailing: -slot / 2
+        case .leading: slot / 2
+        }
     }
 }
 
-private func labelAnchor(_ alignment: DateAxisLabels.Alignment) -> UnitPoint? {
-    switch alignment {
-    case .center: nil
-    case .trailing: .topTrailing
-    case .leading: .topLeading
+extension View {
+    fileprivate func dateAxis(for report: InsightsReport) -> some View {
+        modifier(DateAxis(starts: report.buckets.map(\.start), range: report.range))
+    }
+
+    fileprivate func dateAxis(starts: [Date], range: InsightsRange) -> some View {
+        modifier(DateAxis(starts: starts, range: range))
     }
 }
 

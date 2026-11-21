@@ -15,4 +15,17 @@ extension FeedingSession {
             sortBy: [SortDescriptor(\.startedAt, order: .reverse)]
         )
     }
+
+    /// The first finished feed (or, with `pumps`, pumping session) ever logged: when tracking
+    /// began, so Insights averages skip the days before it.
+    static func firstCompleted(pumps: Bool) -> FetchDescriptor<FeedingSession> {
+        let completed = SessionStatus.completed.rawValue
+        let pump = FeedingKind.pump.rawValue
+        let pumpPredicate = #Predicate<FeedingSession> { $0.statusRaw == completed && $0.kindRaw == pump }
+        let feedPredicate = #Predicate<FeedingSession> { $0.statusRaw == completed && $0.kindRaw != pump }
+        let predicate = pumps ? pumpPredicate : feedPredicate
+        var descriptor = FetchDescriptor<FeedingSession>(predicate: predicate, sortBy: [SortDescriptor(\.startedAt, order: .forward)])
+        descriptor.fetchLimit = 1
+        return descriptor
+    }
 }

@@ -315,11 +315,12 @@ struct DateAxisLabelsTests {
         #expect(marks.dropLast().allSatisfy { $0.alignment == .center })
     }
 
-    @Test func weekLabelsEveryDayWithBothEdgesPulledIn() {
+    @Test func weekLabelsEveryDayAllCentered() {
         let marks = DateAxisLabels.marks(bucketStarts: days(7), range: .week, calendar: utc)
         #expect(marks.count == 7)
-        #expect(marks.first?.alignment == .leading)
-        #expect(marks.last?.alignment == .trailing)
+        #expect(marks.allSatisfy { $0.alignment == .center })
+        let twoWeeks = DateAxisLabels.marks(bucketStarts: days(14), range: .twoWeeks, calendar: utc)
+        #expect(twoWeeks.allSatisfy { $0.alignment == .center })
     }
 
     @Test func dayLabelsEveryFourHours() {
@@ -328,5 +329,108 @@ struct DateAxisLabelsTests {
         let marks = DateAxisLabels.marks(bucketStarts: hours, range: .day, calendar: utc)
         #expect(marks.map(\.date) == [3, 7, 11, 15, 19, 23].map { hours[$0].addingTimeInterval(1_800) })
         #expect(DateAxisLabels.marks(bucketStarts: [], range: .day, calendar: utc).isEmpty)
+    }
+}
+
+@Suite("Tracked days")
+struct TrackedDaysTests {
+    @Test func averagesSkipDaysBeforeTheFirstFeed() {
+        // Tracking began yesterday morning: 2 feeds yesterday, 2 so far today (now is noon).
+        let entries = [
+            breast(at(3, day: -1), left: 600, right: 0),
+            breast(at(9, day: -1), left: 600, right: 0),
+            breast(at(1), left: 600, right: 0),
+            breast(at(5), left: 600, right: 0),
+        ]
+        let report = InsightsReport(entries: entries, range: .twoWeeks, now: at(12), trackingStart: at(3, day: -1), calendar: utc)
+        #expect(approx(report.trackedDays, 1.5))
+        #expect(approx(report.feedsPerDay.current, 4 / 1.5))
+        #expect(!report.hasPreviousPeriod)
+        #expect(report.feedsPerDay.previous == 0)
+    }
+
+    @Test func comparesOncePreviousPeriodHasTwoTrackedDays() {
+        // Week range at noon: this period starts 6 days back, the previous one 13 days back.
+        var entries: [FeedEntry] = []
+        for day in -9...0 { entries.append(breast(at(1, day: day), left: 600, right: 0)) }
+        let report = InsightsReport(entries: entries, range: .week, now: at(12), trackingStart: at(1, day: -9), calendar: utc)
+        #expect(report.hasPreviousPeriod)
+        // The previous period runs to noon on day -7: 3 feeds over its 2.5 tracked days.
+        #expect(approx(report.feedsPerDay.previous, 3 / 2.5))
+
+        let tooNew = InsightsReport(entries: entries, range: .week, now: at(12), trackingStart: at(1, day: -7), calendar: utc)
+        #expect(!tooNew.hasPreviousPeriod)
+    }
+
+    @Test func noTrackingStartKeepsWholePeriods() {
+        let report = InsightsReport(entries: [breast(at(1), left: 600, right: 0)], range: .week, now: at(12), calendar: utc)
+        #expect(report.hasPreviousPeriod)
+        #expect(approx(report.trackedDays, 6.5))
+    }
+
+    @Test func dayRangeNeedsTheWhole24HoursBefore() {
+        let span = TrackedSpan(trackingStart: at(20, day: -2), calendar: utc)
+        let before = DateInterval(start: at(12, day: -1), end: at(12))
+        #expect(span.isComparable(before))
+        let late = TrackedSpan(trackingStart: at(1), calendar: utc)
+        #expect(!late.isComparable(before))
+    }
+}
+
+@Suite("Pumping insights")
+struct PumpInsightsTests {
+    @Test func bucketsKeepSidesAndTotalOnlyApart() {
+        let pumps = [
+            PumpEntry(startedAt: at(2), leftML: 60, rightML: 40),
+            PumpEntry(startedAt: at(6), totalML: 100),
+            PumpEntry(startedAt: at(3, day: -1), leftML: 50, rightML: 50),
+        ]
+        let insights = PumpInsights(pumps: pumps, range: .week, now: at(12), calendar: utc)
+        #expect(insights.buckets.count == 7)
+        let today = insights.buckets.last!
+        #expect(today.start == midnight)
+        #expect(today.leftML == 60 && today.rightML == 40 && today.totalOnlyML == 100)
+        #expect(today.totalML == 200)
+        #expect(insights.buckets[5].totalML == 100)
+        #expect(insights.totalML == 300)
+        #expect(insights.sessionCount == 3)
+        #expect(insights.averageSessionML == 100)
+        #expect(insights.hasTotalOnly && insights.hasSided)
+    }
+
+    @Test func perDayUsesDaysSinceFirstPump() {
+        let pumps = [
+            PumpEntry(startedAt: at(3, day: -1), leftML: 100, rightML: 100),
+            PumpEntry(startedAt: at(4), leftML: 50, rightML: 50),
+        ]
+        let insights = PumpInsights(pumps: pumps, range: .month, now: at(12), trackingStart: at(3, day: -1), calendar: utc)
+        #expect(approx(insights.perDay.current, 300 / 1.5))
+        #expect(!insights.hasPreviousPeriod)
+    }
+
+    @Test func comparesWithThePreviousWeek() {
+        var pumps: [PumpEntry] = []
+        for day in -13...0 { pumps.append(PumpEntry(startedAt: at(1, day: day), leftML: day < -6 ? 50 : 100, rightML: 0)) }
+        let insights = PumpInsights(pumps: pumps, range: .week, now: at(12), trackingStart: at(1, day: -13), calendar: utc)
+        #expect(insights.hasPreviousPeriod)
+        #expect(insights.perDay.direction == .up)
+    }
+
+    @Test func dayRangeComparesPlainTotals() {
+        let pumps = [
+            PumpEntry(startedAt: at(2), leftML: 60, rightML: 60),
+            PumpEntry(startedAt: at(20, day: -1), leftML: 40, rightML: 40),
+            PumpEntry(startedAt: at(14, day: -2), leftML: 50, rightML: 50),
+        ]
+        let insights = PumpInsights(pumps: pumps, range: .day, now: at(12), calendar: utc)
+        #expect(insights.perDay == Comparison(current: 200, previous: 100))
+        #expect(insights.buckets.count == 25)
+    }
+
+    @Test func emptyRange() {
+        let insights = PumpInsights(pumps: [], range: .week, now: at(12), calendar: utc)
+        #expect(insights.sessionCount == 0)
+        #expect(insights.averageSessionML == nil)
+        #expect(insights.buckets.allSatisfy { $0.totalML == 0 })
     }
 }

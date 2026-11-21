@@ -3,8 +3,9 @@ import Foundation
 /// Which bars of a feeds or bottle chart get an x-axis label, and how each label is anchored.
 ///
 /// Labels sit under the middle of their bar and count back from the newest bar, so today (or
-/// the current hour) is always labeled. The newest label hangs left of its bar and a label on
-/// the very first bar hangs right, so neither runs past the chart's edge and gets cut off.
+/// the current hour) is always labeled. With the narrowest bars (24 h, 30 d) the newest label hangs
+/// left of its bar and a label on the very first bar hangs right, so neither runs past the chart's
+/// edge; 7 d and 14 d bars are wide enough to center every label.
 public enum DateAxisLabels {
     public enum Alignment: Sendable, Hashable {
         case center
@@ -45,7 +46,10 @@ public enum DateAxisLabels {
             let start = starts[index]
             let end = calendar.date(byAdding: unit, value: 1, to: start) ?? start
             let middle = start.addingTimeInterval(end.timeIntervalSince(start) / 2)
-            let alignment: Alignment = index == last && last > 0 ? .trailing : (index == 0 && last > 0 ? .leading : .center)
+            // 7 d and 14 d bars are wide enough to center even the outer labels; pulling those in
+            // put them right next to their neighbors.
+            let pullsIn = (range == .day || range == .month) && last > 0
+            let alignment: Alignment = pullsIn && index == last ? .trailing : (pullsIn && index == 0 ? .leading : .center)
             return Mark(date: middle, alignment: alignment)
         }
     }
