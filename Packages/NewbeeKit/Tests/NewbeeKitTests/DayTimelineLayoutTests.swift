@@ -67,3 +67,47 @@ struct DayTimelineLayoutTests {
         #expect(backwards.height == 0)
     }
 }
+
+@Suite("Day view lanes")
+struct DayTimelineLanesTests {
+    private func span(_ startHour: Double, _ minutes: Double) -> DayTimelineLayout.Span {
+        DayTimelineLayout.Span(top: startHour / 24, height: minutes / 1_440)
+    }
+
+    @Test func separateBlocksTakeTheFullWidth() {
+        let lanes = DayTimelineLayout.lanes(for: [span(9, 20), span(12, 15), span(15, 30)])
+        #expect(lanes.allSatisfy { $0 == .init(index: 0, count: 1) })
+    }
+
+    @Test func aPumpDuringAFeedSitsBesideIt() {
+        // Feed 9:00–9:30, pump 9:10–9:25.
+        let lanes = DayTimelineLayout.lanes(for: [span(9, 30), span(9 + 10.0 / 60, 15)])
+        #expect(lanes == [.init(index: 0, count: 2), .init(index: 1, count: 2)])
+    }
+
+    @Test func blocksThatTouchShareALane() {
+        // 9:00–9:30, then 9:30–9:45.
+        let lanes = DayTimelineLayout.lanes(for: [span(9, 30), span(9.5, 15)])
+        #expect(lanes == [.init(index: 0, count: 1), .init(index: 0, count: 1)])
+    }
+
+    @Test func aFreedLaneIsReusedAndTheRunKeepsItsWidth() {
+        // A 9:00–10:00, B 9:10–9:20, C 9:30–9:40: C fits back in B's lane, all three halves.
+        let lanes = DayTimelineLayout.lanes(for: [span(9, 60), span(9 + 10.0 / 60, 10), span(9.5, 10)])
+        #expect(lanes == [.init(index: 0, count: 2), .init(index: 1, count: 2), .init(index: 1, count: 2)])
+    }
+
+    @Test func aBottleGetsItsOwnLaneOnceDrawnAtItsMinimumHeight() {
+        // A bottle (no duration) at 9:00 and a feed at 9:10. Drawn at least 20 minutes tall, the
+        // bottle would cover the feed's start.
+        let spans = [span(9, 0), span(9 + 10.0 / 60, 15)]
+        #expect(DayTimelineLayout.lanes(for: spans) == [.init(index: 0, count: 1), .init(index: 0, count: 1)])
+        let lanes = DayTimelineLayout.lanes(for: spans, minimumHeight: 20.0 / 1_440)
+        #expect(lanes == [.init(index: 0, count: 2), .init(index: 1, count: 2)])
+    }
+
+    @Test func lanesComeBackInTheOrderGiven() {
+        let lanes = DayTimelineLayout.lanes(for: [span(9 + 10.0 / 60, 15), span(9, 30)])
+        #expect(lanes == [.init(index: 1, count: 2), .init(index: 0, count: 2)])
+    }
+}
