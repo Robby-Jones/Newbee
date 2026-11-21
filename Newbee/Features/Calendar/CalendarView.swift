@@ -5,7 +5,8 @@ import SwiftUI
 
 /// Feeding calendar (docs/UX_SPEC.md §3.5), History's Calendar mode.
 ///
-/// **Week** (the default) lays the week out as seven day columns on a 24-hour axis, each feed a
+/// **Day** is one day as an hour grid with each feed a block at its time, like a calendar app's
+/// day view (`DayCalendarPage`). **Week** (the default) lays the week out as seven day columns on a 24-hour axis, each feed a
 /// block at its time, like the calendars in popular baby trackers: rhythms and gaps show at a
 /// glance. **Month** is the grid with side, bottle and pumping dots, shaded by how busy each day
 /// was. Pumping shows in both but never counts as a feed. Either way the selected day's summary
@@ -14,7 +15,7 @@ import SwiftUI
 /// `HistoryView` owns the title, the `DayRoute` destination, and the selected day.
 struct CalendarView: View {
     enum Scope: Hashable {
-        case week, month
+        case day, week, month
     }
 
     @State private var scope: Scope = .week
@@ -34,6 +35,11 @@ struct CalendarView: View {
         // Each period's query lives in a child view so it's rebuilt when the period changes.
         Group {
             switch scope {
+            case .day:
+                let day = shownDay
+                DayCalendarPage(day: day) { dayHeader(day) }
+                    .id(day)
+                    .simultaneousGesture(daySwipe(isToday: Calendar.current.isDateInToday(day)))
             case .week:
                 CalendarWeekView(weekStart: weekStart, selectedDay: $selectedDay, scope: $scope, changeWeek: changeWeek(by:))
                     .id(weekStart)
@@ -43,7 +49,11 @@ struct CalendarView: View {
             }
         }
         .background(NBColor.canvas)
-        .onChange(of: scope) { _, _ in
+        .onChange(of: scope) { _, scope in
+            // Day shows the selected day, or today when none is.
+            if scope == .day, selectedDay == nil {
+                selectedDay = Calendar.current.startOfDay(for: .now)
+            }
             // Keep the same period in view when switching between week and month.
             let anchor = selectedDay ?? (scope == .month ? weekStart : month)
             month = FeedCalendar.startOfMonth(anchor)
@@ -63,6 +73,7 @@ struct CalendarView: View {
 
     private var isShowingToday: Bool {
         let today = Calendar.current.startOfDay(for: .now)
+        if scope == .day { return shownDay == today }
         let periodIsCurrent = scope == .week
             ? weekStart == Self.startOfWeek(containing: .now)
             : month == FeedCalendar.startOfMonth(.now)
@@ -72,6 +83,59 @@ struct CalendarView: View {
     /// The first day of the locale's week containing `date`.
     static func startOfWeek(containing date: Date, calendar: Calendar = .current) -> Date {
         calendar.dateInterval(of: .weekOfYear, for: date)?.start ?? calendar.startOfDay(for: date)
+    }
+
+    /// The day on the Day tab: the selected day, else today.
+    private var shownDay: Date {
+        Calendar.current.startOfDay(for: selectedDay ?? .now)
+    }
+
+    /// ‹ Today › and the scope picker, above the day's totals.
+    private func dayHeader(_ day: Date) -> some View {
+        let isToday = Calendar.current.isDateInToday(day)
+        return HStack(spacing: NBSpacing.xs) {
+            Button {
+                changeDay(by: -1)
+            } label: {
+                Image(systemName: "chevron.left")
+                    .frame(width: NBLayout.minHitTarget, height: NBLayout.minHitTarget)
+            }
+            .accessibilityLabel("Previous day")
+            Text(FeedText.dayTitle(day))
+                .font(.headline)
+                .lineLimit(1)
+                .minimumScaleFactor(0.8)
+                .accessibilityAddTraits(.isHeader)
+            Button {
+                changeDay(by: 1)
+            } label: {
+                Image(systemName: "chevron.right")
+                    .frame(width: NBLayout.minHitTarget, height: NBLayout.minHitTarget)
+            }
+            .disabled(isToday)
+            .accessibilityLabel("Next day")
+            Spacer(minLength: NBSpacing.s)
+            ScopePicker(scope: $scope)
+        }
+        .font(.body.weight(.semibold))
+    }
+
+    private func changeDay(by offset: Int) {
+        guard let next = Calendar.current.date(byAdding: .day, value: offset, to: shownDay) else { return }
+        // Never page past today: there's nothing to show there.
+        guard next <= .now else { return }
+        selectedDay = Calendar.current.startOfDay(for: next)
+    }
+
+    /// Swipe left or right across the day to page days.
+    private func daySwipe(isToday: Bool) -> some Gesture {
+        DragGesture(minimumDistance: 30)
+            .onEnded { value in
+                let dx = value.translation.width
+                guard abs(dx) > abs(value.translation.height) * 1.5, abs(dx) > 60 else { return }
+                if dx < 0, !isToday { changeDay(by: 1) }
+                if dx > 0 { changeDay(by: -1) }
+            }
     }
 
     private func changeWeek(by offset: Int) {
@@ -98,12 +162,13 @@ struct CalendarView: View {
     }
 }
 
-/// Week | Month.
+/// Day | Week | Month.
 private struct ScopePicker: View {
     @Binding var scope: CalendarView.Scope
 
     var body: some View {
         Picker("Calendar view", selection: $scope) {
+            Text("Day").tag(CalendarView.Scope.day)
             Text("Week").tag(CalendarView.Scope.week)
             Text("Month").tag(CalendarView.Scope.month)
         }
@@ -888,7 +953,7 @@ private struct DaySummaryCard: View {
 }
 
 /// "Pumping · 2 sessions · 240 mL", in rose.
-private struct PumpTotalLine: View {
+struct PumpTotalLine: View {
     let summary: PumpSummary
     let unit: VolumeUnit
 

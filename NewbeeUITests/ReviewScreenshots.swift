@@ -295,6 +295,43 @@ final class ReviewScreenshots: ScreenshotTestCase {
         app.terminate()
     }
 
+    /// History → Calendar → Day: the hour grid for today and yesterday, then the "Open day" page
+    /// from the Week tab.
+    @MainActor
+    func testDayCalendar() throws {
+        let app = launch()
+        app.tabBars.buttons["History"].tap()
+        let calendarMode = app.segmentedControls.buttons["Calendar"].firstMatch
+        XCTAssertTrue(calendarMode.waitForExistence(timeout: 10))
+        calendarMode.tap()
+        let dayScope = app.segmentedControls.buttons["Day"].firstMatch
+        XCTAssertTrue(dayScope.waitForExistence(timeout: 5))
+        dayScope.tap()
+        settle()
+        capture("day-today")
+        app.buttons["Previous day"].firstMatch.tap()
+        settle()
+        capture("day-yesterday")
+        app.swipeDown()
+        settle()
+        capture("day-yesterday-earlier")
+
+        app.segmentedControls.buttons["Week"].firstMatch.tap()
+        settle()
+        let openDay = app.buttons["calendar.openDay"].firstMatch
+        for _ in 0..<6 where !(openDay.exists && openDay.isHittable) {
+            app.swipeUp()
+        }
+        guard openDay.isHittable else {
+            XCTFail("Open day isn't on screen")
+            return
+        }
+        openDay.tap()
+        settle()
+        capture("day-open-day-page")
+        app.terminate()
+    }
+
     /// Scrolls the list until `element` can be tapped.
     @MainActor
     private func reveal(_ element: XCUIElement, in app: XCUIApplication) {
