@@ -186,7 +186,10 @@ final class ReviewScreenshots: ScreenshotTestCase {
         app.tabBars.buttons["Settings"].tap()
         let picker = app.descendants(matching: .any)["settings.startingSide"].firstMatch
         let switchFrom = app.descendants(matching: .any)["settings.switchFrom"].firstMatch
-        XCTAssertTrue(picker.waitForExistence(timeout: 10))
+        // Settings is a lazy Form and the Breastfeeding section now starts below the fold (the
+        // "Log pumping as total only" row above it), so its rows only exist once scrolled to.
+        XCTAssertTrue(app.descendants(matching: .any)["settings.babyName"].firstMatch.waitForExistence(timeout: 10))
+        reveal(picker, in: app)
         reveal(switchFrom, in: app)
         settle()
         capture("starting-side-alternate")
