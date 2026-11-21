@@ -55,7 +55,7 @@ struct DayCalendarPage<Header: View>: View {
         .breastFeedEditSheet($editing)
     }
 
-    /// Feeds · breast · bottle · avg gap | pumping on one row, then the L/R bar. Pumped milk
+    /// Feeds · breast · bottle · avg gap | pumping on one row. Pumped milk
     /// isn't counted in the feed totals, so a divider keeps it apart.
     @ViewBuilder
     private func totals(entries: [FeedEntry], pumps: [PumpEntry]) -> some View {
@@ -70,11 +70,6 @@ struct DayCalendarPage<Header: View>: View {
                 unit: bottleModel?.unit ?? .milliliters,
                 pumpUnit: pumpModel?.unit ?? bottleModel?.unit ?? .milliliters
             )
-            let left = entries.reduce(0) { $0 + $1.duration(on: .left) }
-            let right = entries.reduce(0) { $0 + $1.duration(on: .right) }
-            if left + right > 0 {
-                SegmentBar(left: left, right: right, height: 6)
-            }
         }
     }
 
