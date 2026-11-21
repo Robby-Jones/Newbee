@@ -140,25 +140,28 @@ private struct DayHourGrid: View {
     @ScaledMetric(relativeTo: .caption) private var axisWidth: CGFloat = 54
     /// Room above midnight and below the last hour, so their labels aren't cut off.
     private let verticalInset: CGFloat = 10
+    @State private var position = ScrollPosition(edge: .top)
 
     var body: some View {
         let dayHeight = hourHeight * 24
-        ScrollViewReader { proxy in
-            ScrollView {
-                ZStack(alignment: .topLeading) {
-                    scrollAnchors
-                    gridLines
-                    hourLabels
-                    blocks(dayHeight: dayHeight)
-                    if Calendar.current.isDateInToday(day) {
-                        nowLine(dayHeight: dayHeight)
-                    }
+        ScrollView {
+            ZStack(alignment: .topLeading) {
+                gridLines
+                hourLabels
+                blocks(dayHeight: dayHeight)
+                if Calendar.current.isDateInToday(day) {
+                    nowLine(dayHeight: dayHeight)
                 }
-                .frame(height: dayHeight)
-                .padding(.vertical, verticalInset)
-                .padding(.trailing, NBSpacing.s)
             }
-            .onAppear { proxy.scrollTo(scrollHour, anchor: .top) }
+            .frame(height: dayHeight)
+            .padding(.vertical, verticalInset)
+            .padding(.trailing, NBSpacing.s)
+        }
+        .scrollPosition($position)
+        .onAppear {
+            // Once laid out: the hour line's label then sits just under the top edge.
+            let y = hourHeight * CGFloat(scrollHour)
+            DispatchQueue.main.async { position.scrollTo(y: y) }
         }
     }
 
@@ -172,20 +175,6 @@ private struct DayHourGrid: View {
         let first = (entries.map(\.start) + pumps.map(\.startedAt)).min()
         guard let first else { return 7 }
         return max(0, calendar.component(.hour, from: first) - 1)
-    }
-
-    /// One invisible row per hour, for `scrollTo`.
-    private var scrollAnchors: some View {
-        VStack(spacing: 0) {
-            ForEach(0..<24, id: \.self) { hour in
-                Color.clear
-                    .frame(height: hourHeight)
-                    .id(hour)
-            }
-        }
-        // Start the scroll a little above the hour line, so its label shows.
-        .offset(y: -verticalInset)
-        .accessibilityHidden(true)
     }
 
     private var gridLines: some View {
