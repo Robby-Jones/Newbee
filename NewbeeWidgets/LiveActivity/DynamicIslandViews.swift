@@ -56,11 +56,28 @@ struct IslandCompactLeading: View {
                 .foregroundStyle(NBColor.side(state.currentSide))
                 .accessibilityLabel("Paused")
         case .ended:
-            Image(systemName: "clock")
-                .font(.caption.weight(.bold))
-                .foregroundStyle(IslandColor.secondaryText)
-                .accessibilityLabel("Since last feed")
+            // The last feed's duotone icon, as on the Lock Screen card (was a generic clock).
+            FeedIcon(IslandLastFeed.glyph(state), fixedSize: 20)
+                .foregroundStyle(IslandLastFeed.color(state))
+                .accessibilityElement()
+                .accessibilityLabel(IslandLastFeed.label(state))
         }
+    }
+}
+
+/// The icon for the last feed while the island counts time since it: the breastfeed icon in the
+/// color of the side it ended on, or the bottle icon in bottle peach, like `LastFeedDetail`.
+enum IslandLastFeed {
+    static func glyph(_ state: FeedingState) -> FeedGlyph {
+        state.lastBottle == nil ? .breastfeed : .bottle
+    }
+
+    static func color(_ state: FeedingState) -> Color {
+        state.lastBottle == nil ? NBColor.side(state.currentSide) : NBColor.bottleBreastMilk
+    }
+
+    static func label(_ state: FeedingState) -> String {
+        state.lastBottle == nil ? String(localized: "Since last breastfeed") : String(localized: "Since last bottle")
     }
 }
 
@@ -112,10 +129,10 @@ struct IslandMinimal: View {
                     .font(.system(size: 8, weight: .bold))
                     .foregroundStyle(color)
             case .ended:
-                Circle().strokeBorder(IslandColor.secondaryText, lineWidth: 2)
-                Image(systemName: "clock")
-                    .font(.system(size: 9, weight: .bold))
-                    .foregroundStyle(IslandColor.secondaryText)
+                let lastColor = IslandLastFeed.color(state)
+                Circle().strokeBorder(lastColor, lineWidth: 2)
+                FeedIcon(IslandLastFeed.glyph(state), fixedSize: 13)
+                    .foregroundStyle(lastColor)
             }
         }
         .frame(width: 22, height: 22)
