@@ -16,9 +16,7 @@ struct AppearanceSection: View {
                 }
             }
             ThemeSwatchRow(selection: $preferences.colorTheme)
-            NavigationLink {
-                LiveActivityColorView(preferences: preferences)
-            } label: {
+            NavigationLink(value: SettingsPage.liveActivityColor) {
                 LabeledContent("Live Activity", value: preferences.liveActivityColor.shortTitle)
             }
             .accessibilityIdentifier("settings.liveActivityColor")

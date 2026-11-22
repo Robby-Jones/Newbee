@@ -15,37 +15,138 @@ struct SettingsView: View {
     @Environment(ReminderScheduler.self) private var reminders: ReminderScheduler?
 
     var body: some View {
+        form
+            .navigationTitle("Settings")
+            .navigationDestination(for: SettingsPage.self) { page in
+                page.destination(preferences: preferences)
+            }
+            .task { await reminders?.reschedule() }
+    }
+
+    private var form: some View {
         Form {
             BabyProfileSection()
-            ICloudSyncSection()
+            ICloudSyncRow()
             SharingSection()
             if let preferences {
                 NightShiftSettingsSection(preferences: preferences)
                 UnitsSection(preferences: preferences)
                 BreastfeedingSection(preferences: preferences)
                 TimeSinceLastFeedSection(preferences: preferences)
-                RemindersSection(preferences: preferences, reminders: reminders)
+                Section {
+                    SettingsPageRow(
+                        .notifications, title: "Notifications", systemImage: "bell",
+                        value: preferences.reminders.needsNotifications ? String(localized: "On") : String(localized: "Off")
+                    )
+                }
                 LiveActivitiesSection()
-                AppearanceSection(preferences: preferences)
+                Section {
+                    SettingsPageRow(.appearance, title: "Appearance", systemImage: "paintpalette", value: preferences.colorTheme.title)
+                }
             }
             // Like iOS Settings: rows that open their own page.
             Section {
-                NavigationLink {
-                    DataSettingsView()
-                } label: {
-                    Label("Your data", systemImage: "externaldrive")
-                }
-                .accessibilityIdentifier("settings.yourData")
-                NavigationLink {
-                    AboutSettingsView()
-                } label: {
-                    Label("About", systemImage: "info.circle")
-                }
-                .accessibilityIdentifier("settings.about")
+                SettingsPageRow(.yourData, title: "Your data", systemImage: "externaldrive")
+                SettingsPageRow(.about, title: "About", systemImage: "info.circle")
             }
         }
-        .navigationTitle("Settings")
+    }
+}
+
+/// The pages Settings opens, pushed by value.
+enum SettingsPage: Hashable {
+    case iCloud, notifications, appearance, liveActivityColor, yourData, about
+
+    @MainActor @ViewBuilder
+    func destination(preferences: AppPreferences?) -> some View {
+        switch self {
+        case .iCloud: ICloudSettingsView()
+        case .notifications: NotificationsSettingsView()
+        case .appearance:
+            if let preferences { AppearanceSettingsView(preferences: preferences) }
+        case .liveActivityColor:
+            if let preferences { LiveActivityColorView(preferences: preferences) }
+        case .yourData: DataSettingsView()
+        case .about: AboutSettingsView()
+        }
+    }
+
+    var accessibilityIdentifier: String {
+        switch self {
+        case .iCloud: "settings.iCloudPage"
+        case .notifications: "settings.notificationsPage"
+        case .appearance: "settings.appearancePage"
+        case .liveActivityColor: "settings.liveActivityColor"
+        case .yourData: "settings.yourData"
+        case .about: "settings.about"
+        }
+    }
+}
+
+/// A row that opens one of Settings' pages, with the current value on the right like iOS Settings.
+struct SettingsPageRow: View {
+    let page: SettingsPage
+    let title: LocalizedStringKey
+    let systemImage: String
+    let value: String?
+
+    init(_ page: SettingsPage, title: LocalizedStringKey, systemImage: String, value: String? = nil) {
+        self.page = page
+        self.title = title
+        self.systemImage = systemImage
+        self.value = value
+    }
+
+    var body: some View {
+        NavigationLink(value: page) {
+            if let value {
+                LabeledContent {
+                    Text(value)
+                } label: {
+                    Label(title, systemImage: systemImage)
+                }
+            } else {
+                Label(title, systemImage: systemImage)
+            }
+        }
+        .accessibilityIdentifier(page.accessibilityIdentifier)
+    }
+}
+
+/// Settings → iCloud: the sync switch and its status.
+private struct ICloudSettingsView: View {
+    var body: some View {
+        Form { ICloudSyncSection() }
+            .navigationTitle("iCloud")
+            .navigationBarTitleDisplayMode(.inline)
+    }
+}
+
+/// Settings → Notifications: the feeding reminder, quiet hours and the "Still feeding?" check.
+private struct NotificationsSettingsView: View {
+    @Environment(AppPreferences.self) private var preferences: AppPreferences?
+    @Environment(ReminderScheduler.self) private var reminders: ReminderScheduler?
+
+    var body: some View {
+        Form {
+            if let preferences {
+                RemindersSection(preferences: preferences, reminders: reminders)
+            }
+        }
+        .navigationTitle("Notifications")
+        .navigationBarTitleDisplayMode(.inline)
         .task { await reminders?.reschedule() }
+    }
+}
+
+/// Settings → Appearance: mode, color, the Live Activity's colors and the app icon.
+private struct AppearanceSettingsView: View {
+    @Bindable var preferences: AppPreferences
+
+    var body: some View {
+        Form { AppearanceSection(preferences: preferences) }
+            .navigationTitle("Appearance")
+            .navigationBarTitleDisplayMode(.inline)
     }
 }
 
@@ -757,6 +858,19 @@ private struct LiveActivitiesSection: View {
 }
 
 // MARK: - iCloud sync
+
+/// The iCloud row on the Settings page; shown when iCloud sync is offered, like the section it opens.
+private struct ICloudSyncRow: View {
+    @Environment(CloudSyncMonitor.self) private var monitor: CloudSyncMonitor?
+
+    var body: some View {
+        if let monitor, monitor.status != .unavailable {
+            Section {
+                SettingsPageRow(.iCloud, title: "iCloud", systemImage: "icloud", value: ICloudSyncSection.value(for: monitor.status))
+            }
+        }
+    }
+}
 
 /// "Sync with iCloud" (off on a fresh install), and once it's on, whether feeds are syncing and
 /// why not when they aren't (docs/ICLOUD_SYNC.md).
