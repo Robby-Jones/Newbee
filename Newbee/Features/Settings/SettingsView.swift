@@ -49,10 +49,10 @@ struct SettingsView: View {
                 Section {
                     SettingsPageRow(.appearance, title: "Appearance", systemImage: "paintpalette", value: preferences.colorTheme.title)
                         .id(SettingsScroll.appearanceRowID)
-                        .onGeometryChange(for: CGFloat?.self) { proxy in
-                            SettingsScroll.anchor(of: proxy)
-                        } action: { anchor in
-                            SettingsScroll.appearanceRowAnchor = anchor
+                        .onGeometryChange(for: CGRect.self) { proxy in
+                            proxy.frame(in: .global)
+                        } action: { frame in
+                            SettingsScroll.appearanceRowFrame = frame
                         }
                 }
             }
@@ -62,7 +62,12 @@ struct SettingsView: View {
                 SettingsPageRow(.about, title: "About", systemImage: "info.circle")
             }
         }
-        .coordinateSpace(.named(SettingsScroll.space))
+        // Form rows live in their own cells, so measure both in screen coordinates.
+        .onGeometryChange(for: CGRect.self) { proxy in
+            proxy.frame(in: .global)
+        } action: { frame in
+            SettingsScroll.formFrame = frame
+        }
     }
 
     /// A new color theme rebuilds the tabs (RootView). The open pages come back (the path lives
@@ -145,29 +150,22 @@ struct SettingsPageRow: View {
 /// Keeps Settings' scroll position across the rebuild a color theme change causes.
 @MainActor
 enum SettingsScroll {
-    nonisolated static let space = "settings.form"
     nonisolated static let appearanceRowID = "settings.appearanceRow"
-    /// Where the Appearance row sits on the Settings page, as a `scrollTo` anchor; kept up to
-    /// date as the page scrolls.
-    static var appearanceRowAnchor: CGFloat?
-    /// Set as a theme is picked, from `appearanceRowAnchor`. Lives outside the views because the
-    /// rebuild drops their state.
+    /// The Settings list and its Appearance row on screen, kept up to date as the list scrolls.
+    static var formFrame: CGRect?
+    static var appearanceRowFrame: CGRect?
+    /// Set as a theme is picked. Lives outside the views because the rebuild drops their state.
     static var pendingAppearanceRowAnchor: UnitPoint?
 
-    /// The anchor that puts a row back where it is now: 0 with its top at the top of the Form,
-    /// 1 with its bottom at the bottom. `scrollTo` lines up the row's anchor point with the same
-    /// point of the Form, so the row's top lands at anchor × (Form height − row height).
-    nonisolated static func anchor(of proxy: GeometryProxy) -> CGFloat? {
-        guard let container = proxy.bounds(of: .named(space)) else { return nil }
-        let frame = proxy.frame(in: .named(space))
-        let room = container.height - frame.height
-        guard room > 0 else { return nil }
-        return min(max((frame.minY - container.minY) / room, 0), 1)
-    }
-
-    /// Called just before the theme changes.
+    /// Called just before the theme changes: the anchor that puts the Appearance row back where
+    /// it is now. `scrollTo` lines up the row's anchor point with the same point of the list, so
+    /// the row's top lands at anchor × (list height − row height).
     static func rememberPosition() {
-        pendingAppearanceRowAnchor = appearanceRowAnchor.map { UnitPoint(x: 0.5, y: $0) }
+        var anchor: CGFloat = 0.5
+        if let form = formFrame, let row = appearanceRowFrame, form.height > row.height {
+            anchor = min(max((row.minY - form.minY) / (form.height - row.height), 0), 1)
+        }
+        pendingAppearanceRowAnchor = UnitPoint(x: 0.5, y: anchor)
     }
 }
 
