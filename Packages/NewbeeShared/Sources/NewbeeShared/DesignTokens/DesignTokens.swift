@@ -15,13 +15,15 @@ import UIKit
 /// The canvas, the card and the accent follow the color theme (`NBTheme.colors`). Every other
 /// token is the same in every theme.
 public enum NBColor {
-    public static let canvas = Color(themed: { $0.canvas })
-    public static let card = Color(themed: { $0.card })
+    // Computed, not stored: each read picks up the current theme, and SwiftUI redraws the views
+    // that read them when it changes (`NBTheme.current` is observed).
+    public static var canvas: Color { Color(themed: { $0.canvas }) }
+    public static var card: Color { Color(themed: { $0.card }) }
     /// Used as text, as a button fill under white text and as a tint, so it passes AA as is in
     /// every theme (at least 4.9:1 on the canvas).
-    public static let accent = Color(themed: { $0.accent })
+    public static var accent: Color { Color(themed: { $0.accent }) }
     /// Breastfeeds in charts (`NBThemeColors.chartBreast`).
-    public static let chartBreast = Color(themed: { $0.chartBreast })
+    public static var chartBreast: Color { Color(themed: { $0.chartBreast }) }
     public static let left = Color(light: 0x9C8CE0, dark: 0xB3A6F0)
     public static let right = Color(light: 0x4FB3A9, dark: 0x6FCFC4)
     public static let bottleBreastMilk = Color(light: 0xF2A37B, dark: 0xF5B593)
@@ -126,13 +128,12 @@ extension NBTheme {
 }
 
 extension Color {
-    /// A color that adapts to light and dark mode and to the color theme (`NBTheme.current`).
-    /// The theme is read each time the color is drawn, so views pick up a new theme when they
-    /// redraw (the app rebuilds its tabs when the theme changes).
-    public init(themed pick: @escaping @Sendable (NBThemeColors) -> NBColorPair) {
+    /// A color that adapts to light and dark mode, in the current color theme (`NBTheme.current`).
+    /// The theme is read here, when the view draws, so the view redraws when it changes.
+    public init(themed pick: (NBThemeColors) -> NBColorPair) {
+        let pair = pick(NBTheme.current.colors)
         self.init(uiColor: UIColor { traits in
-            let pair = pick(NBTheme.current.colors)
-            return UIColor(rgb: traits.userInterfaceStyle == .dark ? pair.dark : pair.light)
+            UIColor(rgb: traits.userInterfaceStyle == .dark ? pair.dark : pair.light)
         })
     }
 

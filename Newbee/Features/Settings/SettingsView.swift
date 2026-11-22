@@ -16,9 +16,6 @@ struct SettingsView: View {
 
     var body: some View {
         form
-            // A color theme change rebuilds the tabs (RootView), which would open this list at
-            // the top again; this keeps its scroll position.
-            .background(SettingsScrollKeeper())
             .navigationTitle("Settings")
             .navigationDestination(for: SettingsPage.self) { page in
                 page.destination(preferences: preferences)
@@ -56,8 +53,7 @@ struct SettingsView: View {
     }
 }
 
-/// The pages Settings opens. They're pushed by value onto a path RootView keeps, so a color
-/// theme change, which rebuilds the tabs, leaves the parent on the page they were on.
+/// The pages Settings opens, pushed by value.
 enum SettingsPage: Hashable {
     case iCloud, notifications, appearance, liveActivityColor, yourData, about
 
@@ -114,76 +110,6 @@ struct SettingsPageRow: View {
             }
         }
         .accessibilityIdentifier(page.accessibilityIdentifier)
-    }
-}
-
-/// Keeps Settings' scroll position across the rebuild a color theme change causes.
-///
-/// The rebuild makes a new list, and SwiftUI's `scrollTo` didn't move a Form that was under
-/// another page or sliding back in, so this saves and restores the list's own scroll view offset.
-@MainActor
-enum SettingsScroll {
-    /// The Settings list's scroll view, found by `SettingsScrollKeeper`.
-    static weak var scrollView: UIScrollView?
-    /// Set as a theme is picked. Lives outside the views because the rebuild drops their state.
-    static var pendingOffset: CGPoint?
-
-    /// Called just before the theme changes. Keeps an earlier saved offset if the list hasn't
-    /// been shown since (a second color picked before going back).
-    static func rememberPosition() {
-        if let scrollView { pendingOffset = scrollView.contentOffset }
-    }
-
-    /// Puts the saved offset on a newly shown list, once it has laid out.
-    static func restore(on scrollView: UIScrollView) {
-        guard pendingOffset != nil else {
-            self.scrollView = scrollView
-            return
-        }
-        DispatchQueue.main.async {
-            guard let offset = pendingOffset, scrollView.window != nil else { return }
-            pendingOffset = nil
-            scrollView.layoutIfNeeded()
-            let insets = scrollView.adjustedContentInset
-            let maxY = max(scrollView.contentSize.height + insets.bottom - scrollView.bounds.height, -insets.top)
-            scrollView.setContentOffset(CGPoint(x: offset.x, y: min(max(offset.y, -insets.top), maxY)), animated: false)
-            self.scrollView = scrollView
-        }
-    }
-}
-
-/// Sits behind the Settings Form and finds its scroll view (the nearest one in the views around
-/// it) whenever the list comes on screen.
-private struct SettingsScrollKeeper: UIViewRepresentable {
-    func makeUIView(context: Context) -> KeeperView { KeeperView() }
-    func updateUIView(_ uiView: KeeperView, context: Context) {}
-
-    final class KeeperView: UIView {
-        override func didMoveToWindow() {
-            super.didMoveToWindow()
-            guard window != nil else { return }
-            var ancestor = superview
-            while let view = ancestor {
-                if let scrollView = Self.firstScrollView(in: view, depth: 6) {
-                    SettingsScroll.restore(on: scrollView)
-                    return
-                }
-                ancestor = view.superview
-            }
-        }
-
-        private static func firstScrollView(in view: UIView, depth: Int) -> UIScrollView? {
-            for subview in view.subviews {
-                if let scrollView = subview as? UIScrollView, scrollView is UICollectionView || scrollView is UITableView {
-                    return scrollView
-                }
-            }
-            guard depth > 0 else { return nil }
-            for subview in view.subviews {
-                if let found = firstScrollView(in: subview, depth: depth - 1) { return found }
-            }
-            return nil
-        }
     }
 }
 

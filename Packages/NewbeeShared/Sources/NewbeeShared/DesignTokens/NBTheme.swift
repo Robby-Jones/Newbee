@@ -1,4 +1,5 @@
 import Foundation
+import Observation
 
 /// The app's color theme, picked in Settings → Appearance (docs/UX_SPEC.md §2.1).
 ///
@@ -27,24 +28,34 @@ public enum NBTheme: String, CaseIterable, Codable, Hashable, Identifiable, Send
     public var id: String { rawValue }
 
     /// The theme the app's design tokens resolve against (`NBColor.accent`, `canvas`, `card`).
-    /// The app sets it at launch and when the parent picks another theme.
+    /// The app sets it at launch and when the parent picks another theme. Reading it is
+    /// observed, so a view that draws a themed token redraws by itself when the theme changes,
+    /// keeping its state and scroll position.
     public static var current: NBTheme {
-        get { storage.value }
-        set { storage.value = newValue }
+        get { NBThemeStore.shared.theme }
+        set { NBThemeStore.shared.theme = newValue }
     }
-
-    private static let storage = Locked(NBTheme.standard)
 }
 
-/// A value read from any thread: UIKit resolves colors wherever it draws.
-private final class Locked<Value: Sendable>: @unchecked Sendable {
+/// Holds `NBTheme.current`: observable for SwiftUI, and read from any thread (UIKit resolves
+/// colors wherever it draws).
+final class NBThemeStore: Observable, @unchecked Sendable {
+    static let shared = NBThemeStore()
+
+    private let registrar = ObservationRegistrar()
     private let lock = NSLock()
-    private var stored: Value
+    private var stored = NBTheme.standard
 
-    init(_ value: Value) { stored = value }
-
-    var value: Value {
-        get { lock.withLock { stored } }
-        set { lock.withLock { stored = newValue } }
+    var theme: NBTheme {
+        get {
+            registrar.access(self, keyPath: \.theme)
+            return lock.withLock { stored }
+        }
+        set {
+            guard newValue != lock.withLock({ stored }) else { return }
+            registrar.withMutation(of: self, keyPath: \.theme) {
+                lock.withLock { stored = newValue }
+            }
+        }
     }
 }

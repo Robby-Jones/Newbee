@@ -18,9 +18,6 @@ struct RootView: View {
     let pumpModel: PumpLogUIModel?
 
     @State private var selection: TabID = .home
-    /// Settings' open pages. Kept here, outside the tabs, so a color theme change (which rebuilds
-    /// them) leaves the parent on the page they were on.
-    @State private var settingsPath: [SettingsPage] = []
     /// Appearance (System / Light / Dark) from Settings.
     @Environment(AppPreferences.self) private var preferences: AppPreferences?
 
@@ -45,14 +42,13 @@ struct RootView: View {
                 .tabChrome(sessionModel, bottleModel, pumpModel)
                 .tabItem { Label("Insights", systemImage: "chart.bar") }
                 .tag(TabID.insights)
-            NavigationStack(path: $settingsPath) { SettingsView() }
+            NavigationStack { SettingsView() }
                 .tabChrome(sessionModel, bottleModel, pumpModel)
                 .tabItem { Label("Settings", systemImage: "gearshape") }
                 .tag(TabID.settings)
         }
-        // The design tokens read the color theme when they're drawn, so a new theme rebuilds
-        // the tabs to redraw everything in it. The selected tab and Settings' open pages are kept.
-        .id(preferences?.colorTheme)
+        // The design tokens read the color theme as they draw (`NBTheme.current` is observed),
+        // so a new theme redraws every screen in place, keeping open pages and scroll positions.
         .tint(NBColor.accent)
         // First launch only (docs/UX_SPEC.md §3.1).
         .onboardingPresentation()
