@@ -168,3 +168,20 @@ schemes:
         - name: NewbeeUITests
     archive:
       config: Release
+  # CI only: each iOS job builds just the test target it runs (the Newbee scheme builds both).
+  NewbeeUnitTests:
+    build:
+      targets:
+        Newbee: all
+    test:
+      config: Debug
+      targets:
+        - name: NewbeeTests
+  NewbeeUITests:
+    build:
+      targets:
+        Newbee: all
+    test:
+      config: Debug
+      targets:
+        - name: NewbeeUITests

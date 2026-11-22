@@ -5,9 +5,10 @@ final class OnboardingFlowTests: XCTestCase {
         continueAfterFailure = false
     }
 
-    /// Welcome → Baby (name) → Stay in the loop → Home shows the name.
+    /// Welcome (Huckleberry import there only) → Baby (name) → Stay in the loop → Home shows the
+    /// name. One launch for the whole flow, since each launch costs about 10 s on CI.
     @MainActor
-    func testOnboardingSavesNameAndLandsOnHome() throws {
+    func testOnboardingFlowSavesNameAndLandsOnHome() throws {
         let app = XCUIApplication()
         app.launchArguments = ["-uiTesting", "-showOnboarding"]
         app.launch()
@@ -15,10 +16,21 @@ final class OnboardingFlowTests: XCTestCase {
         let next = app.buttons["onboarding.next"]
         XCTAssertTrue(next.waitForExistence(timeout: 10))
         XCTAssertTrue(app.staticTexts["Your data stays on this iPhone"].exists)
+
+        // Welcome offers the Huckleberry import and returns to onboarding.
+        let importLink = app.buttons["onboarding.importHuckleberry"]
+        XCTAssertTrue(importLink.exists)
+        importLink.tap()
+        XCTAssertTrue(app.navigationBars["Import from Huckleberry"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.buttons["import.chooseFile"].exists)
+        app.buttons["Cancel"].tap()
+        XCTAssertTrue(next.waitForExistence(timeout: 5))
         next.tap()
 
         let name = app.textFields["onboarding.babyName"]
         XCTAssertTrue(name.waitForExistence(timeout: 5))
+        // The import is only on the welcome step.
+        XCTAssertFalse(app.buttons["onboarding.importHuckleberry"].exists)
         name.tap()
         name.typeText("Ava")
         next.tap()
@@ -42,24 +54,5 @@ final class OnboardingFlowTests: XCTestCase {
         skip.tap()
         XCTAssertTrue(app.tabBars.firstMatch.waitForExistence(timeout: 5))
         XCTAssertFalse(app.buttons["onboarding.next"].exists)
-    }
-
-    /// The welcome step offers the Huckleberry import, which opens over onboarding and returns to it.
-    @MainActor
-    func testWelcomeOffersHuckleberryImport() throws {
-        let app = XCUIApplication()
-        app.launchArguments = ["-uiTesting", "-showOnboarding"]
-        app.launch()
-
-        let importLink = app.buttons["onboarding.importHuckleberry"]
-        XCTAssertTrue(importLink.waitForExistence(timeout: 10))
-        importLink.tap()
-        XCTAssertTrue(app.navigationBars["Import from Huckleberry"].waitForExistence(timeout: 5))
-        XCTAssertTrue(app.buttons["import.chooseFile"].exists)
-        app.buttons["Cancel"].tap()
-        XCTAssertTrue(app.buttons["onboarding.next"].waitForExistence(timeout: 5))
-        // Only on the welcome step.
-        app.buttons["onboarding.next"].tap()
-        XCTAssertFalse(app.buttons["onboarding.importHuckleberry"].waitForExistence(timeout: 2))
     }
 }

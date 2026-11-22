@@ -26,6 +26,10 @@ jobs:
 
   ios:
     name: iOS ${{ matrix.label }}
+    # The PR already ran these on the same code, so a merge to main only reruns the Linux package
+    # tests. Each run takes 3 of the 5 Macs a free account gets, and the rerun made the next PR's
+    # jobs wait for a Mac. Actions → CI → Run workflow still runs everything on main.
+    if: github.event_name != 'push'
     runs-on: ${{ matrix.runner }}
     timeout-minutes: 60
     strategy:
@@ -34,18 +38,19 @@ jobs:
         include:
           # UI tests relaunch the app for every test and take the longest, so they get a Mac of
           # their own and run alongside the unit tests instead of after them. They run on latest
-          # iOS only, on one simulator: 3 parallel clones overloaded the runner (PR #63).
+          # iOS only, on one simulator: 3 parallel clones overloaded the runner (PR #63). Each job's
+          # scheme (project.yml) builds only the test target it runs.
           - label: UI tests (latest iOS)
             runner: xcode-27
             xcode: "27"
             ios_major: ""
-            test_flags: -only-testing:NewbeeUITests
+            scheme: NewbeeUITests
             results: ui-latest
           - label: build and unit tests (latest iOS)
             runner: xcode-27
             xcode: "27"
             ios_major: ""
-            test_flags: -skip-testing:NewbeeUITests
+            scheme: NewbeeUnitTests
             results: unit-latest
           # Xcode 27 can't download an iOS 18 simulator runtime ("iOS 18.x is not available for
           # download"), so the iOS 18 leg stays on the macos-15 image with Xcode 26, which can. The
@@ -54,7 +59,7 @@ jobs:
             runner: macos-15
             xcode: "26"
             ios_major: "18"
-            test_flags: -skip-testing:NewbeeUITests
+            scheme: NewbeeUnitTests
             results: unit-18
     steps:
       - uses: actions/checkout@v4
@@ -83,10 +88,9 @@ jobs:
           set -o pipefail
           xcodebuild build-for-testing \
             -project Newbee.xcodeproj \
-            -scheme Newbee \
+            -scheme ${{ matrix.scheme }} \
             -destination "id=${{ steps.sim.outputs.udid }}" \
             -enableCodeCoverage NO \
-            ${{ matrix.test_flags }} \
             CODE_SIGNING_ALLOWED=NO \
             NEWBEE_CLOUDKIT_CONTAINER= \
             | xcbeautify --renderer github-actions
@@ -95,11 +99,10 @@ jobs:
           set -o pipefail
           xcodebuild test-without-building \
             -project Newbee.xcodeproj \
-            -scheme Newbee \
+            -scheme ${{ matrix.scheme }} \
             -destination "id=${{ steps.sim.outputs.udid }}" \
             -resultBundlePath TestResults.xcresult \
             -enableCodeCoverage NO \
-            ${{ matrix.test_flags }} \
             CODE_SIGNING_ALLOWED=NO \
             NEWBEE_CLOUDKIT_CONTAINER= \
             | xcbeautify --renderer github-actions
