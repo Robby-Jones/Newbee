@@ -260,6 +260,32 @@ struct LiveActivityWiringTests {
         #expect(client.activities.last?.state.theme == nil)
     }
 
+    @Test func theLiveActivityColorIsSentApartFromTheTheme() async throws {
+        let clock = TestClock()
+        let client = FakeLiveActivityClient()
+        let coordinator = LiveActivityCoordinator(client: client, clock: clock)
+        let defaults = try #require(UserDefaults(suiteName: "live-activity-color-\(UUID())"))
+        let dependencies = AppDependencies(clock: clock, storage: .inMemory, liveActivity: coordinator, defaults: defaults)
+        let manager = dependencies.sessionManager
+
+        try manager.start(side: .left)
+        await manager.waitForPendingEffects()
+        // "Match app theme" is the default and leaves content as it was.
+        #expect(client.activities.last?.state.cardColor == nil)
+
+        dependencies.preferences.liveActivityColor = .dark(.ocean)
+        await manager.reload() // what NewbeeApp does when the setting changes
+        #expect(client.activities.last?.state.cardColor == .dark(.ocean))
+        // The theme still travels with it, and a new theme doesn't change the picked card.
+        dependencies.preferences.colorTheme = .pink
+        await manager.reload()
+        #expect(client.activities.last?.state.theme == .pink)
+        #expect(client.activities.last?.state.cardColor == .dark(.ocean))
+        dependencies.preferences.liveActivityColor = .matchTheme
+        await manager.reload()
+        #expect(client.activities.last?.state.cardColor == nil)
+    }
+
     @Test(arguments: [
         (LiveActivityCommand.switchTo(.left), SessionCommand.switchTo(.left)),
         (.switchTo(.right), .switchTo(.right)),

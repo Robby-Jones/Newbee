@@ -99,6 +99,17 @@ side pills and controls are one shared view (`ActivitySidesAndControls`). Minima
   travels in the content (`ContentState.theme`, `nil` for the standard theme), so picking another
   theme updates the activity (`NewbeeApp` reloads the session manager). The Dynamic Island stays
   black (`ActivityPalette.night`) in every theme.
+- **Live Activity color.** Settings → Appearance → Live Activity picks the card apart from the
+  theme (`LiveActivityColor`: Match app theme, Black, or a light or dark card per theme color).
+  It travels as `ContentState.cardColor` (a string such as `"dark.sage"`; `nil` for Match, so
+  content stays as older builds sent it, and an unknown value reads as Match). The widget draws
+  `ActivityPalette.lockScreen(for:)` on the Lock Screen and `ActivityPalette.island(for:)` in the
+  expanded island: black, with the "+" and Pause from the same color's dark card. A change
+  reloads the session manager, like the theme.
+- **Solid card.** On device (2026-11-21) iOS drew `activityBackgroundTint` see-through over the
+  wallpaper, so a light blush card showed as hot pink with the wallpaper behind it. The Lock
+  Screen view now also paints `palette.background` behind its content, edge to edge, so the card
+  is the color the palette and Settings' preview show.
 - **Photo.** The widget can't open the store, so the app keeps an 84 px square JPEG copy (at most
   4 KB) of the profile photo in the App Group (`LiveActivityAvatar`, `Library/Caches/LiveActivity/avatar.jpg`).
   **Keep it tiny:** iOS doesn't show the activity at all when an image in it is too large. A

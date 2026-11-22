@@ -70,7 +70,7 @@ final class ReviewScreenshots: ScreenshotTestCase {
     /// Dynamic Island shapes (`LiveActivityReviewGallery`).
     @MainActor
     func testSinceLastFeedLiveActivity() throws {
-        for page in ["lockScreen", "lockScreenPink", "lockScreenThemes", "island"] {
+        for page in ["lockScreen", "lockScreenPink", "lockScreenThemes", "lightCards", "darkCards", "island"] {
             let app = launch(["-liveActivityReview", page])
             let plus = app.descendants(matching: .any)
                 .matching(NSPredicate(format: "label == %@", "Open Newbee to start a feed")).firstMatch
@@ -112,6 +112,35 @@ final class ReviewScreenshots: ScreenshotTestCase {
         swatch.tap()
         settle()
         capture("pink-settings-switched-to-indigo")
+        app.terminate()
+    }
+
+    /// Settings → Appearance → Live Activity: the row, the page on "Match app theme" in the pink
+    /// theme, then with a light and a dark card picked.
+    @MainActor
+    func testLiveActivityColors() throws {
+        let app = launch(["-uiTestColorTheme", "pink"])
+        app.tabBars.buttons["Settings"].tap()
+        XCTAssertTrue(app.navigationBars["Settings"].waitForExistence(timeout: 10))
+        let row = app.buttons["settings.liveActivityColor"].firstMatch
+        reveal(row, in: app)
+        settle()
+        capture("live-activity-color-row")
+        row.tap()
+        XCTAssertTrue(app.navigationBars["Live Activity"].waitForExistence(timeout: 5))
+        settle()
+        capture("live-activity-color-match")
+        for color in ["light.ocean", "dark.lavender", "dark.standard", "black"] {
+            let choice = app.descendants(matching: .any)["settings.liveActivityColor.\(color)"].firstMatch
+            reveal(choice, in: app)
+            choice.tap()
+            settle()
+            capture("live-activity-color-\(color)")
+        }
+        app.navigationBars.buttons.firstMatch.tap()
+        reveal(row, in: app)
+        settle()
+        capture("live-activity-color-row-picked")
         app.terminate()
     }
 

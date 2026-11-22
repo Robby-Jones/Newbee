@@ -91,6 +91,19 @@ Settings → Appearance has a **Color** picker (Indigo, Pink, Sage, Ocean, Laven
 
 Cards are white in light mode in every theme. Charts draw breastfeeds in the accent (`chartBreast`), except Peach, whose accent looks like the bottle color there: it uses a deep terracotta (`#9E4A1C` / `#B5532A`). Light accents reach at least 4.9:1 on their canvas and white, dark accents at least 7.8:1 on their dark card. On each tinted Lock Screen card (`ActivityPalette.lockScreen`) text and the side, pause and End inks are at least 5.2:1. The Dynamic Island stays black in every theme. Each theme's icon is the same bee with only the background gradient changed (`AppIcon-Pink`, `-Sage`, `-Ocean`, `-Lavender`, `-Peach`).
 
+**Live Activity color.** Settings → Appearance → Live Activity opens a page of its own that picks the Live Activity's colors apart from the theme (`LiveActivityColor`, `AppPreferences.liveActivityColor`, kept on this phone only and kept by "Delete all data", like the theme). At the top a preview draws the since-last-feed card and the expanded Dynamic Island with the baby's name and photo. Choices: **Match app theme** (the default: the card in the table above, with "Now: …" under it), **Black**, then a **Light** and a **Dark** row with one swatch per theme color. One choice colors the whole card: background, text and the round "+". The Dynamic Island stays black, with its "+" and Pause taken from the dark card of the same color (`ActivityPalette.island`).
+
+| Color | Light card | Dark card | "+" |
+|---|---|---|---|
+| Indigo | `#E4E5F7` | `#1E2046` | `#8E91F0` |
+| Pink | `#FBE1EA` | `#3D1A2A` | `#E87FA6` |
+| Sage | `#E3EFE3` | `#182C1F` | `#8CC79A` |
+| Ocean | `#DFEBF6` | `#122840` | `#7FB4E3` |
+| Lavender | `#ECE5F8` | `#2B1F48` | `#B49CEB` |
+| Peach | `#FCE6D8` | `#3D2216` | `#F2A57A` |
+
+Light cards use dark text (the light Indigo card's text and inks are at least 5.1:1). Dark cards use white text, a soft tint of the color for secondary text, and the black card's side, Pause and End inks: all at least 7:1 on every dark card. The dark glyph on each "+" is at least 6.5:1.
+
 ### Typography
 - SF Pro **Rounded** for numerals and headings; SF Pro for body.
 - Timer: `.system(size: 64, weight: .semibold, design: .rounded).monospacedDigit()`, scales with Dynamic Type via `@ScaledMetric`.

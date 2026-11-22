@@ -10,9 +10,11 @@ import UIKit
 /// system's `.primary` / `.secondary` (those were drawn for the wrong appearance on the Lock
 /// Screen before). Text meets WCAG AA on the card.
 ///
-/// The Dynamic Island is always `night` (black). The Lock Screen card is `night` in the standard
-/// theme, or a soft tint of the theme's color otherwise (`ContentState.theme`). Views read the palette from the environment
-/// (`\.activityPalette`, `night` unless set).
+/// The Lock Screen card follows Settings → Appearance → Live Activity (`ContentState.cardColor`):
+/// black, a light card or a dark card in a theme's color, or, by default, the app theme
+/// (`ContentState.theme`: black in the standard theme, the theme's light card otherwise). The
+/// Dynamic Island is always black, with the "+" and Pause in the card's color (`island`). Views
+/// read the palette from the environment (`\.activityPalette`, `night` unless set).
 struct ActivityPalette: Sendable {
     var background: Color
     /// The appearance the card reads as, so adaptive side colors pick the matching values.
@@ -47,17 +49,74 @@ struct ActivityPalette: Sendable {
         side == .left ? leftFill : rightFill
     }
 
-    /// The Lock Screen card for a theme.
+    /// The Lock Screen card for a Live Activity's content.
+    static func lockScreen(for state: FeedingActivityAttributes.ContentState) -> ActivityPalette {
+        card(state.cardColor ?? .matchTheme, theme: state.theme ?? .standard)
+    }
+
+    /// The Lock Screen card that matches a theme ("Match app theme").
     static func lockScreen(_ theme: NBTheme?) -> ActivityPalette {
-        switch theme ?? .standard {
-        case .standard: .night
+        card(.matchTheme, theme: theme ?? .standard)
+    }
+
+    /// The Lock Screen card for a Live Activity color, with the app in `theme`.
+    static func card(_ color: LiveActivityColor, theme: NBTheme) -> ActivityPalette {
+        switch color.card(for: theme) {
+        case .matchTheme, .black: .night
+        case .light(let tint): light(tint)
+        case .dark(let tint): dark(tint)
+        }
+    }
+
+    /// The expanded Dynamic Island: black, as iOS draws it, with the "+" and Pause taken from the
+    /// dark card of the same color, which are made for a dark background.
+    static func island(_ color: LiveActivityColor, theme: NBTheme) -> ActivityPalette {
+        guard let tint = color.card(for: theme).tint else { return .night }
+        var palette = dark(tint)
+        palette.background = .black
+        palette.secondaryText = night.secondaryText
+        return palette
+    }
+
+    static func island(for state: FeedingActivityAttributes.ContentState) -> ActivityPalette {
+        island(state.cardColor ?? .matchTheme, theme: state.theme ?? .standard)
+    }
+
+    /// A theme's soft light card, dark text.
+    static func light(_ theme: NBTheme) -> ActivityPalette {
+        switch theme {
         case .pink: .blush
-        // Ratios for each card are in docs/UX_SPEC.md §2.1; all text is at least 5.2:1 on it.
+        // Ratios for each card are in docs/UX_SPEC.md §2.1; all text is at least 5.1:1 on it.
+        case .standard: .tinted(background: 0xE4E5F7, primaryText: 0x181A33, secondaryText: 0x4C4F6E, newFeed: 0x8E91F0, accentInk: 0x4346A8)
         case .sage: .tinted(background: 0xE3EFE3, primaryText: 0x17251A, secondaryText: 0x4D5F50, newFeed: 0x8CC79A, accentInk: 0x3E6848)
         case .ocean: .tinted(background: 0xDFEBF6, primaryText: 0x142230, secondaryText: 0x4A5B6B, newFeed: 0x7FB4E3, accentInk: 0x275A82)
         case .lavender: .tinted(background: 0xECE5F8, primaryText: 0x221A33, secondaryText: 0x5A4E6E, newFeed: 0xB49CEB, accentInk: 0x5C449E)
         case .peach: .tinted(background: 0xFCE6D8, primaryText: 0x2E1A10, secondaryText: 0x6B4E3E, newFeed: 0xF2A57A, accentInk: 0x93461C)
         }
+    }
+
+    /// A theme's deep card, white text. Ratios are in docs/UX_SPEC.md §2.1; all text is at least
+    /// 7:1 on it.
+    static func dark(_ theme: NBTheme) -> ActivityPalette {
+        switch theme {
+        case .standard: .deep(background: 0x1E2046, secondaryText: 0xBDBEDB, newFeed: 0x8E91F0, accentInk: 0xA5A8F5)
+        case .pink: .deep(background: 0x3D1A2A, secondaryText: 0xDDBDCA, newFeed: 0xE87FA6, accentInk: 0xF2A6C2)
+        case .sage: .deep(background: 0x182C1F, secondaryText: 0xB9CFBF, newFeed: 0x8CC79A, accentInk: 0xA8D8B3)
+        case .ocean: .deep(background: 0x122840, secondaryText: 0xB5C8DA, newFeed: 0x7FB4E3, accentInk: 0xA3CBEE)
+        case .lavender: .deep(background: 0x2B1F48, secondaryText: 0xCCC0E3, newFeed: 0xB49CEB, accentInk: 0xC9B8F2)
+        case .peach: .deep(background: 0x3D2216, secondaryText: 0xDDC3B5, newFeed: 0xF2A57A, accentInk: 0xF5BE9E)
+        }
+    }
+
+    /// A deep card in a theme's color, otherwise the same as `night`: white text, and the side,
+    /// bottle and End colors pass AA on every deep card.
+    static func deep(background: UInt32, secondaryText: UInt32, newFeed: UInt32, accentInk: UInt32) -> ActivityPalette {
+        var palette = night
+        palette.background = Color(rgb: background)
+        palette.secondaryText = Color(rgb: secondaryText)
+        palette.newFeed = Color(rgb: newFeed)
+        palette.accentInk = Color(rgb: accentInk)
+        return palette
     }
 
     /// A light card in a theme's color, otherwise the same as `blush`: the side, bottle and End

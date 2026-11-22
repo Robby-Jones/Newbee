@@ -31,6 +31,9 @@ final class LiveActivityCoordinator {
     /// Settings' color theme, read at every sync: the Lock Screen card is blush in the pink
     /// theme. A change in Settings re-syncs (see `NewbeeApp`).
     @ObservationIgnored var theme: @MainActor () -> NBTheme = { .standard }
+    /// Settings' Live Activity color, read at every sync; `matchTheme` follows `theme`. A change
+    /// in Settings re-syncs (see `NewbeeApp`).
+    @ObservationIgnored var cardColor: @MainActor () -> LiveActivityColor = { .matchTheme }
     /// Settings' "Suggested starting side", for the since-last-feed tint.
     @ObservationIgnored var startingSide: @MainActor () -> StartingSideSuggestion = { StartingSideSuggestion() }
 
@@ -112,6 +115,7 @@ final class LiveActivityCoordinator {
             babyName: babyName(),
             countFrom: countFrom(),
             theme: theme(),
+            cardColor: cardColor(),
             startingSide: startingSide(),
             mode: mode,
             now: clock.now

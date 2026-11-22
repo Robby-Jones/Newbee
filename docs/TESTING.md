@@ -90,6 +90,7 @@ Run each case on an **iPhone 14 Pro or later** (Dynamic Island). Where marked �
 | D29 | Tap Take over on the other phone, then End | Both phones follow each change; after End both are back to normal reminders |
 | D30 | Let a shift run to its end time | The parent who slept gets "While you slept" and sees the card on Home until they close it; the parent on call sees neither |
 | D31 | Look at Home, History (filter and + menus), a Day in Calendar, the edit sheet and the Lock Screen after a feed, in light and dark mode | Breastfeed, Bottle and Pumping show the new two-tone icons (parent with baby, bottle, pump), crisp and in each feed's color; menus show them too |
+| D32 | Settings → Appearance → Live Activity: pick Dark Sage, then Light Ocean, then Black, then Match app theme, with the since-last-feed activity and then a running feed on the Lock Screen | The Lock Screen card changes to each color within a few seconds (text readable, "+" in the card's color); the expanded Dynamic Island stays black with its "+" in the picked color; changing the app Color while a card is picked leaves the card as picked |
 
 ## 6. CI
 

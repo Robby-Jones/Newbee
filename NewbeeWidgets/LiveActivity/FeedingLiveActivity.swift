@@ -12,9 +12,9 @@ import WidgetKit
 struct FeedingLiveActivity: Widget {
     var body: some WidgetConfiguration {
         ActivityConfiguration(for: FeedingActivityAttributes.self) { context in
-            // Black (2026-11-19), or blush in the pink theme, whatever the phone's or the app's
-            // appearance.
-            let palette = ActivityPalette.lockScreen(context.state.theme)
+            // Settings → Appearance → Live Activity (by default the app theme's card), whatever
+            // the phone's or the app's appearance.
+            let palette = ActivityPalette.lockScreen(for: context.state)
             LockScreenFeedingView(
                 attributes: context.attributes,
                 state: context.state,
@@ -22,6 +22,11 @@ struct FeedingLiveActivity: Widget {
             )
             .environment(\.colorScheme, palette.colorScheme)
             .environment(\.activityPalette, palette)
+            // The card's color drawn as content too: on device, iOS draws the background tint
+            // see-through over the wallpaper (a light blush turned hot pink), so the card didn't
+            // look like Settings' preview and the text lost contrast. Content colors are kept.
+            .frame(maxWidth: .infinity)
+            .background(palette.background)
             .activityBackgroundTint(palette.background)
             .activitySystemActionForegroundColor(palette.newFeed)
             // Tapping anywhere once a feed has ended opens Home, like the "+".
@@ -35,6 +40,8 @@ struct FeedingLiveActivity: Widget {
                 DynamicIslandExpandedRegion(.bottom) {
                     IslandExpandedBottom(attributes: attributes, state: state, isStale: context.isStale)
                         .environment(\.colorScheme, .dark)
+                        // Black, with the "+" and Pause in the Live Activity color.
+                        .environment(\.activityPalette, ActivityPalette.island(for: state))
                 }
             } compactLeading: {
                 IslandCompactLeading(state: state)

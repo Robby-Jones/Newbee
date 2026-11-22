@@ -10,9 +10,10 @@ import UIKit
 /// (`SinceLastFeedActivityContent`), on mock Lock Screen and Dynamic Island shapes.
 ///
 /// UI tests only: `-uiTesting -liveActivityReview lockScreen` (or `lockScreenPink`, the pink
-/// theme's blush card, `lockScreenThemes`, one card in each other color theme, or `island`).
+/// theme's blush card, `lockScreenThemes`, one card in each other color theme, `lightCards` /
+/// `darkCards`, every Live Activity color from Settings, or `island`).
 struct LiveActivityReviewGallery: View {
-    enum Page: String { case lockScreen, lockScreenPink, lockScreenThemes, island }
+    enum Page: String { case lockScreen, lockScreenPink, lockScreenThemes, lightCards, darkCards, island }
 
     static var requestedPage: Page? {
         guard AppConfiguration.isUITesting,
@@ -33,6 +34,8 @@ struct LiveActivityReviewGallery: View {
             case .lockScreen: lockScreen(.night)
             case .lockScreenPink: lockScreen(.blush)
             case .lockScreenThemes: themedLockScreens
+            case .lightCards: cards([.black] + LiveActivityColor.lightCards)
+            case .darkCards: cards(LiveActivityColor.darkCards)
             case .island: island
             }
         }
@@ -56,6 +59,44 @@ struct LiveActivityReviewGallery: View {
                         .environment(\.activityPalette, palette)
                         .environment(\.colorScheme, palette.colorScheme)
                     }
+                }
+            }
+            Spacer(minLength: 0)
+        }
+        .padding(.horizontal, 12)
+        .padding(.top, 50)
+    }
+
+    /// One sample on each Live Activity color's card (Settings → Appearance → Live Activity),
+    /// then the expanded Dynamic Island with the last one's "+".
+    private func cards(_ colors: [LiveActivityColor]) -> some View {
+        VStack(spacing: 6) {
+            ForEach(colors, id: \.self) { color in
+                let palette = ActivityPalette.card(color, theme: .standard)
+                VStack(alignment: .leading, spacing: 3) {
+                    caption(color.title)
+                    SinceLastFeedActivityContent(
+                        state: Sample.all[1].state, babyName: Sample.all[1].name,
+                        since: Sample.all[1].state.sinceLastFeedStart!, style: .island, photo: Sample.all[1].photo
+                    )
+                    .padding(10)
+                    .background(RoundedRectangle(cornerRadius: 20, style: .continuous).fill(palette.background))
+                    .environment(\.activityPalette, palette)
+                    .environment(\.colorScheme, palette.colorScheme)
+                }
+            }
+            if let shown = colors.last {
+                VStack(alignment: .leading, spacing: 3) {
+                    caption("Dynamic Island · \(shown.title)")
+                    SinceLastFeedActivityContent(
+                        state: Sample.all[0].state, babyName: Sample.all[0].name,
+                        since: Sample.all[0].state.sinceLastFeedStart!, style: .island, photo: Sample.all[0].photo
+                    )
+                    .padding(.horizontal, 18)
+                    .padding(.vertical, 12)
+                    .background(RoundedRectangle(cornerRadius: 36, style: .continuous).fill(Color.black))
+                    .environment(\.activityPalette, ActivityPalette.island(shown, theme: .standard))
+                    .environment(\.colorScheme, .dark)
                 }
             }
             Spacer(minLength: 0)

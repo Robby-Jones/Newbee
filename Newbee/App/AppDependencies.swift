@@ -182,6 +182,9 @@ final class AppDependencies {
         (activity as? LiveActivityCoordinator)?.theme = { [preferences] in
             preferences.colorTheme
         }
+        (activity as? LiveActivityCoordinator)?.cardColor = { [preferences] in
+            preferences.liveActivityColor
+        }
         (activity as? LiveActivityCoordinator)?.startingSide = { [preferences] in
             preferences.startingSide
         }

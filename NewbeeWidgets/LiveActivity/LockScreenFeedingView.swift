@@ -25,7 +25,7 @@ import WidgetKit
 ///    Millie         (🍼) 1 oz
 /// ```
 ///
-/// A black card, or blush in the pink theme (`ActivityPalette.lockScreen`), whatever the phone's
+/// The card picked in Settings → Appearance → Live Activity (`ActivityPalette.lockScreen`), whatever the phone's
 /// or the app's appearance.
 struct LockScreenFeedingView: View {
     let attributes: FeedingActivityAttributes
