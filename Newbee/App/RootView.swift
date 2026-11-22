@@ -45,7 +45,7 @@ struct RootView: View {
                 .tabChrome(sessionModel, bottleModel, pumpModel)
                 .tabItem { Label("Insights", systemImage: "chart.bar") }
                 .tag(TabID.insights)
-            NavigationStack(path: $settingsPath) { SettingsView(isOnTop: settingsPath.isEmpty) }
+            NavigationStack(path: $settingsPath) { SettingsView() }
                 .tabChrome(sessionModel, bottleModel, pumpModel)
                 .tabItem { Label("Settings", systemImage: "gearshape") }
                 .tag(TabID.settings)

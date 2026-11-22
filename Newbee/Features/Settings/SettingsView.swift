@@ -11,22 +11,19 @@ import UIKit
 ///
 /// The Settings tab.
 struct SettingsView: View {
-    /// No page is open over this list, so it's on screen.
-    var isOnTop = true
     @Environment(AppPreferences.self) private var preferences: AppPreferences?
     @Environment(ReminderScheduler.self) private var reminders: ReminderScheduler?
 
     var body: some View {
-        ScrollViewReader { proxy in
-            form
-                .onAppear { restoreAppearanceRowPosition(proxy) }
-                .onChange(of: isOnTop) { restoreAppearanceRowPosition(proxy) }
-        }
-        .navigationTitle("Settings")
-        .navigationDestination(for: SettingsPage.self) { page in
-            page.destination(preferences: preferences)
-        }
-        .task { await reminders?.reschedule() }
+        form
+            // A color theme change rebuilds the tabs (RootView), which would open this list at
+            // the top again; this keeps its scroll position.
+            .background(SettingsScrollKeeper())
+            .navigationTitle("Settings")
+            .navigationDestination(for: SettingsPage.self) { page in
+                page.destination(preferences: preferences)
+            }
+            .task { await reminders?.reschedule() }
     }
 
     private var form: some View {
@@ -48,12 +45,6 @@ struct SettingsView: View {
                 LiveActivitiesSection()
                 Section {
                     SettingsPageRow(.appearance, title: "Appearance", systemImage: "paintpalette", value: preferences.colorTheme.title)
-                        .id(SettingsScroll.appearanceRowID)
-                        .onGeometryChange(for: CGRect.self) { proxy in
-                            proxy.frame(in: .global)
-                        } action: { frame in
-                            SettingsScroll.appearanceRowFrame = frame
-                        }
                 }
             }
             // Like iOS Settings: rows that open their own page.
@@ -61,27 +52,6 @@ struct SettingsView: View {
                 SettingsPageRow(.yourData, title: "Your data", systemImage: "externaldrive")
                 SettingsPageRow(.about, title: "About", systemImage: "info.circle")
             }
-        }
-        // Form rows live in their own cells, so measure both in screen coordinates.
-        .onGeometryChange(for: CGRect.self) { proxy in
-            proxy.frame(in: .global)
-        } action: { frame in
-            SettingsScroll.formFrame = frame
-        }
-    }
-
-    /// A new color theme rebuilds the tabs (RootView). The open pages come back (the path lives
-    /// in RootView), but this page would start at the top: put the Appearance row back where it
-    /// was once the page is showing again (a page under another one may not lay out its rows).
-    private func restoreAppearanceRowPosition(_ proxy: ScrollViewProxy) {
-        guard isOnTop, let anchor = SettingsScroll.pendingAppearanceRowAnchor else { return }
-        SettingsScroll.pendingAppearanceRowAnchor = nil
-        proxy.scrollTo(SettingsScroll.appearanceRowID, anchor: anchor)
-        // The Form may not have laid out its rows yet on the first pass, or is still sliding
-        // back in under the closing page.
-        DispatchQueue.main.async { proxy.scrollTo(SettingsScroll.appearanceRowID, anchor: anchor) }
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.35) {
-            proxy.scrollTo(SettingsScroll.appearanceRowID, anchor: anchor)
         }
     }
 }
@@ -148,24 +118,72 @@ struct SettingsPageRow: View {
 }
 
 /// Keeps Settings' scroll position across the rebuild a color theme change causes.
+///
+/// The rebuild makes a new list, and SwiftUI's `scrollTo` didn't move a Form that was under
+/// another page or sliding back in, so this saves and restores the list's own scroll view offset.
 @MainActor
 enum SettingsScroll {
-    nonisolated static let appearanceRowID = "settings.appearanceRow"
-    /// The Settings list and its Appearance row on screen, kept up to date as the list scrolls.
-    static var formFrame: CGRect?
-    static var appearanceRowFrame: CGRect?
+    /// The Settings list's scroll view, found by `SettingsScrollKeeper`.
+    static weak var scrollView: UIScrollView?
     /// Set as a theme is picked. Lives outside the views because the rebuild drops their state.
-    static var pendingAppearanceRowAnchor: UnitPoint?
+    static var pendingOffset: CGPoint?
 
-    /// Called just before the theme changes: the anchor that puts the Appearance row back where
-    /// it is now. `scrollTo` lines up the row's anchor point with the same point of the list, so
-    /// the row's top lands at anchor × (list height − row height).
+    /// Called just before the theme changes. Keeps an earlier saved offset if the list hasn't
+    /// been shown since (a second color picked before going back).
     static func rememberPosition() {
-        var anchor: CGFloat = 0.5
-        if let form = formFrame, let row = appearanceRowFrame, form.height > row.height {
-            anchor = min(max((row.minY - form.minY) / (form.height - row.height), 0), 1)
+        if let scrollView { pendingOffset = scrollView.contentOffset }
+    }
+
+    /// Puts the saved offset on a newly shown list, once it has laid out.
+    static func restore(on scrollView: UIScrollView) {
+        guard pendingOffset != nil else {
+            self.scrollView = scrollView
+            return
         }
-        pendingAppearanceRowAnchor = UnitPoint(x: 0.5, y: anchor)
+        DispatchQueue.main.async {
+            guard let offset = pendingOffset, scrollView.window != nil else { return }
+            pendingOffset = nil
+            scrollView.layoutIfNeeded()
+            let insets = scrollView.adjustedContentInset
+            let maxY = max(scrollView.contentSize.height + insets.bottom - scrollView.bounds.height, -insets.top)
+            scrollView.setContentOffset(CGPoint(x: offset.x, y: min(max(offset.y, -insets.top), maxY)), animated: false)
+            self.scrollView = scrollView
+        }
+    }
+}
+
+/// Sits behind the Settings Form and finds its scroll view (the nearest one in the views around
+/// it) whenever the list comes on screen.
+private struct SettingsScrollKeeper: UIViewRepresentable {
+    func makeUIView(context: Context) -> KeeperView { KeeperView() }
+    func updateUIView(_ uiView: KeeperView, context: Context) {}
+
+    final class KeeperView: UIView {
+        override func didMoveToWindow() {
+            super.didMoveToWindow()
+            guard window != nil else { return }
+            var ancestor = superview
+            while let view = ancestor {
+                if let scrollView = Self.firstScrollView(in: view, depth: 6) {
+                    SettingsScroll.restore(on: scrollView)
+                    return
+                }
+                ancestor = view.superview
+            }
+        }
+
+        private static func firstScrollView(in view: UIView, depth: Int) -> UIScrollView? {
+            for subview in view.subviews {
+                if let scrollView = subview as? UIScrollView, scrollView is UICollectionView || scrollView is UITableView {
+                    return scrollView
+                }
+            }
+            guard depth > 0 else { return nil }
+            for subview in view.subviews {
+                if let found = firstScrollView(in: subview, depth: depth - 1) { return found }
+            }
+            return nil
+        }
     }
 }
 
