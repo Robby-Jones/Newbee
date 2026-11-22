@@ -12,7 +12,6 @@ struct LiveActivityColorView: View {
     @Bindable var preferences: AppPreferences
 
     private var selection: LiveActivityColor { preferences.liveActivityColor }
-    @State private var hasPhoto = false
 
     var body: some View {
         Form {
@@ -45,7 +44,6 @@ struct LiveActivityColorView: View {
                 Text("Shown next to the time in the minimized Dynamic Island after a feed ends.")
             }
         }
-        .task { hasPhoto = LiveActivityAvatar.load() != nil }
         .navigationTitle("Live Activity")
         .navigationBarTitleDisplayMode(.inline)
     }
@@ -128,7 +126,9 @@ extension LiveActivityColorView {
 
     private func islandIconSubtitle(_ icon: IslandIcon) -> String? {
         switch icon {
-        case .babyPhoto: hasPhoto ? nil : String(localized: "No photo yet, so the bee shows")
+        // Read the saved copy here, like the row's icon does: a flag set once in `.task` stayed
+        // false on device although the icon showed the photo (2026-11-22).
+        case .babyPhoto: LiveActivityAvatar.load() != nil ? nil : String(localized: "No photo yet, so the bee shows")
         case .lastFeed: String(localized: "Breastfeed or bottle, in its color")
         case .bee, .clock: nil
         }
