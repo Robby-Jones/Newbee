@@ -49,4 +49,9 @@ struct LiveActivityColorTests {
         )
         #expect(older.cardColor == nil)
     }
+
+    @Test func anUnknownIslandIconReadsAsTheBee() throws {
+        let decoded = try JSONDecoder().decode([IslandIcon].self, from: Data(#"["photo","lastFeed","sparkles"]"#.utf8))
+        #expect(decoded == [.babyPhoto, .lastFeed, .bee])
+    }
 }

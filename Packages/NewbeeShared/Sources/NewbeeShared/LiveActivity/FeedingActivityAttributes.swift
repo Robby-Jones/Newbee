@@ -66,6 +66,9 @@ public struct FeedingActivityAttributes: Codable, Hashable, Sendable {
         /// Settings' "Suggested starting side", while no feed is running. `nil` means the other
         /// side from `currentSide` (the default, and what older builds sent).
         public var suggestedSide: Side?
+        /// Settings' island icon, beside the count in the minimized Dynamic Island once a feed has
+        /// ended. `nil` means the bee (the default, and what older builds sent).
+        public var islandIcon: IslandIcon?
 
         public init(
             status: Status,
@@ -81,7 +84,8 @@ public struct FeedingActivityAttributes: Codable, Hashable, Sendable {
             countFrom: ReminderSettings.Basis? = nil,
             theme: NBTheme? = nil,
             cardColor: LiveActivityColor? = nil,
-            suggestedSide: Side? = nil
+            suggestedSide: Side? = nil,
+            islandIcon: IslandIcon? = nil
         ) {
             self.status = status
             self.currentSide = currentSide
@@ -97,6 +101,7 @@ public struct FeedingActivityAttributes: Codable, Hashable, Sendable {
             self.theme = theme
             self.cardColor = cardColor
             self.suggestedSide = suggestedSide
+            self.islandIcon = islandIcon
         }
 
         /// The side to offer for the next feed, as the app suggests it.

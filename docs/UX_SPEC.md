@@ -93,6 +93,8 @@ Cards are white in light mode in every theme. Charts draw breastfeeds in the acc
 
 **Live Activity color.** Settings → Appearance → Live Activity opens a page of its own that picks the Live Activity's colors apart from the theme (`LiveActivityColor`, `AppPreferences.liveActivityColor`, kept on this phone only and kept by "Delete all data", like the theme). At the top a preview draws the since-last-feed card and the expanded Dynamic Island with the baby's name and photo. Choices: **Match app theme** (the default: the card in the table above, with "Now: …" under it), **Black**, then a **Light** and a **Dark** row with one swatch per theme color. One choice colors the whole card: background, text and the round "+". The Dynamic Island stays black, with its "+" and Pause taken from the dark card of the same color (`ActivityPalette.island`).
 
+**Island icon.** The same page ends with an "Island icon" list: what the minimized Dynamic Island shows beside the count once a feed has ended (`IslandIcon`, `AppPreferences.islandIcon`, `ContentState.islandIcon`, kept on this phone only). **Bee** (the default, the Lock Screen avatar's tiny bee), **Baby photo** (the ≤84 px avatar copy, cropped round; the bee when none is saved), **Last feed** (the breastfeed icon in the side's color, or the bottle in peach), **Clock** (what earlier builds showed). Each row draws a small island with the icon and "28:47". The minimal island uses the same icon.
+
 | Color | Light card | Dark card | "+" |
 |---|---|---|---|
 | Indigo | `#E4E5F7` | `#1E2046` | `#8E91F0` |

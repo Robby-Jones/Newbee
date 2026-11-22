@@ -56,8 +56,8 @@ struct IslandCompactLeading: View {
                 .foregroundStyle(NBColor.side(state.currentSide))
                 .accessibilityLabel("Paused")
         case .ended:
-            // The bee from the Lock Screen avatar (was a generic clock).
-            TinyBee(width: 24)
+            // Settings' island icon: the bee by default (was always a clock).
+            IslandIconView(icon: state.islandIcon ?? .bee, state: state, size: 24)
                 .accessibilityElement(children: .ignore)
                 .accessibilityLabel("Since last feed")
         }
@@ -112,7 +112,7 @@ struct IslandMinimal: View {
                     .font(.system(size: 8, weight: .bold))
                     .foregroundStyle(color)
             case .ended:
-                TinyBee(width: 20)
+                IslandIconView(icon: state.islandIcon ?? .bee, state: state, size: 22, minimal: true)
             }
         }
         .frame(width: 22, height: 22)

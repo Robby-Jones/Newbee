@@ -34,6 +34,8 @@ final class LiveActivityCoordinator {
     /// Settings' Live Activity color, read at every sync; `matchTheme` follows `theme`. A change
     /// in Settings re-syncs (see `NewbeeApp`).
     @ObservationIgnored var cardColor: @MainActor () -> LiveActivityColor = { .matchTheme }
+    /// Settings' island icon, read at every sync. A change in Settings re-syncs (see `NewbeeApp`).
+    @ObservationIgnored var islandIcon: @MainActor () -> IslandIcon = { .bee }
     /// Settings' "Suggested starting side", for the since-last-feed tint.
     @ObservationIgnored var startingSide: @MainActor () -> StartingSideSuggestion = { StartingSideSuggestion() }
 
@@ -116,6 +118,7 @@ final class LiveActivityCoordinator {
             countFrom: countFrom(),
             theme: theme(),
             cardColor: cardColor(),
+            islandIcon: islandIcon(),
             startingSide: startingSide(),
             mode: mode,
             now: clock.now

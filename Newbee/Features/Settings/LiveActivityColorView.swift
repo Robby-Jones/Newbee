@@ -12,6 +12,7 @@ struct LiveActivityColorView: View {
     @Bindable var preferences: AppPreferences
 
     private var selection: LiveActivityColor { preferences.liveActivityColor }
+    @State private var hasPhoto = false
 
     var body: some View {
         Form {
@@ -34,7 +35,17 @@ struct LiveActivityColorView: View {
             } footer: {
                 Text("The Dynamic Island always stays black. Its + takes this color.")
             }
+            Section {
+                ForEach(IslandIcon.allCases, id: \.self) { icon in
+                    islandIconRow(icon)
+                }
+            } header: {
+                Text("Island icon")
+            } footer: {
+                Text("Shown next to the time in the minimized Dynamic Island after a feed ends.")
+            }
         }
+        .task { hasPhoto = LiveActivityAvatar.load() != nil }
         .navigationTitle("Live Activity")
         .navigationBarTitleDisplayMode(.inline)
     }
@@ -67,6 +78,70 @@ struct LiveActivityColorView: View {
         .buttonStyle(.plain)
         .accessibilityAddTraits(selection == color ? .isSelected : [])
         .accessibilityIdentifier("settings.liveActivityColor.\(color.rawValue)")
+    }
+}
+
+extension LiveActivityColorView {
+    /// A minimized island with the icon and a sample count, the name, and a check when picked.
+    private func islandIconRow(_ icon: IslandIcon) -> some View {
+        let isSelected = preferences.islandIcon == icon
+        return Button {
+            preferences.islandIcon = icon
+        } label: {
+            HStack(spacing: NBSpacing.m) {
+                HStack {
+                    IslandIconView(icon: icon, state: Self.islandSampleState, size: 20)
+                        .frame(width: 22, height: 22)
+                    Spacer(minLength: 0)
+                    Text(verbatim: "28:47")
+                        .font(.system(size: 13, weight: .semibold, design: .rounded))
+                        .monospacedDigit()
+                        .foregroundStyle(.white)
+                }
+                .padding(.horizontal, 10)
+                .frame(width: 112, height: 30)
+                .background(Capsule().fill(Color.black))
+                .environment(\.colorScheme, .dark)
+                .accessibilityHidden(true)
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(icon.title)
+                        .foregroundStyle(Color.primary)
+                    if let subtitle = islandIconSubtitle(icon) {
+                        Text(subtitle)
+                            .font(.footnote)
+                            .foregroundStyle(NBColor.secondaryText)
+                    }
+                }
+                Spacer()
+                if isSelected {
+                    Image(systemName: "checkmark")
+                        .font(.body.weight(.semibold))
+                        .foregroundStyle(NBColor.accent)
+                }
+            }
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .accessibilityAddTraits(isSelected ? .isSelected : [])
+        .accessibilityIdentifier("settings.islandIcon.\(icon.rawValue)")
+    }
+
+    private func islandIconSubtitle(_ icon: IslandIcon) -> String? {
+        switch icon {
+        case .babyPhoto: hasPhoto ? nil : String(localized: "No photo yet, so the bee shows")
+        case .lastFeed: String(localized: "Breastfeed or bottle, in its color")
+        case .bee, .clock: nil
+        }
+    }
+
+    /// A breastfeed that ended on the right, for the "Last feed" row.
+    private static var islandSampleState: FeedingActivityAttributes.ContentState {
+        let end = Date.now
+        return FeedingActivityAttributes.ContentState(
+            status: .ended, currentSide: .right, sessionStart: end.addingTimeInterval(-21 * 60),
+            currentSegmentStart: nil, leftAccumulated: 12 * 60, rightAccumulated: 9 * 60,
+            pausedAt: end, revision: 1
+        )
     }
 }
 

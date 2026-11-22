@@ -185,6 +185,9 @@ final class AppDependencies {
         (activity as? LiveActivityCoordinator)?.cardColor = { [preferences] in
             preferences.liveActivityColor
         }
+        (activity as? LiveActivityCoordinator)?.islandIcon = { [preferences] in
+            preferences.islandIcon
+        }
         (activity as? LiveActivityCoordinator)?.startingSide = { [preferences] in
             preferences.startingSide
         }
