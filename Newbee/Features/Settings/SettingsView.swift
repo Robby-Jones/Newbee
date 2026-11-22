@@ -11,6 +11,8 @@ import UIKit
 ///
 /// The Settings tab.
 struct SettingsView: View {
+    /// No page is open over this list, so it's on screen.
+    var isOnTop = true
     @Environment(AppPreferences.self) private var preferences: AppPreferences?
     @Environment(ReminderScheduler.self) private var reminders: ReminderScheduler?
 
@@ -18,6 +20,7 @@ struct SettingsView: View {
         ScrollViewReader { proxy in
             form
                 .onAppear { restoreAppearanceRowPosition(proxy) }
+                .onChange(of: isOnTop) { restoreAppearanceRowPosition(proxy) }
         }
         .navigationTitle("Settings")
         .navigationDestination(for: SettingsPage.self) { page in
@@ -63,13 +66,18 @@ struct SettingsView: View {
     }
 
     /// A new color theme rebuilds the tabs (RootView). The open pages come back (the path lives
-    /// in RootView), but this page would start at the top: put the Appearance row back where it was.
+    /// in RootView), but this page would start at the top: put the Appearance row back where it
+    /// was once the page is showing again (a page under another one may not lay out its rows).
     private func restoreAppearanceRowPosition(_ proxy: ScrollViewProxy) {
-        guard let anchor = SettingsScroll.pendingAppearanceRowAnchor else { return }
+        guard isOnTop, let anchor = SettingsScroll.pendingAppearanceRowAnchor else { return }
         SettingsScroll.pendingAppearanceRowAnchor = nil
         proxy.scrollTo(SettingsScroll.appearanceRowID, anchor: anchor)
-        // The Form may not have laid out its rows yet on the first pass.
+        // The Form may not have laid out its rows yet on the first pass, or is still sliding
+        // back in under the closing page.
         DispatchQueue.main.async { proxy.scrollTo(SettingsScroll.appearanceRowID, anchor: anchor) }
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.35) {
+            proxy.scrollTo(SettingsScroll.appearanceRowID, anchor: anchor)
+        }
     }
 }
 
