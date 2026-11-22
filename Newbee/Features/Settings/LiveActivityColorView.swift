@@ -60,7 +60,8 @@ struct LiveActivityColorView: View {
                         .foregroundStyle(NBColor.accent)
                 }
             }
-            .frame(minHeight: NBLayout.minHitTarget)
+            // Form rows are already at least 44 pt tall; a taller frame made these rows look
+            // oversized next to the rest of Settings.
             .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
