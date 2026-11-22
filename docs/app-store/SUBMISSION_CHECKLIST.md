@@ -17,14 +17,14 @@ The texts to paste are in [LISTING.md](LISTING.md) (product page) and
       <https://robby-jones.github.io/Newbee/support.html>. The privacy page should say
       "Effective November 16, 2026".
 - [ ] **Wait for the new TestFlight build.** Start one from Actions → TestFlight → Run workflow on main. The build to submit
-      is the one with the **highest number** (60 or later) once it shows as ready in TestFlight.
+      is the one with the **highest number** (newer than 61) once it shows as ready in TestFlight.
 - [ ] **Confirm the CloudKit schema is in Production.** Sharing and On-Call Shift fail for everyone
       outside your family if it isn't. Actions → CloudKit schema → Run workflow on main; it
       should report nothing left to deploy. If it lists changes, deploy them in CloudKit Console →
       Deploy Schema Changes.
 - [ ] **Test the exact build on two iPhones with two Apple Accounts** (yours and your wife's):
   - [ ] Fresh state on one phone: Settings → iCloud shows Sync with iCloud **off**.
-  - [ ] Turn sync on, Settings → Sharing → invite, accept on the other phone.
+  - [ ] Turn sync on, Settings → Share with your partner, accept on the other phone.
   - [ ] A feed logged on one phone appears on the other.
   - [ ] "Start on-call" (with an end time) on one phone shows "Your partner is on call" on the
         other, and Take over works.
@@ -38,7 +38,10 @@ The texts to paste are in [LISTING.md](LISTING.md) (product page) and
 ## B. Select the latest build
 
 1. Go to <https://appstoreconnect.apple.com> → **Apps** → **Newbee**.
-2. In the left sidebar, under **iOS App**, click **1.0** (it shows "Rejected").
+2. In the left sidebar, under **iOS App**, click **1.0** (it shows "Rejected", or "Waiting for
+   Review" if a submission is still pending). If it is waiting for review, open **App Review**
+   in the sidebar, open that submission and click **Remove from Review** first. The version
+   becomes editable again.
 3. Scroll down to the **Build** section. It shows the build that was rejected.
 4. Move the pointer over that build row and click the red **–** (remove) button on the right.
 5. Click **Add Build** (or the blue **+** next to "Build").

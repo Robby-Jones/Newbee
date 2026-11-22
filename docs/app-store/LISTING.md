@@ -41,11 +41,11 @@ the Home Screen stays "Newbee" either way (`CFBundleDisplayName`).
 > • Time stays exact if the app closes, your iPhone restarts, or you change time zones
 > • Fell asleep with the timer running? Newbee asks and helps you fix the entry
 >
-> NIGHT SHIFT, FOR TWO TIRED PARENTS
+> ON-CALL SHIFT, FOR TWO TIRED PARENTS
 > • Share the feeding log with your partner through iCloud. You both see and log the same feeds
-> • One tap in the evening: "Start on-call"
+> • Tap "Start on-call" and pick when your shift ends
 > • Feeding reminders ring only on the on-call parent's iPhone, so the other parent can sleep
-> • In the morning, the parent who slept sees "While you slept": how many feeds, and when
+> • When the shift ends, the parent who slept sees "While you slept": how many feeds, and when
 >
 > EVERY KIND OF FEED
 > • Breastfeeding by side, with a suggestion for which side to start on next
