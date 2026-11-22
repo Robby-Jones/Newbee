@@ -56,9 +56,9 @@ struct IslandCompactLeading: View {
                 .foregroundStyle(NBColor.side(state.currentSide))
                 .accessibilityLabel("Paused")
         case .ended:
-            Image(systemName: "clock")
-                .font(.caption.weight(.bold))
-                .foregroundStyle(IslandColor.secondaryText)
+            // Settings' island icon: the bee by default (was always a clock).
+            IslandIconView(icon: state.islandIcon ?? .bee, state: state, size: 24)
+                .accessibilityElement(children: .ignore)
                 .accessibilityLabel("Since last feed")
         }
     }
@@ -112,10 +112,7 @@ struct IslandMinimal: View {
                     .font(.system(size: 8, weight: .bold))
                     .foregroundStyle(color)
             case .ended:
-                Circle().strokeBorder(IslandColor.secondaryText, lineWidth: 2)
-                Image(systemName: "clock")
-                    .font(.system(size: 9, weight: .bold))
-                    .foregroundStyle(IslandColor.secondaryText)
+                IslandIconView(icon: state.islandIcon ?? .bee, state: state, size: 22, minimal: true)
             }
         }
         .frame(width: 22, height: 22)

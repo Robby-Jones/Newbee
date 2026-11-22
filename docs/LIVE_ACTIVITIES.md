@@ -134,7 +134,7 @@ side pills and controls are one shared view (`ActivitySidesAndControls`). Minima
 - **Leading:** side badge "L" (tinted circle).
 - **Trailing:** total timer, live, monospaced, capped at 50 pt ("45:12") or 64 pt past an hour and
   for the time since the last feed ("1:02:03"), so it doesn't push the island wide. When paused:
-  "⏸" + static time. Once ended: a clock glyph leading and the time since the last feed trailing.
+  "⏸" + static time. Once ended: Settings' island icon leading (`IslandIconView`: the tiny bee by default, or the baby photo, the last feed's icon, or the clock) and the time since the last feed trailing.
 
 ### 3.4 Dynamic Island: minimal
 - Tinted circle with a tiny bottle/drop glyph, tinted by the active side. A paused state uses a hollow ring.

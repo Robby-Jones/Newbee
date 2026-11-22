@@ -96,6 +96,10 @@ struct NewbeeApp: App {
                 .onChange(of: dependencies.preferences.liveActivityColor) {
                     Task { await dependencies.sessionManager.reload() }
                 }
+                // Settings → Appearance → Live Activity → Island icon.
+                .onChange(of: dependencies.preferences.islandIcon) {
+                    Task { await dependencies.sessionManager.reload() }
+                }
                 // Settings' "Suggested starting side", here or from another device: the Timer and
                 // Home follow it at once, and the reload re-tints the Live Activity.
                 .onChange(of: dependencies.preferences.startingSide) {

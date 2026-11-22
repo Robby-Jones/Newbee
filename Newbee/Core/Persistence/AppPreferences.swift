@@ -33,6 +33,7 @@ final class AppPreferences {
         static let colorTheme = "colorTheme"
         /// Settings → Appearance → Live Activity. Like `colorTheme`, not synced and not reset.
         static let liveActivityColor = "liveActivity.color"
+        static let islandIcon = "liveActivity.islandIcon"
         static let onboardingComplete = "onboardingComplete"
         static let nightShiftMorningMinute = "nightShift.morningMinute"
         static let nightShiftAlarm = "nightShift.alarm"
@@ -198,6 +199,12 @@ final class AppPreferences {
         didSet { store(liveActivityColor.rawValue, forKey: Key.liveActivityColor) }
     }
 
+    /// What the minimized Dynamic Island shows beside the count once a feed has ended (Settings →
+    /// Appearance → Live Activity). The bee by default. Kept on this device only.
+    var islandIcon: IslandIcon {
+        didSet { store(islandIcon.rawValue, forKey: Key.islandIcon) }
+    }
+
     /// Set once first-run onboarding is finished or skipped, or found unneeded because the
     /// store already has data (docs/UX_SPEC.md §3.1).
     var onboardingComplete: Bool {
@@ -231,6 +238,7 @@ final class AppPreferences {
         appearance = defaults.string(forKey: Key.appearance).flatMap(Appearance.init(rawValue:)) ?? .system
         colorTheme = defaults.string(forKey: Key.colorTheme).flatMap(NBTheme.init(rawValue:)) ?? .standard
         liveActivityColor = defaults.string(forKey: Key.liveActivityColor).flatMap(LiveActivityColor.init(rawValue:)) ?? .matchTheme
+        islandIcon = defaults.string(forKey: Key.islandIcon).flatMap(IslandIcon.init(rawValue:)) ?? .bee
         onboardingComplete = defaults.bool(forKey: Key.onboardingComplete)
         NBTheme.current = colorTheme
     }

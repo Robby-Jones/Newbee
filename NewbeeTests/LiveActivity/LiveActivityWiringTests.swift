@@ -286,6 +286,28 @@ struct LiveActivityWiringTests {
         #expect(client.activities.last?.state.cardColor == nil)
     }
 
+    @Test func theIslandIconSettingIsSent() async throws {
+        let clock = TestClock()
+        let client = FakeLiveActivityClient()
+        let coordinator = LiveActivityCoordinator(client: client, clock: clock)
+        let defaults = try #require(UserDefaults(suiteName: "island-icon-\(UUID())"))
+        let dependencies = AppDependencies(clock: clock, storage: .inMemory, liveActivity: coordinator, defaults: defaults)
+        let manager = dependencies.sessionManager
+
+        try manager.start(side: .left)
+        await manager.waitForPendingEffects()
+        // The bee is the default and leaves content as it was.
+        #expect(dependencies.preferences.islandIcon == .bee)
+        #expect(client.activities.last?.state.islandIcon == nil)
+
+        dependencies.preferences.islandIcon = .babyPhoto
+        await manager.reload() // what NewbeeApp does when the setting changes
+        #expect(client.activities.last?.state.islandIcon == .babyPhoto)
+        dependencies.preferences.islandIcon = .bee
+        await manager.reload()
+        #expect(client.activities.last?.state.islandIcon == nil)
+    }
+
     @Test(arguments: [
         (LiveActivityCommand.switchTo(.left), SessionCommand.switchTo(.left)),
         (.switchTo(.right), .switchTo(.right)),
