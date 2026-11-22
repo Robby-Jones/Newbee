@@ -16,9 +16,7 @@ struct AppearanceSection: View {
                 }
             }
             ThemeSwatchRow(selection: $preferences.colorTheme)
-            NavigationLink {
-                LiveActivityColorView(preferences: preferences)
-            } label: {
+            NavigationLink(value: SettingsPage.liveActivityColor) {
                 LabeledContent("Live Activity", value: preferences.liveActivityColor.shortTitle)
             }
             .accessibilityIdentifier("settings.liveActivityColor")
@@ -80,6 +78,9 @@ private struct ThemeSwatchRow: View {
             HStack(spacing: 0) {
                 ForEach(NBTheme.allCases) { theme in
                     Button {
+                        guard theme != selection else { return }
+                        // The new theme rebuilds the tabs; keep Settings where it is.
+                        SettingsScroll.rememberPosition()
                         selection = theme
                     } label: {
                         Circle()

@@ -97,6 +97,7 @@ final class ReviewScreenshots: ScreenshotTestCase {
         capture("pink-insights")
         app.tabBars.buttons["Settings"].tap()
         XCTAssertTrue(app.navigationBars["Settings"].waitForExistence(timeout: 10))
+        app.openSettingsPage("settings.appearancePage", title: "Appearance")
         // A Form row can expose its buttons as any element type.
         let swatch = app.descendants(matching: .any)["settings.theme.standard"].firstMatch
         for _ in 0..<15 where !(swatch.exists && swatch.isHittable) {
@@ -122,6 +123,7 @@ final class ReviewScreenshots: ScreenshotTestCase {
         let app = launch(["-uiTestColorTheme", "pink"])
         app.tabBars.buttons["Settings"].tap()
         XCTAssertTrue(app.navigationBars["Settings"].waitForExistence(timeout: 10))
+        app.openSettingsPage("settings.appearancePage", title: "Appearance")
         let row = app.buttons["settings.liveActivityColor"].firstMatch
         reveal(row, in: app)
         settle()
@@ -177,8 +179,9 @@ final class ReviewScreenshots: ScreenshotTestCase {
         app.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.08)).tap()
         settle()
 
+        app.openSettingsPage("settings.notificationsPage", title: "Notifications")
         let notificationsInfo = app.buttons["settings.info.notifications"].firstMatch
-        reveal(notificationsInfo, in: app)
+        XCTAssertTrue(notificationsInfo.waitForExistence(timeout: 5))
         settle()
         capture("settings-info-middle")
         notificationsInfo.tap()
@@ -187,6 +190,8 @@ final class ReviewScreenshots: ScreenshotTestCase {
         capture("settings-info-notifications-popover")
         app.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.08)).tap()
         settle()
+        app.navigationBars["Notifications"].buttons.element(boundBy: 0).tap()
+        XCTAssertTrue(app.navigationBars["Settings"].waitForExistence(timeout: 5))
 
         // Your data and About open as their own pages.
         let bottomRows = app.buttons["settings.about"].firstMatch

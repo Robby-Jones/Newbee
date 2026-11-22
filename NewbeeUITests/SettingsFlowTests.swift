@@ -9,6 +9,15 @@ extension XCUIApplication {
         row.tap()
         _ = navigationBars["Your data"].waitForExistence(timeout: 5)
     }
+
+    /// Opens one of Settings' pages (iCloud, Notifications, Appearance) from its row.
+    @MainActor
+    func openSettingsPage(_ identifier: String, title: String) {
+        let row = buttons[identifier].firstMatch
+        for _ in 0..<10 where !(row.exists && row.isHittable) { swipeUp() }
+        row.tap()
+        _ = navigationBars[title].waitForExistence(timeout: 5)
+    }
 }
 
 /// Settings checks share one app launch: each launch costs about 10 s on CI, so one walk through
@@ -30,9 +39,29 @@ final class SettingsFlowTests: XCTestCase {
         XCTAssertFalse(app.buttons["home.settings"].exists, "Home shouldn't duplicate the Settings tab")
         tab.tap()
         XCTAssertTrue(app.navigationBars["Settings"].waitForExistence(timeout: 5))
-        let reminders = app.switches["settings.reminderToggle"]
-        for _ in 0..<3 where !reminders.exists { app.swipeUp() }
-        XCTAssertTrue(reminders.exists)
+        // Notifications is a row that opens its own page.
+        app.openSettingsPage("settings.notificationsPage", title: "Notifications")
+        XCTAssertTrue(app.switches["settings.reminderToggle"].waitForExistence(timeout: 5))
+        app.navigationBars["Notifications"].buttons.element(boundBy: 0).tap()
+        XCTAssertTrue(app.navigationBars["Settings"].waitForExistence(timeout: 5))
+
+        // Picking a color redraws the whole app: the Appearance page stays open, and Settings
+        // under it stays scrolled where it was instead of jumping back to the top.
+        app.openSettingsPage("settings.appearancePage", title: "Appearance")
+        let pink = app.descendants(matching: .any)["settings.theme.pink"].firstMatch
+        XCTAssertTrue(pink.waitForExistence(timeout: 5))
+        pink.tap()
+        Thread.sleep(forTimeInterval: 0.5)
+        XCTAssertTrue(app.navigationBars["Appearance"].exists, "A color change closed the Appearance page")
+        let indigo = app.descendants(matching: .any)["settings.theme.standard"].firstMatch
+        XCTAssertTrue(indigo.isHittable)
+        indigo.tap()
+        Thread.sleep(forTimeInterval: 0.5)
+        XCTAssertTrue(app.navigationBars["Appearance"].exists, "A color change closed the Appearance page")
+        app.navigationBars["Appearance"].buttons.element(boundBy: 0).tap()
+        XCTAssertTrue(app.navigationBars["Settings"].waitForExistence(timeout: 5))
+        Thread.sleep(forTimeInterval: 0.5)
+        XCTAssertTrue(app.buttons["settings.appearancePage"].firstMatch.isHittable, "Settings jumped back to the top after a color change")
 
         // About is its own page.
         let about = app.buttons["settings.about"].firstMatch

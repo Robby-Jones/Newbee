@@ -15,37 +15,188 @@ struct SettingsView: View {
     @Environment(ReminderScheduler.self) private var reminders: ReminderScheduler?
 
     var body: some View {
+        ScrollViewReader { proxy in
+            form
+                .onAppear { restoreAppearanceRowPosition(proxy) }
+        }
+        .navigationTitle("Settings")
+        .navigationDestination(for: SettingsPage.self) { page in
+            page.destination(preferences: preferences)
+        }
+        .task { await reminders?.reschedule() }
+    }
+
+    private var form: some View {
         Form {
             BabyProfileSection()
-            ICloudSyncSection()
+            ICloudSyncRow()
             SharingSection()
             if let preferences {
                 NightShiftSettingsSection(preferences: preferences)
                 UnitsSection(preferences: preferences)
                 BreastfeedingSection(preferences: preferences)
                 TimeSinceLastFeedSection(preferences: preferences)
-                RemindersSection(preferences: preferences, reminders: reminders)
+                Section {
+                    SettingsPageRow(
+                        .notifications, title: "Notifications", systemImage: "bell",
+                        value: preferences.reminders.needsNotifications ? String(localized: "On") : String(localized: "Off")
+                    )
+                }
                 LiveActivitiesSection()
-                AppearanceSection(preferences: preferences)
+                Section {
+                    SettingsPageRow(.appearance, title: "Appearance", systemImage: "paintpalette", value: preferences.colorTheme.title)
+                        .id(SettingsScroll.appearanceRowID)
+                        .onGeometryChange(for: CGFloat?.self) { proxy in
+                            SettingsScroll.anchor(of: proxy)
+                        } action: { anchor in
+                            SettingsScroll.appearanceRowAnchor = anchor
+                        }
+                }
             }
             // Like iOS Settings: rows that open their own page.
             Section {
-                NavigationLink {
-                    DataSettingsView()
-                } label: {
-                    Label("Your data", systemImage: "externaldrive")
-                }
-                .accessibilityIdentifier("settings.yourData")
-                NavigationLink {
-                    AboutSettingsView()
-                } label: {
-                    Label("About", systemImage: "info.circle")
-                }
-                .accessibilityIdentifier("settings.about")
+                SettingsPageRow(.yourData, title: "Your data", systemImage: "externaldrive")
+                SettingsPageRow(.about, title: "About", systemImage: "info.circle")
             }
         }
-        .navigationTitle("Settings")
+        .coordinateSpace(.named(SettingsScroll.space))
+    }
+
+    /// A new color theme rebuilds the tabs (RootView). The open pages come back (the path lives
+    /// in RootView), but this page would start at the top: put the Appearance row back where it was.
+    private func restoreAppearanceRowPosition(_ proxy: ScrollViewProxy) {
+        guard let anchor = SettingsScroll.pendingAppearanceRowAnchor else { return }
+        SettingsScroll.pendingAppearanceRowAnchor = nil
+        proxy.scrollTo(SettingsScroll.appearanceRowID, anchor: anchor)
+        // The Form may not have laid out its rows yet on the first pass.
+        DispatchQueue.main.async { proxy.scrollTo(SettingsScroll.appearanceRowID, anchor: anchor) }
+    }
+}
+
+/// The pages Settings opens. They're pushed by value onto a path RootView keeps, so a color
+/// theme change, which rebuilds the tabs, leaves the parent on the page they were on.
+enum SettingsPage: Hashable {
+    case iCloud, notifications, appearance, liveActivityColor, yourData, about
+
+    @MainActor @ViewBuilder
+    func destination(preferences: AppPreferences?) -> some View {
+        switch self {
+        case .iCloud: ICloudSettingsView()
+        case .notifications: NotificationsSettingsView()
+        case .appearance:
+            if let preferences { AppearanceSettingsView(preferences: preferences) }
+        case .liveActivityColor:
+            if let preferences { LiveActivityColorView(preferences: preferences) }
+        case .yourData: DataSettingsView()
+        case .about: AboutSettingsView()
+        }
+    }
+
+    var accessibilityIdentifier: String {
+        switch self {
+        case .iCloud: "settings.iCloudPage"
+        case .notifications: "settings.notificationsPage"
+        case .appearance: "settings.appearancePage"
+        case .liveActivityColor: "settings.liveActivityColor"
+        case .yourData: "settings.yourData"
+        case .about: "settings.about"
+        }
+    }
+}
+
+/// A row that opens one of Settings' pages, with the current value on the right like iOS Settings.
+struct SettingsPageRow: View {
+    let page: SettingsPage
+    let title: LocalizedStringKey
+    let systemImage: String
+    let value: String?
+
+    init(_ page: SettingsPage, title: LocalizedStringKey, systemImage: String, value: String? = nil) {
+        self.page = page
+        self.title = title
+        self.systemImage = systemImage
+        self.value = value
+    }
+
+    var body: some View {
+        NavigationLink(value: page) {
+            if let value {
+                LabeledContent {
+                    Text(value)
+                } label: {
+                    Label(title, systemImage: systemImage)
+                }
+            } else {
+                Label(title, systemImage: systemImage)
+            }
+        }
+        .accessibilityIdentifier(page.accessibilityIdentifier)
+    }
+}
+
+/// Keeps Settings' scroll position across the rebuild a color theme change causes.
+@MainActor
+enum SettingsScroll {
+    nonisolated static let space = "settings.form"
+    nonisolated static let appearanceRowID = "settings.appearanceRow"
+    /// Where the Appearance row sits on the Settings page, as a `scrollTo` anchor; kept up to
+    /// date as the page scrolls.
+    static var appearanceRowAnchor: CGFloat?
+    /// Set as a theme is picked, from `appearanceRowAnchor`. Lives outside the views because the
+    /// rebuild drops their state.
+    static var pendingAppearanceRowAnchor: UnitPoint?
+
+    /// The anchor that puts a row back where it is now: 0 with its top at the top of the Form,
+    /// 1 with its bottom at the bottom. `scrollTo` lines up the row's anchor point with the same
+    /// point of the Form, so the row's top lands at anchor × (Form height − row height).
+    nonisolated static func anchor(of proxy: GeometryProxy) -> CGFloat? {
+        guard let container = proxy.bounds(of: .named(space)) else { return nil }
+        let frame = proxy.frame(in: .named(space))
+        let room = container.height - frame.height
+        guard room > 0 else { return nil }
+        return min(max((frame.minY - container.minY) / room, 0), 1)
+    }
+
+    /// Called just before the theme changes.
+    static func rememberPosition() {
+        pendingAppearanceRowAnchor = appearanceRowAnchor.map { UnitPoint(x: 0.5, y: $0) }
+    }
+}
+
+/// Settings → iCloud: the sync switch and its status.
+private struct ICloudSettingsView: View {
+    var body: some View {
+        Form { ICloudSyncSection() }
+            .navigationTitle("iCloud")
+            .navigationBarTitleDisplayMode(.inline)
+    }
+}
+
+/// Settings → Notifications: the feeding reminder, quiet hours and the "Still feeding?" check.
+private struct NotificationsSettingsView: View {
+    @Environment(AppPreferences.self) private var preferences: AppPreferences?
+    @Environment(ReminderScheduler.self) private var reminders: ReminderScheduler?
+
+    var body: some View {
+        Form {
+            if let preferences {
+                RemindersSection(preferences: preferences, reminders: reminders)
+            }
+        }
+        .navigationTitle("Notifications")
+        .navigationBarTitleDisplayMode(.inline)
         .task { await reminders?.reschedule() }
+    }
+}
+
+/// Settings → Appearance: mode, color, the Live Activity's colors and the app icon.
+private struct AppearanceSettingsView: View {
+    @Bindable var preferences: AppPreferences
+
+    var body: some View {
+        Form { AppearanceSection(preferences: preferences) }
+            .navigationTitle("Appearance")
+            .navigationBarTitleDisplayMode(.inline)
     }
 }
 
@@ -757,6 +908,19 @@ private struct LiveActivitiesSection: View {
 }
 
 // MARK: - iCloud sync
+
+/// The iCloud row on the Settings page; shown when iCloud sync is offered, like the section it opens.
+private struct ICloudSyncRow: View {
+    @Environment(CloudSyncMonitor.self) private var monitor: CloudSyncMonitor?
+
+    var body: some View {
+        if let monitor, monitor.status != .unavailable {
+            Section {
+                SettingsPageRow(.iCloud, title: "iCloud", systemImage: "icloud", value: ICloudSyncSection.value(for: monitor.status))
+            }
+        }
+    }
+}
 
 /// "Sync with iCloud" (off on a fresh install), and once it's on, whether feeds are syncing and
 /// why not when they aren't (docs/ICLOUD_SYNC.md).
