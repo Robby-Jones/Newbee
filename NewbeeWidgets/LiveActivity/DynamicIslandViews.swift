@@ -56,28 +56,11 @@ struct IslandCompactLeading: View {
                 .foregroundStyle(NBColor.side(state.currentSide))
                 .accessibilityLabel("Paused")
         case .ended:
-            // The last feed's duotone icon, as on the Lock Screen card (was a generic clock).
-            FeedIcon(IslandLastFeed.glyph(state), fixedSize: 20)
-                .foregroundStyle(IslandLastFeed.color(state))
-                .accessibilityElement()
-                .accessibilityLabel(IslandLastFeed.label(state))
+            // The bee from the Lock Screen avatar (was a generic clock).
+            TinyBee(width: 24)
+                .accessibilityElement(children: .ignore)
+                .accessibilityLabel("Since last feed")
         }
-    }
-}
-
-/// The icon for the last feed while the island counts time since it: the breastfeed icon in the
-/// color of the side it ended on, or the bottle icon in bottle peach, like `LastFeedDetail`.
-enum IslandLastFeed {
-    static func glyph(_ state: FeedingState) -> FeedGlyph {
-        state.lastBottle == nil ? .breastfeed : .bottle
-    }
-
-    static func color(_ state: FeedingState) -> Color {
-        state.lastBottle == nil ? NBColor.side(state.currentSide) : NBColor.bottleBreastMilk
-    }
-
-    static func label(_ state: FeedingState) -> String {
-        state.lastBottle == nil ? String(localized: "Since last breastfeed") : String(localized: "Since last bottle")
     }
 }
 
@@ -129,10 +112,7 @@ struct IslandMinimal: View {
                     .font(.system(size: 8, weight: .bold))
                     .foregroundStyle(color)
             case .ended:
-                let lastColor = IslandLastFeed.color(state)
-                Circle().strokeBorder(lastColor, lineWidth: 2)
-                FeedIcon(IslandLastFeed.glyph(state), fixedSize: 13)
-                    .foregroundStyle(lastColor)
+                TinyBee(width: 20)
             }
         }
         .frame(width: 22, height: 22)
