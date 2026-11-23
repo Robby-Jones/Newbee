@@ -9,7 +9,8 @@ import XCTest
 final class AppStoreScreenshots: ScreenshotTestCase {
     @MainActor
     func testCaptureAppStoreScreenshots() throws {
-        // Home, History, Calendar and Insights, between feeds.
+        // Home, History, Calendar and Insights, between feeds. Then the timer, then Home with the
+        // On-Call Shift card.
         let app = launch()
         XCTAssertTrue(app.buttons["breastfeedButton"].firstMatch.waitForExistence(timeout: 15))
         settle()
@@ -56,5 +57,21 @@ final class AppStoreScreenshots: ScreenshotTestCase {
         XCTAssertTrue(endFeed.waitForExistence(timeout: 5))
         settle()
         capture("02-timer")
+        timerApp.terminate()
+
+        // Home with the On-Call Shift card below Today: shared with a partner, you're on call tonight.
+        let onCallApp = launch(["-sharingPreview", "shared", "-nightShiftPreview", "onDuty"])
+        let endShift = onCallApp.buttons["nightShift.end"].firstMatch
+        XCTAssertTrue(endShift.waitForExistence(timeout: 15))
+        // Scroll a little so the whole card clears the tab bar. A slow drag with a hold at the
+        // end stops the list where the finger lifts.
+        let today = onCallApp.staticTexts["Today"].firstMatch
+        XCTAssertTrue(today.exists)
+        let from = today.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.5))
+        from.press(forDuration: 0.1, thenDragTo: from.withOffset(CGVector(dx: 0, dy: -90)),
+                   withVelocity: .slow, thenHoldForDuration: 0.5)
+        XCTAssertTrue(endShift.isHittable)
+        settle()
+        capture("07-on-call")
     }
 }
