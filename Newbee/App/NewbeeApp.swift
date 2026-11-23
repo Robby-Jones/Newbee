@@ -14,12 +14,11 @@ struct NewbeeApp: App {
     @State private var bottleModel = BottleLogUIModel(
         log: AppDependencies.shared.bottleLog,
         preferences: AppDependencies.shared.preferences,
-        // A bottle counts as the last feed for reminders and the Live Activity's count.
+        // A bottle counts as the last feed for reminders and the Live Activity's count. A newly
+        // logged bottle that is the latest feed brings the Live Activity back if it was swiped
+        // away or expired.
         onChange: { logged in
-            Task { await AppDependencies.shared.reminders.reschedule() }
-            // A newly logged bottle that is the latest feed brings the Live Activity back if it
-            // was swiped away or expired.
-            Task { await AppDependencies.shared.sessionManager.bottlesDidChange(logged: logged) }
+            Task { await AppDependencies.shared.bottlesDidChange(logged: logged) }
         }
     )
     @State private var pumpModel = PumpLogUIModel(

@@ -2,6 +2,7 @@ import Foundation
 import NewbeeKit
 import NewbeeShared
 import SwiftData
+import UIKit
 
 /// The app's composition root. One instance is shared by the UI and by App Intents
 /// (which run in the app process), so every command goes through the same services.
@@ -208,6 +209,28 @@ final class AppDependencies {
         if defaults.bool(forKey: AppPreferences.Key.onboardingComplete) { return true }
         guard let file = try? CloudSyncStateFile.standard() else { return false }
         return FileManager.default.fileExists(atPath: file.url.path)
+    }
+
+    /// A bottle was logged, edited, deleted or restored (Home, History, Calendar). It may now be,
+    /// or no longer be, the last feed, so the feed reminder is moved first, then the Live
+    /// Activity's since-last-feed count. `logged` names a newly logged bottle, which may bring
+    /// the Live Activity back.
+    func bottlesDidChange(logged: UUID? = nil) async {
+        await withBackgroundTime("Newbee bottle") {
+            await reminders.reschedule()
+            await sessionManager.bottlesDidChange(logged: logged)
+        }
+    }
+
+    /// Runs `work`, asking iOS for a little time so it finishes even if the app goes to the
+    /// background meanwhile (the parent locks the phone right after saving), or was only woken
+    /// in the background for it.
+    func withBackgroundTime(_ name: String, _ work: () async -> Void) async {
+        let task = UIApplication.shared.beginBackgroundTask(withName: name)
+        await work()
+        if task != .invalid {
+            UIApplication.shared.endBackgroundTask(task)
+        }
     }
 
     /// Routes Lock Screen and Dynamic Island buttons to `sessionManager`. Called from

@@ -36,6 +36,22 @@ final class RecordingReminders: ReminderScheduling {
     }
 }
 
+/// Records the order in which the Live Activity and reminders were updated.
+@MainActor
+final class EffectOrder: LiveActivitySyncing, ReminderScheduling {
+    var events: [String] = []
+
+    func sync(_ snapshot: SessionSnapshot?, lastBottle: BottleEntry?, mode: LiveActivitySyncMode) async {
+        await Task.yield()
+        events.append("liveActivity")
+    }
+
+    func feedingDataDidChange(activeSession: SessionSnapshot?, lastCompletedSession: SessionSnapshot?) async {
+        await Task.yield()
+        events.append("reminders")
+    }
+}
+
 struct DiskFull: Error {}
 
 /// Simulates a Lock Screen "End" landing while recovery awaits the Live Activity sync.
@@ -586,6 +602,22 @@ struct FeedingSessionManagerTests {
         _ = try logBottle(startingIn: -600)
         await manager.bottlesDidChange()
         #expect(activity.synced.count == syncs)
+    }
+
+    /// Reminders move before the Live Activity updates: when iOS wakes the app in the background
+    /// (a Lock Screen button, a feed from the other phone) it may suspend it again before slower
+    /// Live Activity work is done, and a reminder left behind fires for an old feed.
+    @Test func remindersMoveBeforeTheLiveActivityUpdates() async throws {
+        let order = EffectOrder()
+        let manager = FeedingSessionManager(
+            repository: repository, clock: clock, liveActivity: order, reminders: order, bottles: bottles
+        )
+        try manager.start(side: .left)
+        clock.advance(by: 10 * 60)
+        _ = try manager.end()
+        await manager.waitForPendingEffects()
+        await manager.reload()
+        #expect(order.events == ["reminders", "liveActivity", "reminders", "liveActivity", "reminders", "liveActivity"])
     }
 }
 

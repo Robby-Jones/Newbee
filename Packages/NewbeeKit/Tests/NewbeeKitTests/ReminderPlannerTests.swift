@@ -133,4 +133,57 @@ struct ReminderPlannerTests {
         #expect(LastFeed.latest(breast: breast, bottle: nil) == LastFeed(start: at(8), end: at(8.4), kind: .breast))
         #expect(LastFeed.latest(breast: nil, bottle: nil) == nil)
     }
+
+    /// The bug from a parent's Lock Screen: a breastfeed at 5:22 PM, then a 2 oz bottle at
+    /// 8:11 PM. The reminder must move to 3 h after the bottle, not fire at 8:22 PM.
+    @Test func aLaterBottleMovesTheReminderPastTheEarlierBreastfeed() {
+        let breast = breastfeed(start: at(17 + 22.0 / 60), end: at(17.75))
+        let bottle = BottleEntry(startedAt: at(20 + 11.0 / 60), contents: .formula, amountML: 59)
+        let last = LastFeed.latest(breast: breast, bottle: bottle)
+        #expect(last?.kind == .bottle)
+        let plan = planner.plan(settings: on, lastFeed: last, active: nil, now: at(20.2))
+        #expect(plan == [PlannedReminder(kind: .feedDue, fireDate: at(23 + 11.0 / 60), anchor: at(20 + 11.0 / 60))])
+    }
+
+    @Test func identifiersMapBackToTheirKind() {
+        for kind in PlannedReminder.Kind.allCases {
+            #expect(PlannedReminder.kind(forIdentifier: PlannedReminder.identifier(for: kind)) == kind)
+        }
+        #expect(PlannedReminder.kind(forIdentifier: "newbee.nightShift.summary") == nil)
+    }
+}
+
+@Suite("Delivered reminders")
+struct DeliveredReminderTests {
+    @Test func feedDueIsOutdatedOnceANewerFeedStarted() {
+        let anchor = at(17)
+        // The bottle was logged after the reminder fired, with its time set back to 8:11 PM.
+        let bottle = LastFeed(start: at(20), end: nil, kind: .bottle)
+        #expect(ReminderPlanner.deliveredReminderIsOutdated(.feedDue, anchor: anchor, lastFeed: bottle, active: nil))
+    }
+
+    @Test func feedDueStaysForTheFeedItCountedFrom() {
+        // Counting from the start: the same feed is still the last one.
+        let same = LastFeed(start: at(17), end: at(17.5), kind: .breast)
+        #expect(!ReminderPlanner.deliveredReminderIsOutdated(.feedDue, anchor: at(17), lastFeed: same, active: nil))
+        // Counting from the end: the anchor is after that feed's start.
+        #expect(!ReminderPlanner.deliveredReminderIsOutdated(.feedDue, anchor: at(17.5), lastFeed: same, active: nil))
+        // No feeds at all (everything was deleted): nothing to compare with.
+        #expect(!ReminderPlanner.deliveredReminderIsOutdated(.feedDue, anchor: at(17), lastFeed: nil, active: nil))
+    }
+
+    @Test func feedDueIsOutdatedOnceABreastfeedIsRunning() {
+        let last = LastFeed(start: at(17), end: at(17.5), kind: .breast)
+        let running = SessionSnapshot(status: .active, segments: [Segment(side: .left, start: at(20))], startedAt: at(20))
+        #expect(ReminderPlanner.deliveredReminderIsOutdated(.feedDue, anchor: at(17), lastFeed: last, active: running))
+    }
+
+    @Test func stillFeedingIsOutdatedOnceNoFeedIsRunning() {
+        let running = SessionSnapshot(status: .active, segments: [Segment(side: .left, start: at(2))], startedAt: at(2))
+        let paused = SessionSnapshot(status: .paused, segments: [Segment(side: .left, start: at(2), end: at(2.5))], startedAt: at(2))
+        #expect(!ReminderPlanner.deliveredReminderIsOutdated(.stillFeeding, anchor: at(2), lastFeed: nil, active: running))
+        #expect(!ReminderPlanner.deliveredReminderIsOutdated(.stillFeeding, anchor: at(2.5), lastFeed: nil, active: paused))
+        let ended = LastFeed(start: at(2), end: at(3), kind: .breast)
+        #expect(ReminderPlanner.deliveredReminderIsOutdated(.stillFeeding, anchor: at(2), lastFeed: ended, active: nil))
+    }
 }
