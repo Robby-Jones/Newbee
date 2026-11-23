@@ -63,11 +63,8 @@ final class AppStoreScreenshots: ScreenshotTestCase {
         let onCallApp = launch(["-sharingPreview", "shared", "-nightShiftPreview", "onDuty"])
         let endShift = onCallApp.buttons["nightShift.end"].firstMatch
         XCTAssertTrue(endShift.waitForExistence(timeout: 15))
-        settle()
-        capture("07-on-call")
-
-        // The same, scrolled a little so the whole card clears the tab bar. A slow drag with a
-        // hold at the end stops the list where the finger lifts.
+        // Scroll a little so the whole card clears the tab bar. A slow drag with a hold at the
+        // end stops the list where the finger lifts.
         let today = onCallApp.staticTexts["Today"].firstMatch
         XCTAssertTrue(today.exists)
         let from = today.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.5))
@@ -75,6 +72,6 @@ final class AppStoreScreenshots: ScreenshotTestCase {
                    withVelocity: .slow, thenHoldForDuration: 0.5)
         XCTAssertTrue(endShift.isHittable)
         settle()
-        capture("07-on-call-scrolled")
+        capture("07-on-call")
     }
 }
