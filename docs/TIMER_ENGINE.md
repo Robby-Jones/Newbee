@@ -77,7 +77,7 @@ Every accepted transition increments `revision` by 1.
 2. `let t = try engine.apply(cmd, to: state, at: clock.instant())`.
 3. `repository.save(t.snapshot)` → `modelContext.save()` **synchronously before** any side effect. If the save throws: roll back, show error, no side effects.
 4. Publish `activeSession = t.snapshot` (UI updates).
-5. Fan out effects: `await liveActivity.sync(t.snapshot)`, `reminders.reschedule()`, haptics.
+5. Fan out effects: `reminders.reschedule()` first (quick, and the one that matters most if iOS suspends the app right after a background wake), then `await liveActivity.sync(t.snapshot)`, haptics.
 
 Writes are tiny, so saving on every command costs nothing and means a power loss at any moment loses at most the in-flight tap.
 

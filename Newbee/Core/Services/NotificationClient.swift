@@ -7,6 +7,9 @@ struct ScheduledNotification: Sendable, Hashable {
     var title: String
     var body: String
     var fireDate: Date
+    /// What the reminder counts from (the last feed's start or end, or the running side's start).
+    /// Saved with the notification so one that already fired can be cleared once it's out of date.
+    var anchor: Date?
 }
 
 /// Whether the parent let Newbee send notifications.
@@ -28,12 +31,19 @@ protocol NotificationClient: Sendable {
     func requestPermission() async -> Bool
     /// Removes pending notifications with these identifiers, then adds `notifications`.
     func replace(identifiers: [String], with notifications: [ScheduledNotification]) async
+    /// Removes the delivered notifications (on the Lock Screen or in Notification Center) that
+    /// `isOutdated` picks, given each one's identifier and saved anchor. Ones saved without an
+    /// anchor are left alone.
+    func removeDelivered(where isOutdated: @escaping @Sendable (_ identifier: String, _ anchor: Date) -> Bool) async
     /// Removes every pending and delivered notification (used by "Delete all data").
     func removeAll() async
 }
 
 /// `UNUserNotificationCenter`.
 struct SystemNotificationClient: NotificationClient {
+    /// `userInfo` key for `ScheduledNotification.anchor`, in seconds since 1970.
+    static let anchorKey = "newbee.anchor"
+
     func permission() async -> NotificationPermission {
         let status = await UNUserNotificationCenter.current().notificationSettings().authorizationStatus
         switch status {
@@ -55,6 +65,9 @@ struct SystemNotificationClient: NotificationClient {
             content.title = notification.title
             content.body = notification.body
             content.sound = .default
+            if let anchor = notification.anchor {
+                content.userInfo = [Self.anchorKey: anchor.timeIntervalSince1970]
+            }
             let trigger = Self.trigger(for: notification.fireDate)
             let request = UNNotificationRequest(identifier: notification.identifier, content: content, trigger: trigger)
             try? await center.add(request)
@@ -81,6 +94,17 @@ struct SystemNotificationClient: NotificationClient {
         )
     }
 
+    func removeDelivered(where isOutdated: @escaping @Sendable (_ identifier: String, _ anchor: Date) -> Bool) async {
+        let center = UNUserNotificationCenter.current()
+        let outdated = await center.deliveredNotifications().compactMap { delivered -> String? in
+            let request = delivered.request
+            guard let seconds = request.content.userInfo[Self.anchorKey] as? TimeInterval else { return nil }
+            return isOutdated(request.identifier, Date(timeIntervalSince1970: seconds)) ? request.identifier : nil
+        }
+        guard !outdated.isEmpty else { return }
+        center.removeDeliveredNotifications(withIdentifiers: outdated)
+    }
+
     func removeAll() async {
         let center = UNUserNotificationCenter.current()
         center.removeAllPendingNotificationRequests()
@@ -93,6 +117,7 @@ struct NoNotificationClient: NotificationClient {
     func permission() async -> NotificationPermission { .denied }
     func requestPermission() async -> Bool { false }
     func replace(identifiers: [String], with notifications: [ScheduledNotification]) async {}
+    func removeDelivered(where isOutdated: @escaping @Sendable (_ identifier: String, _ anchor: Date) -> Bool) async {}
     func removeAll() async {}
 }
 

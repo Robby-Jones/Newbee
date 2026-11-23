@@ -91,6 +91,8 @@ Covers deliverable 4 (technical architecture) and 8 (folder structure), plus the
 - Reschedules the single "time since last feed" reminder whenever feeding data changes. It uses the last feed's start time, the user's interval, and quiet hours.
 - Schedules and cancels the "still feeding?" safety notification while a session is active.
 - Uses only pending-request identifiers it owns. It is idempotent.
+- Runs on every way a feed changes: the timer and Lock Screen buttons, feeds added, edited or deleted by hand, bottles from Home, History or Calendar, and feeds arriving from the other parent's phone (with a little background time asked of iOS so the move happens before the app is suspended again).
+- Clears a reminder that already fired once it's out of date: a "feed due" counted from a feed older than the latest one (e.g. a bottle logged after the reminder, with its time set back), or a "Still feeding?" once no feed is running. Each notification saves its anchor in `userInfo` for this.
 
 ### `FeedingRepository` (protocol)
 - CRUD for sessions, segments, and bottle details. Exposes `activeSessions()` and `sessions(in: DateInterval)`.

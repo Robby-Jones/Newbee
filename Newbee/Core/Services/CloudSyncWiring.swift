@@ -73,11 +73,16 @@ extension AppDependencies {
 
     /// Changes from another device arrived. `@Query` views update on their own; the rest is
     /// refreshed here: duplicate baby profiles, the photo, and the timer with its Live Activity
-    /// and reminders (another device may have started or ended a feed).
+    /// and reminders (another device may have started or ended a feed, or logged a bottle).
     func cloudSyncDidImport() async {
-        mergeDuplicateBabies()
-        babyPhoto.reload()
-        await sessionManager.reload()
+        // iOS often wakes the app in the background just to deliver these changes, and suspends
+        // it again as soon as the fetch is done. Ask for a little time so the feed reminder moves
+        // before then; otherwise it could still fire for a feed that is no longer the last one.
+        await withBackgroundTime("Newbee import") {
+            mergeDuplicateBabies()
+            babyPhoto.reload()
+            await sessionManager.reload()
+        }
     }
 
     private func mergeDuplicateBabies() {

@@ -10,6 +10,8 @@ actor FakeNotificationClient: NotificationClient {
     var current: NotificationPermission
     var grantsOnRequest: Bool
     private(set) var pending: [String: ScheduledNotification] = [:]
+    /// Fired and still on the Lock Screen or in Notification Center.
+    private(set) var delivered: [String: ScheduledNotification] = [:]
     private(set) var requestCount = 0
     private(set) var removeAllCount = 0
 
@@ -31,13 +33,21 @@ actor FakeNotificationClient: NotificationClient {
         for notification in notifications { pending[notification.identifier] = notification }
     }
 
+    func removeDelivered(where isOutdated: @escaping @Sendable (_ identifier: String, _ anchor: Date) -> Bool) async {
+        for (id, notification) in delivered {
+            if let anchor = notification.anchor, isOutdated(id, anchor) { delivered[id] = nil }
+        }
+    }
+
     func removeAll() async {
         removeAllCount += 1
         pending = [:]
+        delivered = [:]
     }
 
-    /// The notification fired: it is no longer pending.
+    /// The notification fired: it is no longer pending, and shows until cleared.
     func markDelivered(_ identifier: String) {
+        delivered[identifier] = pending[identifier]
         pending[identifier] = nil
     }
 }

@@ -105,6 +105,12 @@ final class ReminderScheduler: ReminderScheduling {
         let lastBreast = (try? feedingRepository.recentCompletedSessions(limit: 1))?.first
         let lastBottle = (try? bottleRepository.recentBottles(limit: 1))?.first
         let lastFeed = LastFeed.latest(breast: lastBreast, bottle: lastBottle)
+        // A reminder that already fired comes off the Lock Screen once it's out of date, e.g. a
+        // bottle logged after "It's been 3 h", with its time set back to before it.
+        await client.removeDelivered { identifier, anchor in
+            guard let kind = PlannedReminder.kind(forIdentifier: identifier) else { return false }
+            return ReminderPlanner.deliveredReminderIsOutdated(kind, anchor: anchor, lastFeed: lastFeed, active: active)
+        }
         let night = nightShift?() ?? NightShiftReminderContext()
         let plan = permission == .allowed
             ? planner.plan(
@@ -164,7 +170,9 @@ final class ReminderScheduler: ReminderScheduling {
                 body = String(localized: "The feed has been paused for \(elapsed). Open Newbee to end it or keep going.")
             }
         }
-        return ScheduledNotification(identifier: reminder.identifier, title: title, body: body, fireDate: reminder.fireDate)
+        return ScheduledNotification(
+            identifier: reminder.identifier, title: title, body: body, fireDate: reminder.fireDate, anchor: reminder.anchor
+        )
     }
 
     /// "While you slept", from what this phone knew when it last synced. A feed the phone hasn't

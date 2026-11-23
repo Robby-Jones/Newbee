@@ -163,6 +163,11 @@ public struct PlannedReminder: Sendable, Hashable {
     public var identifier: String { Self.identifier(for: kind) }
 
     public static func identifier(for kind: Kind) -> String { "newbee.reminder.\(kind.rawValue)" }
+
+    /// The kind a notification identifier stands for, or `nil` if it isn't a reminder's.
+    public static func kind(forIdentifier identifier: String) -> Kind? {
+        Kind.allCases.first { Self.identifier(for: $0) == identifier }
+    }
 }
 
 /// Decides which reminders should be pending right now. Pure, so it is tested on Linux.
@@ -249,5 +254,31 @@ public struct ReminderPlanner: Sendable {
         let fire = anchor.addingTimeInterval(threshold)
         guard fire > now else { return nil }
         return PlannedReminder(kind: .stillFeeding, fireDate: fire, anchor: anchor, side: side)
+    }
+}
+
+extension ReminderPlanner {
+    /// Whether a reminder that already fired, and still shows on the Lock Screen or in
+    /// Notification Center, is out of date and should be cleared. Rescheduling only replaces
+    /// reminders that haven't fired yet, so this covers the ones that have:
+    /// - **Feed due**, counted from `anchor`, once a newer feed started: a bottle logged after
+    ///   the reminder with its time set back to before it, a feed that arrived from the other
+    ///   parent's phone, or a breastfeed now running.
+    /// - **Still feeding?** once no breastfeed is running.
+    public static func deliveredReminderIsOutdated(
+        _ kind: PlannedReminder.Kind,
+        anchor: Date,
+        lastFeed: LastFeed?,
+        active: SessionSnapshot?
+    ) -> Bool {
+        let running = active.flatMap { $0.status == .completed ? nil : $0 }
+        switch kind {
+        case .feedDue:
+            let starts = [lastFeed?.start, running?.startedAt].compactMap { $0 }
+            guard let newest = starts.max() else { return false }
+            return newest > anchor
+        case .stillFeeding:
+            return running == nil
+        }
     }
 }

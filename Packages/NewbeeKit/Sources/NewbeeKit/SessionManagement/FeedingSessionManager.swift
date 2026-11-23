@@ -390,11 +390,15 @@ public final class FeedingSessionManager {
         }
         effectsTail = Task { @MainActor [liveActivity, reminders, lastBottle] in
             await previous?.value
-            if case let .sync(snapshot, mode) = activity {
-                await liveActivity.sync(snapshot, lastBottle: lastBottle, mode: mode)
-            }
+            // Reminders first: they're quick, and a reminder at the wrong time matters more than
+            // a Live Activity a moment late. When iOS wakes the app in the background (a feed
+            // from the other parent's phone, a Lock Screen button), it may suspend it again
+            // before slower Live Activity work is done.
             if shouldReschedule {
                 await reminders.feedingDataDidChange(activeSession: active, lastCompletedSession: lastCompleted)
+            }
+            if case let .sync(snapshot, mode) = activity {
+                await liveActivity.sync(snapshot, lastBottle: lastBottle, mode: mode)
             }
         }
     }
